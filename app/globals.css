@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sporr-dark:    #13322A;
+  --sporr-cream:   #F5F1E6;
+  --sporr-mid:     #1D4A38;
+  --sporr-sage:    #808C70;
+  --sporr-sage-lt: #EEF0E8;
+  --sporr-light:   #F7F5EF;
+  --sporr-muted:   #5C6B63;
+  --sporr-ink:     #111814;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--sporr-light);
+  color: var(--sporr-ink);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Sporr utility classes */
+.btn-primary {
+  @apply bg-sporr-dark text-sporr-cream font-medium px-6 py-3 rounded-lg hover:bg-sporr-mid transition-colors duration-150;
+}
+
+.btn-secondary {
+  @apply bg-sporr-sage-lt text-sporr-dark font-medium px-6 py-3 rounded-lg hover:bg-sporr-sage hover:text-sporr-cream transition-colors duration-150;
+}
+
+.card {
+  @apply bg-white rounded-xl border border-sporr-sage-lt p-6;
+}
+
+.input {
+  @apply w-full border border-sporr-sage-lt rounded-lg px-4 py-3 text-sporr-ink placeholder-sporr-muted focus:outline-none focus:border-sporr-dark transition-colors duration-150;
+}
+
+.label {
+  @apply block text-sm font-medium text-sporr-muted mb-1;
+}
