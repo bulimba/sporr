@@ -145,7 +145,7 @@ export default function SignupPage() {
               <div>
                 <label className="label text-sporr-sage">Full name</label>
                 <input
-                  className="input bg-sporr-dark border-sporr-dark text-sporr-cream placeholder-sporr-muted"
+                  className="input bg-sporr-mid border-sporr-sage text-sporr-cream placeholder-sporr-muted"
                   placeholder="Your name"
                   value={form.full_name}
                   onChange={e => update('full_name', e.target.value)}
@@ -155,7 +155,7 @@ export default function SignupPage() {
                 <label className="label text-sporr-sage">Email address</label>
                 <input
                   type="email"
-                  className="input bg-sporr-dark border-sporr-dark text-sporr-cream placeholder-sporr-muted"
+                  className="input bbg-sporr-mid border-sporr-sage text-sporr-cream placeholder-sporr-muted"
                   placeholder="you@yourclub.no"
                   value={form.email}
                   onChange={e => update('email', e.target.value)}
@@ -165,7 +165,7 @@ export default function SignupPage() {
                 <label className="label text-sporr-sage">Password</label>
                 <input
                   type="password"
-                  className="input bg-sporr-dark border-sporr-dark text-sporr-cream placeholder-sporr-muted"
+                  className="input bg-sporr-mid border-sporr-sage text-sporr-cream placeholder-sporr-muted"
                   placeholder="Minimum 8 characters"
                   value={form.password}
                   onChange={e => update('password', e.target.value)}
@@ -192,7 +192,7 @@ export default function SignupPage() {
               <div>
                 <label className="label text-sporr-sage">Club or organisation name</label>
                 <input
-                  className="input bg-sporr-dark border-sporr-dark text-sporr-cream placeholder-sporr-muted"
+                  className="input bg-sporr-mid border-sporr-sage text-sporr-cream placeholder-sporr-muted"
                   placeholder="FK Sandnes Ulf"
                   value={form.org_name}
                   onChange={e => update('org_name', e.target.value)}
@@ -201,7 +201,7 @@ export default function SignupPage() {
               <div>
                 <label className="label text-sporr-sage">Sport</label>
                 <input
-                  className="input bg-sporr-dark border-sporr-dark text-sporr-cream placeholder-sporr-muted"
+                  className="input bg-sporr-mid border-sporr-sage text-sporr-cream placeholder-sporr-muted"
                   placeholder="Football, handball, volleyball..."
                   value={form.sport}
                   onChange={e => update('sport', e.target.value)}
@@ -210,7 +210,7 @@ export default function SignupPage() {
               <div>
                 <label className="label text-sporr-sage">Division or level</label>
                 <input
-                  className="input bg-sporr-dark border-sporr-dark text-sporr-cream placeholder-sporr-muted"
+                  className="input bg-sporr-mid border-sporr-sage text-sporr-cream placeholder-sporr-muted"
                   placeholder="Eliteserien, Division 1, Local league..."
                   value={form.division}
                   onChange={e => update('division', e.target.value)}
