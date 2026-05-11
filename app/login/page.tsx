@@ -64,7 +64,7 @@ export default function LoginPage() {
               <label className="label text-sporr-sage">Email address</label>
               <input
                 type="email"
-                className="input bg-sporr-dark border-sporr-dark text-sporr-cream placeholder-sporr-muted"
+                className="input bg-sporr-cream border-sporr-sage text-sporr-dark placeholder-sporr-muted"
                 placeholder="you@yourclub.no"
                 value={form.email}
                 onChange={e => update('email', e.target.value)}
@@ -75,7 +75,7 @@ export default function LoginPage() {
               <label className="label text-sporr-sage">Password</label>
               <input
                 type="password"
-                className="input bg-sporr-dark border-sporr-dark text-sporr-cream placeholder-sporr-muted"
+                className="input bg-sporr-cream border-sporr-sage text-sporr-dark placeholder-sporr-muted"
                 placeholder="Your password"
                 value={form.password}
                 onChange={e => update('password', e.target.value)}
