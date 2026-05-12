@@ -9,10 +9,10 @@ export default function Home() {
           SPORR
         </h1>
         <p className="text-sporr-cream text-xl font-medium mb-4">
-          Proof of sponsorship performance made easy.
+          Proof of sponsorship performance made easy
         </p>
         <p className="text-sporr-sage text-base max-w-md leading-relaxed">
-          Capture, organise, and deliver proof of performance for your sponsorship — automatically.
+          Capture, organise, and deliver proof of performance for your sponsorship — automatically
         </p>
       </div>
 
