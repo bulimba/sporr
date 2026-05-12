@@ -152,7 +152,7 @@ export default function AuditPage() {
           <img
   src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
   alt="Sporr"
-  className="h-10"
+  className="h-20"
 />
         </Link>
         <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">
