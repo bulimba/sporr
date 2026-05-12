@@ -20,15 +20,14 @@
 }
 
 body {
-  background-color: var(--sporr-light);
+  background-color: var(--sporr-cream);
   color: var(--sporr-ink);
   font-family: 'DM Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Sporr utility classes */
 .btn-primary {
-  @apply bg-sporr-cream text-sporr-dark font-medium px-6 py-3 rounded-lg hover:bg-sporr-sage-lt transition-colors duration-150;
+  @apply bg-sporr-dark text-sporr-cream font-medium px-6 py-3 rounded-lg hover:bg-sporr-mid transition-colors duration-150;
 }
 
 .btn-secondary {
@@ -40,9 +39,9 @@ body {
 }
 
 .input {
-  @apply w-full border border-sporr-sage-lt rounded-lg px-4 py-3 text-sporr-ink placeholder-sporr-muted focus:outline-none focus:border-sporr-dark transition-colors duration-150;
+  @apply w-full border border-sporr-sage-lt rounded-lg px-4 py-3 text-sporr-ink placeholder-sporr-muted focus:outline-none focus:border-sporr-dark transition-colors duration-150 bg-white;
 }
 
 .label {
-  @apply block text-sm font-medium text-sporr-muted mb-1;
+  @apply block text-sm font-medium text-sporr-dark mb-1;
 }
