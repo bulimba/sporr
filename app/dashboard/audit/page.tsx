@@ -146,7 +146,6 @@ export default function AuditPage() {
 
   return (
     <main className="min-h-screen bg-sporr-light">
-
       <nav className="bg-sporr-dark px-6 py-4 flex items-center justify-between">
         <Link href="/dashboard">
           <span className="text-sporr-cream font-medium tracking-[0.2em] text-lg">SPORR</span>
@@ -155,9 +154,7 @@ export default function AuditPage() {
           ← Dashboard
         </Link>
       </nav>
-
       <div className="max-w-4xl mx-auto px-6 py-10">
-
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-sporr-ink text-2xl font-medium mb-1">Audit sessions</h1>
@@ -167,7 +164,6 @@ export default function AuditPage() {
             Launch session
           </button>
         </div>
-
         {activeSession && (
           <div className="card mb-8 text-center border-sporr-sage">
             <div className="bg-sporr-dark rounded-xl p-6 mb-6 inline-block">
@@ -186,3 +182,132 @@ export default function AuditPage() {
               
                 href={`/audit/${activeSession.token}`}
                 target="_blank"
+                className="text-sporr-dark text-sm font-medium hover:text-sporr-mid break-all"
+              >
+                {window.location.origin}/audit/{activeSession.token}
+              </a>
+            </div>
+            <button onClick={() => setActiveSession(null)} className="btn-secondary">
+              Done
+            </button>
+          </div>
+        )}
+        {showForm && (
+          <div className="card mb-8">
+            <h2 className="text-sporr-ink text-lg font-medium mb-6">Launch audit session</h2>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
+                {error}
+              </div>
+            )}
+            <div className="mb-6">
+              <label className="label">Link to an existing event (optional)</label>
+              <select
+                className="input"
+                value={form.event_id}
+                onChange={e => update('event_id', e.target.value)}
+              >
+                <option value="">No event — or create one below</option>
+                {events.map(e => (
+                  <option key={e.id} value={e.id}>
+                    {e.title}{e.venue ? ` — ${e.venue}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {!form.event_id && (
+              <div className="border-t border-sporr-sage-lt pt-6">
+                <p className="text-sporr-muted text-sm mb-4">Or create a new event:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="label">Event name</label>
+                    <input
+                      className="input"
+                      placeholder="vs Brann — Eliteserien"
+                      value={form.new_event_title}
+                      onChange={e => update('new_event_title', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Venue</label>
+                    <input
+                      className="input"
+                      placeholder="Color Line Stadion"
+                      value={form.new_event_venue}
+                      onChange={e => update('new_event_venue', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="label">Date</label>
+                    <input
+                      type="date"
+                      className="input"
+                      value={form.new_event_date}
+                      onChange={e => update('new_event_date', e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleLaunch}
+                disabled={launching}
+                className="btn-primary disabled:opacity-50"
+              >
+                {launching ? 'Launching...' : 'Generate QR code'}
+              </button>
+              <button
+                onClick={() => { setShowForm(false); setError(null) }}
+                className="btn-secondary"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+        {sessions.length > 0 && (
+          <div>
+            <h2 className="text-sporr-ink text-sm font-medium uppercase tracking-widest mb-4">
+              Recent sessions
+            </h2>
+            <div className="space-y-3">
+              {sessions.map(session => (
+                <div key={session.id} className="card">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sporr-ink font-medium">
+                        {session.events?.title || 'No event linked'}
+                      </p>
+                      <p className="text-sporr-muted text-xs mt-0.5">
+                        {new Date(session.created_at).toLocaleDateString('en-GB', {
+                          day: 'numeric', month: 'short', year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
+                        session.status === 'active' ? 'bg-sporr-sage-lt text-sporr-dark' :
+                        session.status === 'completed' ? 'bg-sporr-light text-sporr-muted' :
+                        'bg-red-50 text-red-600'
+                      }`}>
+                        {session.status}
+                      </span>
+                      
+                        href={`/audit/${session.session_token}`}
+                        target="_blank"
+                        className="text-sporr-sage hover:text-sporr-dark text-sm transition-colors"
+                      >
+                        Open →
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </main>
+  )
+}
