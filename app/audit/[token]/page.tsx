@@ -224,7 +224,7 @@ export default function AuditorPage({ params }: { params: { token: string } }) {
         {obligations.length === 0 && (
           <div className="text-center py-12">
             <p className="text-sporr-sage text-sm">No obligations linked to this session.</p>
-            <p className="text-sporr-muted text-xs mt-2">Add obligations to contracts to see them here.</p>
+            <p className="text-sporr-sage text-xs mt-2">Add obligations to contracts to see them here.</p>
           </div>
         )}
 
