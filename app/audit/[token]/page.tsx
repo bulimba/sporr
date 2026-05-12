@@ -30,10 +30,10 @@ export default function AuditorPage({ params }: { params: { token: string } }) {
   useEffect(() => {
     async function load() {
       const { data: sessionData, error: sessionError } = await supabase
-        .from('audit_sessions')
-        .select('id, status, events(title, venue)')
-        .eq('session_token', params.token)
-        .single()
+  .from('audit_sessions')
+  .select('id, status, org_id, events(title, venue)')
+  .eq('session_token', params.token)
+  .single()
 
       if (sessionError || !sessionData) {
         setError('Session not found or expired.')
@@ -44,9 +44,10 @@ export default function AuditorPage({ params }: { params: { token: string } }) {
       setSession(sessionData as unknown as SessionData)
 
       const { data: obligationsData } = await supabase
-        .from('obligations')
-        .select('id, description, proof_type, status, assets(name, asset_type), contracts(sponsors(company_name))')
-        .eq('status', 'pending')
+  .from('obligations')
+  .select('id, description, proof_type, status, assets(name, asset_type), contracts(sponsors(company_name))')
+  .eq('org_id', (sessionData as any).org_id)
+  .eq('status', 'pending')
 
       setObligations((obligationsData as unknown as Obligation[]) || [])
       setLoading(false)
