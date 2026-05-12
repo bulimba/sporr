@@ -27,11 +27,12 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       // Check session
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/login')
-        return
-      }
+      const { data: { session } } = await supabase.auth.getSession()
+if (!session) {
+  router.push('/login')
+  return
+}
+const user = session.user
 
       // Load user record
       const { data: userData } = await supabase
