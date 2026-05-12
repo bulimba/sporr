@@ -62,11 +62,15 @@ export default function AuditorPage({ params }: { params: { token: string } }) {
       input.capture = 'environment'
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0]
-        if (!file) return
+if (!file) return
+if (file.size > 10 * 1024 * 1024) {
+  alert('Photo is too large. Please use a photo under 2MB.')
+  return
+}
 
         const fileName = `proofs/${Date.now()}-${file.name}`
         const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('public')
+          .from('proofs')
           .upload(fileName, file)
 
         if (uploadError) {
@@ -75,7 +79,7 @@ export default function AuditorPage({ params }: { params: { token: string } }) {
         }
 
         const { data: { publicUrl } } = supabase.storage
-          .from('public')
+          .from('proofs')
           .getPublicUrl(fileName)
 
         await markDelivered(obligationId, { photo_url: publicUrl })
