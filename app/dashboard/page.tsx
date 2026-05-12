@@ -152,10 +152,10 @@ export default function DashboardPage() {
   <p className="text-sporr-dark font-medium mb-1">Add a sponsor</p>
   <p className="text-sporr-muted text-sm">Add a company to your sponsorship roster</p>
 </Link>
-            <button className="card hover:border-sporr-sage transition-colors text-left">
-              <p className="text-sporr-dark font-medium mb-1">New contract</p>
-              <p className="text-sporr-muted text-sm">Define obligations and get it signed</p>
-            </button>
+            <Link href="/dashboard/contracts" className="card hover:border-sporr-sage transition-colors text-left block">
+  <p className="text-sporr-dark font-medium mb-1">New contract</p>
+  <p className="text-sporr-muted text-sm">Define obligations and get it signed</p>
+</Link>
             <button className="card hover:border-sporr-sage transition-colors text-left">
               <p className="text-sporr-dark font-medium mb-1">Launch audit</p>
               <p className="text-sporr-muted text-sm">Capture proof of delivery on match day</p>
