@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+
 type Organisation = {
   id: string
   name: string
@@ -27,24 +28,15 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session) {
-        router.push('/login')
-        return
-      }
-
-      const user = session.user
+      if (!session) { router.push('/login'); return }
 
       const { data: userData } = await supabase
         .from('users')
         .select('org_id')
-        .eq('id', user.id)
+        .eq('id', session.user.id)
         .single()
 
-      if (!userData) {
-        setLoading(false)
-        return
-      }
+      if (!userData) { setLoading(false); return }
 
       const { data: orgData } = await supabase
         .from('organisations')
@@ -79,26 +71,28 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-sporr-light flex items-center justify-center">
+      <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
         <div className="text-sporr-muted text-sm">Loading...</div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-sporr-light">
+    <main className="min-h-screen bg-sporr-cream">
 
       <nav className="bg-sporr-dark px-6 py-4 flex items-center justify-between">
-        <span className="text-sporr-cream font-medium tracking-[0.2em] text-lg">
-          SPORR
-        </span>
+        <img
+          src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+          alt="Sporr"
+          className="h-8"
+        />
         <div className="flex items-center gap-6">
-          <span className="text-sporr-sage text-sm capitalize">
+          <span className="text-sporr-cream text-sm capitalize">
             {org?.tier} plan
           </span>
           <button
             onClick={handleSignOut}
-            className="text-sporr-muted hover:text-sporr-cream text-sm transition-colors"
+            className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors"
           >
             Sign out
           </button>
@@ -108,7 +102,7 @@ export default function DashboardPage() {
       <div className="max-w-5xl mx-auto px-6 py-10">
 
         <div className="mb-10">
-          <h1 className="text-sporr-ink text-2xl font-medium mb-1">
+          <h1 className="text-sporr-dark text-2xl font-medium mb-1">
             {org?.name || 'Your dashboard'}
           </h1>
           <p className="text-sporr-muted text-sm">
@@ -133,7 +127,7 @@ export default function DashboardPage() {
               {stats.contracts}
             </p>
           </div>
-          <div className="card border-l-4 border-l-sporr-sage">
+          <div className="card border-l-4 border-l-sporr-dark">
             <p className="text-sporr-muted text-xs uppercase tracking-widest mb-2">
               Obligations pending
             </p>
@@ -144,27 +138,27 @@ export default function DashboardPage() {
         </div>
 
         <div className="mb-10">
-          <h2 className="text-sporr-ink text-sm font-medium uppercase tracking-widest mb-4">
+          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">
             Quick actions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Link href="/dashboard/sponsors" className="card hover:border-sporr-sage transition-colors text-left block">
-  <p className="text-sporr-dark font-medium mb-1">Add a sponsor</p>
-  <p className="text-sporr-muted text-sm">Add a company to your sponsorship roster</p>
-</Link>
-            <Link href="/dashboard/contracts" className="card hover:border-sporr-sage transition-colors text-left block">
-  <p className="text-sporr-dark font-medium mb-1">New contract</p>
-  <p className="text-sporr-muted text-sm">Define obligations and get it signed</p>
-</Link>
-          <Link href="/dashboard/audit" className="card hover:border-sporr-sage transition-colors text-left block">
-  <p className="text-sporr-dark font-medium mb-1">Launch audit</p>
-  <p className="text-sporr-muted text-sm">Capture proof of delivery on match day</p>
-</Link>
+            <Link href="/dashboard/sponsors" className="card hover:border-sporr-dark transition-colors text-left block">
+              <p className="text-sporr-dark font-medium mb-1">Add a sponsor</p>
+              <p className="text-sporr-muted text-sm">Add a company to your sponsorship roster</p>
+            </Link>
+            <Link href="/dashboard/contracts" className="card hover:border-sporr-dark transition-colors text-left block">
+              <p className="text-sporr-dark font-medium mb-1">New contract</p>
+              <p className="text-sporr-muted text-sm">Define obligations and get it signed</p>
+            </Link>
+            <Link href="/dashboard/audit" className="card hover:border-sporr-dark transition-colors text-left block">
+              <p className="text-sporr-dark font-medium mb-1">Launch audit</p>
+              <p className="text-sporr-muted text-sm">Capture proof of delivery on match day</p>
+            </Link>
           </div>
         </div>
 
         <div className="card">
-          <h2 className="text-sporr-ink text-sm font-medium uppercase tracking-widest mb-6">
+          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-6">
             Getting started
           </h2>
           <div className="space-y-4">
