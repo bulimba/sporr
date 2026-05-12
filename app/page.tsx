@@ -4,14 +4,11 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-sporr-dark flex flex-col items-center justify-center px-6">
       <div className="mb-10 text-center">
-        <div className="overflow-hidden mx-auto mb-6" style={{height: '80px'}}>
-          <img 
-            src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
-            alt="Sporr"
-            className="w-auto mx-auto"
-            style={{marginTop: '-40px', height: '160px'}}
-          />
-        </div>
+       <img
+  src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+  alt="Sporr"
+  className="h-20 mx-auto mb-2"
+/>
         <p className="text-sporr-cream text-xl font-medium mb-8">
           Proof of sponsorship performance made easy
         </p>
