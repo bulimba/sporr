@@ -28,7 +28,7 @@ body {
 
 /* Sporr utility classes */
 .btn-primary {
-  @apply bg-sporr-dark text-sporr-cream font-medium px-6 py-3 rounded-lg hover:bg-sporr-mid transition-colors duration-150;
+  @apply bg-sporr-cream text-sporr-dark font-medium px-6 py-3 rounded-lg hover:bg-sporr-sage-lt transition-colors duration-150;
 }
 
 .btn-secondary {
