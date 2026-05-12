@@ -132,9 +132,9 @@ export default function ContractsPage() {
         <Link href="/dashboard">
           <span className="text-sporr-cream font-medium tracking-[0.2em] text-lg">SPORR</span>
         </Link>
-        <Link href="/dashboard" className="text-sporr-sage hover:text-sporr-cream text-sm transition-colors">
-          ← Dashboard
-        </Link>
+        <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">
+  ← Dashboard
+</Link>
       </nav>
 
       <div className="max-w-4xl mx-auto px-6 py-10">
