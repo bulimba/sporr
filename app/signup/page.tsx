@@ -89,7 +89,7 @@ export default function SignupPage() {
             <img
   src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
   alt="Sporr"
-  className="h-24 mx-auto mb-2"
+  className="h-24 mx-auto mb-4"
 />
           </Link>
           <p className="text-sporr-sage text-sm mt-2">
