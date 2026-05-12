@@ -74,6 +74,7 @@ useEffect(() => {
 
   async function handleAddSponsor() {
     if (!form.company_name) { setError('Company name is required'); return }
+    console.log('orgId at save time:', orgId)
     if (!orgId) return
 
     setSaving(true)
@@ -93,11 +94,12 @@ useEffect(() => {
       .select()
       .single()
 
-    if (saveError) {
-      setError(saveError.message)
-      setSaving(false)
-      return
-    }
+  if (saveError) {
+  setError(saveError.message)
+  console.log('Save error:', saveError)
+  setSaving(false)
+  return
+}
 
     setSponsors(prev => [...prev, data])
     setForm({ company_name: '', contact_name: '', contact_email: '', contact_phone: '', industry: '', notes: '' })
