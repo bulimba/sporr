@@ -84,7 +84,7 @@ export default function DashboardPage() {
         <img
           src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
           alt="Sporr"
-          className="h-8"
+          className="h-20"
         />
         <div className="flex items-center gap-6">
           <span className="text-sporr-cream text-sm capitalize">
