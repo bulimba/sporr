@@ -112,4 +112,87 @@ export default function DashboardPage() {
             {org?.name || 'Your dashboard'}
           </h1>
           <p className="text-sporr-muted text-sm">
-            Welcome t
+            Welcome to your sponsorship dashboard
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+          <div className="card">
+            <p className="text-sporr-muted text-xs uppercase tracking-widest mb-2">
+              Active sponsors
+            </p>
+            <p className="text-sporr-dark text-4xl font-medium">
+              {stats.sponsors}
+            </p>
+          </div>
+          <div className="card">
+            <p className="text-sporr-muted text-xs uppercase tracking-widest mb-2">
+              Active contracts
+            </p>
+            <p className="text-sporr-dark text-4xl font-medium">
+              {stats.contracts}
+            </p>
+          </div>
+          <div className="card border-l-4 border-l-sporr-sage">
+            <p className="text-sporr-muted text-xs uppercase tracking-widest mb-2">
+              Obligations pending
+            </p>
+            <p className="text-sporr-dark text-4xl font-medium">
+              {stats.obligations_due}
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-10">
+          <h2 className="text-sporr-ink text-sm font-medium uppercase tracking-widest mb-4">
+            Quick actions
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button className="card hover:border-sporr-sage transition-colors text-left">
+              <p className="text-sporr-dark font-medium mb-1">Add a sponsor</p>
+              <p className="text-sporr-muted text-sm">Add a company to your sponsorship roster</p>
+            </button>
+            <button className="card hover:border-sporr-sage transition-colors text-left">
+              <p className="text-sporr-dark font-medium mb-1">New contract</p>
+              <p className="text-sporr-muted text-sm">Define obligations and get it signed</p>
+            </button>
+            <button className="card hover:border-sporr-sage transition-colors text-left">
+              <p className="text-sporr-dark font-medium mb-1">Launch audit</p>
+              <p className="text-sporr-muted text-sm">Capture proof of delivery on match day</p>
+            </button>
+          </div>
+        </div>
+
+        <div className="card">
+          <h2 className="text-sporr-ink text-sm font-medium uppercase tracking-widest mb-6">
+            Getting started
+          </h2>
+          <div className="space-y-4">
+            {[
+              { done: true, label: 'Create your account', sub: "You're in." },
+              { done: stats.sponsors > 0, label: 'Add your first sponsor', sub: 'Add a company you have or want a sponsorship with.' },
+              { done: stats.contracts > 0, label: 'Create a contract', sub: 'Define the obligations and get it signed.' },
+              { done: false, label: 'Capture your first proof', sub: 'Launch an audit session on match day.' },
+              { done: false, label: 'Send your first Proof Pack', sub: 'Deliver timestamped evidence to your sponsor.' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-start gap-4">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-medium ${
+                  item.done ? 'bg-sporr-dark text-sporr-cream' : 'bg-sporr-sage-lt text-sporr-muted'
+                }`}>
+                  {item.done ? '✓' : i + 1}
+                </div>
+                <div>
+                  <p className={`text-sm font-medium ${item.done ? 'text-sporr-muted line-through' : 'text-sporr-ink'}`}>
+                    {item.label}
+                  </p>
+                  <p className="text-sporr-muted text-xs mt-0.5">{item.sub}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </main>
+  )
+}
