@@ -46,7 +46,8 @@ export default function AuditPage() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!session) { router.push('/login'); return }
+  if (!session) { router.push('/login'); return }
+  if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
 
         const { data: userData } = await supabase
           .from('users')
