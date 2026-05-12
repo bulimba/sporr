@@ -149,7 +149,11 @@ export default function AuditPage() {
     <main className="min-h-screen bg-sporr-light">
       <nav className="bg-sporr-dark px-6 py-4 flex items-center justify-between">
         <Link href="/dashboard">
-          <span className="text-sporr-cream font-medium tracking-[0.2em] text-lg">SPORR</span>
+          <img
+  src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+  alt="Sporr"
+  className="h-10"
+/>
         </Link>
         <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">
           ← Dashboard
