@@ -122,7 +122,7 @@ useEffect(() => {
         <Link href="/dashboard">
           <span className="text-sporr-cream font-medium tracking-[0.2em] text-lg">SPORR</span>
         </Link>
-        <Link href="/dashboard" className="text-sporr-sage hover:text-sporr-cream text-sm transition-colors">
+        <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">
           ← Dashboard
         </Link>
       </nav>
