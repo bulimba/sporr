@@ -5,9 +5,11 @@ export default function Home() {
     <main className="min-h-screen bg-sporr-dark flex flex-col items-center justify-center px-6">
 
       <div className="mb-10 text-center">
-        <h1 className="text-sporr-cream font-medium tracking-[0.3em] text-5xl mb-6">
-          SPORR
-        </h1>
+        <img 
+  src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+  alt="Sporr"
+  className="h-16 mx-auto mb-6"
+/>
         <p className="text-sporr-cream text-xl font-medium mb-8">
           Proof of sponsorship performance made easy
         </p>
