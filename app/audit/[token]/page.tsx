@@ -206,16 +206,24 @@ export default function AuditorPage({ params }: { params: { token: string } }) {
   return (
     <main className="min-h-screen bg-sporr-dark pb-32">
 
-      <div className="bg-sporr-dark border-b border-sporr-mid px-6 py-4">
-        <a href="/dashboard/audit" className="text-sporr-cream text-sm hover:text-sporr-sage mb-3 inline-block">
-          ← Back to dashboard
-        </a>
-        <h1 className="text-sporr-cream font-medium text-xl">
+     <div className="bg-sporr-dark border-b border-sporr-mid px-6 py-4">
+  <div className="flex items-center justify-between mb-4">
+    <a href="/dashboard/audit" className="text-sporr-cream text-sm hover:text-sporr-sage">
+      ← Back
+    </a>
+    <img
+      src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+      alt="Sporr"
+      className="h-20 mx-auto"
+    />
+    <div className="w-12"></div>
+  </div>
+  <h1 className="text-sporr-cream font-medium text-xl text-center">
           {session?.events?.title || 'Audit session'}
         </h1>
         {session?.events?.venue && (
-          <p className="text-sporr-cream text-base mt-1">{session.events.venue}</p>
-        )}
+  <p className="text-sporr-cream text-base mt-1 text-center">{session.events.venue}</p>
+)}
         <div className="mt-4">
           <div className="flex justify-between text-sm text-sporr-cream mb-2">
             <span>{delivered} of {total} delivered</span>
