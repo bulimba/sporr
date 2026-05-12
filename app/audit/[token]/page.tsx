@@ -202,7 +202,8 @@ if (file.size > 10 * 1024 * 1024) {
   return (
     <main className="min-h-screen bg-sporr-dark pb-24">
 
-      <div className="bg-sporr-mid px-6 py-4">
+      <div className="bg-sporr-dark border-b border-sporr-mid px-6 py-4">
+        <a href="/dashboard/audit" className="text-sporr-sage text-xs hover:text-sporr-cream mb-3 inline-block">← Back to dashboard</a>
         <p className="text-sporr-sage text-xs uppercase tracking-widest mb-1">Field auditor</p>
         <h1 className="text-sporr-cream font-medium text-lg">
           {session?.events?.title || 'Audit session'}
@@ -235,11 +236,11 @@ if (file.size > 10 * 1024 * 1024) {
         {obligations.map(ob => (
           <div
             key={ob.id}
-            className={`rounded-xl p-4 ${
-              ob.status === 'delivered' ? 'bg-sporr-mid opacity-60' :
-              ob.status === 'not_applicable' ? 'bg-sporr-dark opacity-40' :
-              'bg-sporr-mid'
-            }`}
+            className={`rounded-xl p-4 border ${
+  ob.status === 'delivered' ? 'bg-sporr-dark border-sporr-sage opacity-70' :
+  ob.status === 'not_applicable' ? 'bg-sporr-dark border-sporr-mid opacity-40' :
+  'bg-white border-sporr-sage-lt'
+}`}
           >
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex-1">
