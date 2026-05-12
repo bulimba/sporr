@@ -39,8 +39,33 @@ export default function SponsorsPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
+     const { data: { session } } = await supabase.auth.getSession()
+if (!session) {
+  // Wait briefly for session to load then check again
+  await new Promise(resolve => setTimeout(resolve, 500))
+  const { data: { session: retrySession } } = await supabase.auth.getSession()
+  if (!retrySession) { router.push('/login'); return }
+  // Use retrySession from here
+  const { data: userData } = await supabase
+    .from('users')
+    .select('org_id')
+    .eq('id', retrySession.user.id)
+    .single()
+
+  if (!userData) { router.push('/login'); return }
+
+  setOrgId(userData.org_id)
+
+  const { data: sponsorsData } = await supabase
+    .from('sponsors')
+    .select('id, company_name, contact_name, contact_email, industry, health_score')
+    .eq('org_id', userData.org_id)
+    .order('company_name')
+
+  setSponsors(sponsorsData || [])
+  setLoading(false)
+  return
+}
 
       const { data: userData } = await supabase
         .from('users')
