@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-
+import Link from 'next/link'
 type Organisation = {
   id: string
   name: string
@@ -148,10 +148,10 @@ export default function DashboardPage() {
             Quick actions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <button className="card hover:border-sporr-sage transition-colors text-left">
-              <p className="text-sporr-dark font-medium mb-1">Add a sponsor</p>
-              <p className="text-sporr-muted text-sm">Add a company to your sponsorship roster</p>
-            </button>
+          <Link href="/dashboard/sponsors" className="card hover:border-sporr-sage transition-colors text-left block">
+  <p className="text-sporr-dark font-medium mb-1">Add a sponsor</p>
+  <p className="text-sporr-muted text-sm">Add a company to your sponsorship roster</p>
+</Link>
             <button className="card hover:border-sporr-sage transition-colors text-left">
               <p className="text-sporr-dark font-medium mb-1">New contract</p>
               <p className="text-sporr-muted text-sm">Define obligations and get it signed</p>
