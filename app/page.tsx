@@ -8,7 +8,7 @@ export default function Home() {
         <img 
   src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
   alt="Sporr"
-  className="h-16 mx-auto mb-6"
+  className="h-64 mx-auto mb-6"
 />
         <p className="text-sporr-cream text-xl font-medium mb-8">
           Proof of sponsorship performance made easy
