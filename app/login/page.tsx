@@ -14,7 +14,7 @@ export default function LoginPage({
           <img
             src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
             alt="Sporr"
-            className="h-16 mx-auto mb-6"
+            className="h-24 mx-auto mb-6"
           />
           <p className="text-sporr-cream text-base mt-2">
             Sign in to your account
