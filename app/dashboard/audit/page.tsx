@@ -180,7 +180,7 @@ export default function AuditPage() {
             <div className="bg-sporr-light rounded-lg px-4 py-3 mb-6">
               <p className="text-sporr-muted text-xs uppercase tracking-widest mb-1">Direct link</p>
               
-                href={`/audit/${activeSession.token}`}
+                <a href={`/audit/${activeSession.token}`}
                 target="_blank"
                 className="text-sporr-dark text-sm font-medium hover:text-sporr-mid break-all"
               >
@@ -294,7 +294,7 @@ export default function AuditPage() {
                         {session.status}
                       </span>
                       
-                        href={`/audit/${session.session_token}`}
+                        <a href={`/audit/${session.session_token}`}
                         target="_blank"
                         className="text-sporr-sage hover:text-sporr-dark text-sm transition-colors"
                       >
