@@ -38,30 +38,38 @@ export default function SponsorsPage() {
     setForm(prev => ({ ...prev, [field]: value }))
 
 useEffect(() => {
-  async function load() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { router.push('/login'); return }
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    async (event, session) => {
+      if (!session) {
+        router.push('/login')
+        return
+      }
 
-    const { data: userData } = await supabase
-      .from('users')
-      .select('org_id')
-      .eq('id', user.id)
-      .single()
+      const { data: userData } = await supabase
+        .from('users')
+        .select('org_id')
+        .eq('id', session.user.id)
+        .single()
 
-    if (!userData) { router.push('/login'); return }
+      if (!userData) {
+        setLoading(false)
+        return
+      }
 
-    setOrgId(userData.org_id)
+      setOrgId(userData.org_id)
 
-    const { data: sponsorsData } = await supabase
-      .from('sponsors')
-      .select('id, company_name, contact_name, contact_email, industry, health_score')
-      .eq('org_id', userData.org_id)
-      .order('company_name')
+      const { data: sponsorsData } = await supabase
+        .from('sponsors')
+        .select('id, company_name, contact_name, contact_email, industry, health_score')
+        .eq('org_id', userData.org_id)
+        .order('company_name')
 
-    setSponsors(sponsorsData || [])
-    setLoading(false)
-  }
-  load()
+      setSponsors(sponsorsData || [])
+      setLoading(false)
+    }
+  )
+
+  return () => subscription.unsubscribe()
 }, [])
 
   async function handleAddSponsor() {
