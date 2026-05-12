@@ -86,7 +86,11 @@ export default function SignupPage() {
       <div className="max-w-md w-full">
         <div className="text-center mb-10">
           <Link href="/">
-            <span className="text-sporr-cream font-medium tracking-[0.25em] text-2xl">SPORR</span>
+            <img
+  src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+  alt="Sporr"
+  className="h-24 mx-auto mb-2"
+/>
           </Link>
           <p className="text-sporr-sage text-sm mt-2">
             {step === 1 ? 'Create your account' : 'Tell us about your club'}
@@ -111,7 +115,7 @@ export default function SignupPage() {
           {step === 1 && (
             <div className="space-y-5">
               <div>
-                <label className="label text-sporr-sage">Full name</label>
+                <label className="label text-sporr-cream">Full name</label>
                 <input
                   className="input bg-sporr-cream border-sporr-sage text-sporr-dark placeholder-sporr-muted"
                   placeholder="Your name"
@@ -120,7 +124,7 @@ export default function SignupPage() {
                 />
               </div>
               <div>
-                <label className="label text-sporr-sage">Email address</label>
+                <label className="label text-sporr-cream">Email address</label>
                 <input
                   type="email"
                   className="input bg-sporr-cream border-sporr-sage text-sporr-dark placeholder-sporr-muted"
@@ -130,7 +134,7 @@ export default function SignupPage() {
                 />
               </div>
               <div>
-                <label className="label text-sporr-sage">Password</label>
+                <label className="label text-sporr-cream">Password</label>
                 <input
                   type="password"
                   className="input bg-sporr-cream border-sporr-sage text-sporr-dark placeholder-sporr-muted"
@@ -157,7 +161,7 @@ export default function SignupPage() {
           {step === 2 && (
             <div className="space-y-5">
               <div>
-                <label className="label text-sporr-sage">Club or organisation name</label>
+                <label className="label text-sporr-cream">Club or organisation name</label>
                 <input
                   className="input bg-sporr-cream border-sporr-sage text-sporr-dark placeholder-sporr-muted"
                   placeholder="FK Sandnes Ulf"
@@ -166,7 +170,7 @@ export default function SignupPage() {
                 />
               </div>
               <div>
-                <label className="label text-sporr-sage">Sport</label>
+                <label className="label text-sporr-cream">Sport</label>
                 <input
                   className="input bg-sporr-cream border-sporr-sage text-sporr-dark placeholder-sporr-muted"
                   placeholder="Football, handball, volleyball..."
@@ -175,7 +179,7 @@ export default function SignupPage() {
                 />
               </div>
               <div>
-                <label className="label text-sporr-sage">Division or level</label>
+                <label className="label text-sporr-cream">Division or level</label>
                 <input
                   className="input bg-sporr-cream border-sporr-sage text-sporr-dark placeholder-sporr-muted"
                   placeholder="Eliteserien, Division 1, Local league..."
