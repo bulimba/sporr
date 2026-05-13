@@ -178,7 +178,7 @@ export default function AuditorPage({ params }: { params: { token: string } }) {
         <div className="text-center">
           <p className="text-sporr-cream text-xl mb-3">Session not found</p>
           <p className="text-sporr-cream text-base">{error}</p>
-          <a href="/dashboard/audit" className="text-sporr-sage mt-6 inline-block text-base hover:text-sporr-cream">
+          <a href="/dashboard" className="text-sporr-sage mt-6 inline-block text-base hover:text-sporr-cream">
             ← Back to dashboard
           </a>
         </div>
@@ -208,7 +208,7 @@ export default function AuditorPage({ params }: { params: { token: string } }) {
 
      <div className="bg-sporr-dark border-b border-sporr-mid px-6 py-4">
   <div className="flex items-center justify-between mb-4">
-    <a href="/dashboard/audit" className="text-sporr-cream text-sm hover:text-sporr-sage">
+    <a href="/dashboard" className="text-sporr-cream text-sm hover:text-sporr-sage">
       ← Back
     </a>
     <img
