@@ -25,7 +25,7 @@ export default function DashboardPage() {
       const [sponsorsRes, contractsRes, obligationsRes, sessionsRes] = await Promise.all([
   supabase.from('sponsors').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
   supabase.from('contracts').select('id', { count: 'exact' }).eq('org_id', userData.org_id).eq('status', 'active'),
-  supabase.from('obligations').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
+  supabase.from('obligations').select('id', { count: 'exact' }).eq('org_id', userData.org_id).eq('status', 'pending'),
   supabase.from('audit_sessions').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
 ])
 setStats({ sponsors: sponsorsRes.count || 0, contracts: contractsRes.count || 0, obligations_due: obligationsRes.count || 0, sessions: sessionsRes.count || 0 })
