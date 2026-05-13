@@ -164,8 +164,8 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {[
               { done: true, label: 'Create your account', sub: "You're in." },
-              { done: stats.sponsors > 0, label: 'Add your first sponsor', sub: 'Add a company you have or want a sponsorship with.' },
-              { done: stats.contracts > 0, label: 'Create a contract', sub: 'Define the obligations and get it signed.' },
+              { done: stats.sponsors > 0, label: 'Add your first sponsor', sub: 'Add your sponsor's company name.' },
+              { done: stats.contracts > 0, label: 'Add your first contract obligation', sub: 'Define what you agreed to deliver to your sponsor.' },
               { done: false, label: 'Capture your first proof', sub: 'Launch an audit session on match day.' },
               { done: false, label: 'Send your first Proof Pack', sub: 'Deliver timestamped evidence to your sponsor.' },
             ].map((item, i) => (
