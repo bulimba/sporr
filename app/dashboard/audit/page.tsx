@@ -186,7 +186,7 @@ export default function AuditPage() {
               <p className="text-sporr-muted text-xs uppercase tracking-widest mb-1">Direct link</p>
               
                 <a href={`/audit/${activeSession.token}`}
-                target="_blank"
+               
                 className="text-sporr-dark text-sm font-medium hover:text-sporr-mid break-all"
               >
                 {window.location.origin}/audit/{activeSession.token}
@@ -300,7 +300,7 @@ export default function AuditPage() {
                       </span>
                       
                         <a href={`/audit/${session.session_token}`}
-                        target="_blank"
+                        
                         className="text-sporr-sage hover:text-sporr-dark text-sm transition-colors"
                       >
                         Open →
