@@ -142,18 +142,18 @@ export default function DashboardPage() {
             Quick actions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Link href="/dashboard/sponsors" className="card hover:border-sporr-dark transition-colors text-left block">
-              <p className="text-sporr-dark font-medium mb-1">Add a sponsor</p>
-              <p className="text-sporr-muted text-sm">Add a company to your sponsorship roster</p>
-            </Link>
-            <Link href="/dashboard/contracts" className="card hover:border-sporr-dark transition-colors text-left block">
-              <p className="text-sporr-dark font-medium mb-1">New contract</p>
-              <p className="text-sporr-muted text-sm">Define obligations and get it signed</p>
-            </Link>
-            <Link href="/dashboard/audit" className="card hover:border-sporr-dark transition-colors text-left block">
-              <p className="text-sporr-dark font-medium mb-1">Launch audit</p>
-              <p className="text-sporr-muted text-sm">Capture proof of delivery on match day</p>
-            </Link>
+           <Link href="/dashboard/sponsors" className="card hover:border-sporr-dark transition-colors text-left block">
+  <p className="text-sporr-dark font-medium mb-1">Your sponsors</p>
+  <p className="text-sporr-muted text-sm">View and manage your sponsor roster</p>
+</Link>
+<Link href="/dashboard/obligations" className="card hover:border-sporr-dark transition-colors text-left block">
+  <p className="text-sporr-dark font-medium mb-1">Your obligations</p>
+  <p className="text-sporr-muted text-sm">What you agreed to deliver and when</p>
+</Link>
+<Link href="/dashboard/audit" className="card hover:border-sporr-dark transition-colors text-left block">
+  <p className="text-sporr-dark font-medium mb-1">Match day</p>
+  <p className="text-sporr-muted text-sm">Photograph and confirm delivery</p>
+</Link>
           </div>
         </div>
 
