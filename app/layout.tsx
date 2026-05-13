@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Sporr — Proof of delivery for every club',
+  title: 'Sporr — Proof of performance made easy',
   description: 'The proof-of-delivery infrastructure for sport and community investment.',
 }
 
