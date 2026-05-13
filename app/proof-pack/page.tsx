@@ -432,9 +432,14 @@ export default function ProofPackPage() {
             {/* Delivery progress bar */}
             <div style={{ marginBottom: '8px' }}>
               <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 8px' }}>Delivery rate — {deliveryScore}%</p>
-              <div style={{ background: '#1D4A38', borderRadius: '3px', height: '6px' }}>
-                <div style={{ background: '#808C70', height: '6px', width: `${deliveryScore}%`, borderRadius: '3px' }} />
-              </div>
+<table style={{ width: '100%', borderCollapse: 'collapse', height: '8px' }}>
+  <tbody>
+    <tr>
+      <td style={{ background: '#808C70', width: `${deliveryScore}%`, borderRadius: '3px 0 0 3px' }}></td>
+      <td style={{ background: '#1D4A38', width: `${100 - deliveryScore}%`, borderRadius: '0 3px 3px 0' }}></td>
+    </tr>
+  </tbody>
+</table>
             </div>
 
             {/* Cover footer */}
