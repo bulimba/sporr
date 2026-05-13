@@ -341,7 +341,7 @@ export default function ProofPackPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #EEF0E8', paddingBottom: '16px', marginBottom: '32px' }}>
               <div>
                 <p style={{ color: '#13322A', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700', margin: 0 }}>{orgName}</p>
-                <p style={{ color: '#5C6B63', fontSize: '11px', margin: '2px 0 0' }}>Proof of delivery report</p>
+                <p style={{ color: '#5C6B63', fontSize: '11px', margin: '2px 0 0' }}>Sporr — proof of performance made easy</p>
               </div>
               <span style={{ color: '#808C70', fontSize: '11px' }}>{selectedContract.sponsors?.company_name}</span>
             </div>
