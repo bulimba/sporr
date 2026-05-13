@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 
-// Dynamic import to avoid SSR issues with @react-pdf/renderer
 const PDFDownloadLink = dynamic(
   () => import('@react-pdf/renderer').then(mod => mod.PDFDownloadLink),
   { ssr: false }
@@ -62,42 +61,37 @@ export default function ProofPackPage() {
   const [pdfReady, setPdfReady] = useState(false)
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!session) { router.push('/login'); return }
-        async (event, session) => {
-  if (!session) { router.push('/login'); return }
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/login'); return }
 
-  const { data: userData } = await supabase
+      const { data: userData } = await supabase
+        .from('users')
+        .select('org_id')
+        .eq('id', session.user.id)
+        .single()
 
-        const { data: userData } = await supabase
-          .from('users')
-          .select('org_id')
-          .eq('id', session.user.id)
-          .single()
+      if (!userData) { setLoading(false); return }
 
-        if (!userData) { setLoading(false); return }
+      const { data: orgData } = await supabase
+        .from('organisations')
+        .select('name')
+        .eq('id', userData.org_id)
+        .single()
 
-        const { data: orgData } = await supabase
-          .from('organisations')
-          .select('name')
-          .eq('id', userData.org_id)
-          .single()
+      setOrgName(orgData?.name || '')
 
-        setOrgName(orgData?.name || '')
+      const { data: contractsData } = await supabase
+        .from('contracts')
+        .select('id, title, season, value_nok, sponsors(id, company_name, contact_email)')
+        .eq('org_id', userData.org_id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
 
-        const { data: contractsData } = await supabase
-          .from('contracts')
-          .select('id, title, season, value_nok, sponsors(id, company_name, contact_email)')
-          .eq('org_id', userData.org_id)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false })
-
-        setContracts((contractsData as unknown as Contract[]) || [])
-        setLoading(false)
-      }
-    )
-    return () => subscription.unsubscribe()
+      setContracts((contractsData as unknown as Contract[]) || [])
+      setLoading(false)
+    }
+    load()
   }, [])
 
   async function loadObligations(contractId: string) {
@@ -106,16 +100,11 @@ export default function ProofPackPage() {
 
     const { data } = await supabase
       .from('obligations')
-      .select(`
-        id, description, proof_type, status,
-        proofs(id, photo_url, external_link, note, captured_at, geo_lat, geo_lng)
-      `)
+      .select('id, description, proof_type, status, proofs(id, photo_url, external_link, note, captured_at, geo_lat, geo_lng)')
       .eq('contract_id', contractId)
 
     setObligations((data as unknown as Obligation[]) || [])
     setLoadingObligations(false)
-
-    // Small delay to allow PDF renderer to initialise
     setTimeout(() => setPdfReady(true), 500)
   }
 
@@ -133,10 +122,8 @@ export default function ProofPackPage() {
       setError('No sponsor email address on file. Add one in Your Sponsors.')
       return
     }
-
     setSending(true)
     setError(null)
-
     try {
       const response = await fetch('/api/send-proof-pack', {
         method: 'POST',
@@ -152,17 +139,15 @@ export default function ProofPackPage() {
           obligations,
         }),
       })
-
       if (!response.ok) {
         const err = await response.json()
         setError(err.error || 'Failed to send. Please try again.')
         setSending(false)
         return
       }
-
       setSent(true)
       setSending(false)
-    } catch (e) {
+    } catch {
       setError('Network error. Please try again.')
       setSending(false)
     }
@@ -194,7 +179,6 @@ export default function ProofPackPage() {
 
   return (
     <main className="min-h-screen bg-sporr-cream">
-
       <nav className="bg-sporr-dark px-6 py-4 flex items-center justify-between">
         <Link href="/dashboard">
           <img
@@ -209,49 +193,28 @@ export default function ProofPackPage() {
       </nav>
 
       <div className="max-w-3xl mx-auto px-6 py-10">
-
         <div className="mb-8">
           <h1 className="text-sporr-dark text-2xl font-medium mb-1">Proof Pack</h1>
-          <p className="text-sporr-muted text-sm">
-            Generate and send a proof of delivery report to your sponsor
-          </p>
+          <p className="text-sporr-muted text-sm">Generate and send a proof of delivery report to your sponsor</p>
         </div>
 
-        {/* Step 1 — Select contract */}
         <div className="card mb-6">
-          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">
-            1. Select a contract
-          </h2>
+          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">1. Select a contract</h2>
           {contracts.length === 0 ? (
-            <p className="text-sporr-muted text-sm">
-              No active contracts found.{' '}
-              <Link href="/dashboard/contracts" className="text-sporr-dark underline">
-                Add a contract
-              </Link>
-            </p>
+            <p className="text-sporr-muted text-sm">No active contracts found. <Link href="/dashboard/contracts" className="text-sporr-dark underline">Add a contract</Link></p>
           ) : (
-            <select
-              className="input"
-              value={selectedContract?.id || ''}
-              onChange={e => handleSelectContract(e.target.value)}
-            >
+            <select className="input" value={selectedContract?.id || ''} onChange={e => handleSelectContract(e.target.value)}>
               <option value="">Select a contract...</option>
               {contracts.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.title} — {c.sponsors?.company_name}
-                </option>
+                <option key={c.id} value={c.id}>{c.title} — {c.sponsors?.company_name}</option>
               ))}
             </select>
           )}
         </div>
 
-        {/* Step 2 — Review obligations */}
         {selectedContract && (
           <div className="card mb-6">
-            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">
-              2. Delivery summary
-            </h2>
-
+            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">2. Delivery summary</h2>
             {loadingObligations ? (
               <p className="text-sporr-muted text-sm">Loading obligations...</p>
             ) : (
@@ -270,20 +233,16 @@ export default function ProofPackPage() {
                     <p className="text-sporr-muted text-xs uppercase tracking-widest mt-1">Score</p>
                   </div>
                 </div>
-
                 <div className="space-y-2">
                   {obligations.map(ob => (
                     <div key={ob.id} className="flex items-center justify-between bg-sporr-light rounded-lg px-4 py-3">
                       <p className="text-sporr-dark text-sm">{ob.description}</p>
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        ob.status === 'delivered'
-                          ? 'bg-sporr-dark text-sporr-cream'
-                          : ob.status === 'not_applicable'
-                          ? 'bg-sporr-light text-sporr-muted border border-sporr-sage-lt'
-                          : 'bg-amber-100 text-amber-700'
+                        ob.status === 'delivered' ? 'bg-sporr-dark text-sporr-cream' :
+                        ob.status === 'not_applicable' ? 'bg-sporr-light text-sporr-muted border border-sporr-sage-lt' :
+                        'bg-amber-100 text-amber-700'
                       }`}>
-                        {ob.status === 'delivered' ? '✓ Delivered' :
-                         ob.status === 'not_applicable' ? 'Skipped' : 'Pending'}
+                        {ob.status === 'delivered' ? '✓ Delivered' : ob.status === 'not_applicable' ? 'Skipped' : 'Pending'}
                       </span>
                     </div>
                   ))}
@@ -293,63 +252,45 @@ export default function ProofPackPage() {
           </div>
         )}
 
-        {/* Step 3 — Add narrative */}
         {selectedContract && !loadingObligations && (
           <div className="card mb-6">
-            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">
-              3. Add a season summary (optional)
-            </h2>
+            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">3. Add a season summary (optional)</h2>
             <textarea
               className="input h-28 resize-none"
-              placeholder="Write a short summary of the season partnership — highlights, attendance figures, special moments. This appears in the Proof Pack as a personal message to your sponsor."
+              placeholder="Write a short summary of the season partnership — highlights, attendance figures, special moments."
               value={narrative}
               onChange={e => setNarrative(e.target.value)}
             />
           </div>
         )}
 
-        {/* Step 4 — Send */}
         {selectedContract && !loadingObligations && (
           <div className="card">
-            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">
-              4. Send to sponsor
-            </h2>
-
+            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">4. Send to sponsor</h2>
             {selectedContract.sponsors?.contact_email ? (
               <p className="text-sporr-muted text-sm mb-6">
-                Will be sent to{' '}
-                <span className="text-sporr-dark font-medium">
-                  {selectedContract.sponsors.contact_email}
-                </span>
+                Will be sent to <span className="text-sporr-dark font-medium">{selectedContract.sponsors.contact_email}</span>
               </p>
             ) : (
               <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-4 py-3 mb-6">
                 No email address on file for {selectedContract.sponsors?.company_name}.{' '}
-                <Link href="/dashboard/sponsors" className="underline">
-                  Add one in Your Sponsors
-                </Link>
+                <Link href="/dashboard/sponsors" className="underline">Add one in Your Sponsors</Link>
               </div>
             )}
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
-                {error}
-              </div>
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>
             )}
 
             {sent ? (
               <div className="bg-sporr-sage-lt border border-sporr-sage rounded-lg px-4 py-4 text-center">
                 <p className="text-sporr-dark font-medium mb-1">✓ Proof Pack sent</p>
-                <p className="text-sporr-muted text-sm">
-                  {selectedContract.sponsors?.company_name} will receive it shortly.
-                </p>
+                <p className="text-sporr-muted text-sm">{selectedContract.sponsors?.company_name} will receive it shortly.</p>
               </div>
             ) : (
               <div className="flex gap-3 flex-wrap">
-                {/* Download PDF button */}
                 {pdfReady && pdfData && (
                   <div className="flex-shrink-0">
-                    {/* @ts-ignore */}
                     <PDFDownloadLink
                       document={<ProofPackDocument data={pdfData} />}
                       fileName={`sporr-proof-pack-${selectedContract.sponsors?.company_name?.toLowerCase().replace(/\s+/g, '-')}-${selectedContract.season?.replace(/\//g, '-') || 'season'}.pdf`}
@@ -361,8 +302,6 @@ export default function ProofPackPage() {
                     </PDFDownloadLink>
                   </div>
                 )}
-
-                {/* Send by email button */}
                 <button
                   onClick={handleSendEmail}
                   disabled={sending || !selectedContract.sponsors?.contact_email}
@@ -374,7 +313,6 @@ export default function ProofPackPage() {
             )}
           </div>
         )}
-
       </div>
     </main>
   )
