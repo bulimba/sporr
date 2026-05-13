@@ -386,66 +386,65 @@ export default function ProofPackPage() {
         <div className="print-only" style={{ fontFamily: 'Helvetica, Arial, sans-serif', color: '#111814', background: 'white', width: '210mm', margin: '0 auto' }}>
 
           {/* COVER PAGE */}
-          <div style={{ background: '#13322A', width: '210mm', minHeight: '297mm', padding: '0', display: 'flex', flexDirection: 'column', pageBreakAfter: 'always', boxSizing: 'border-box' }}>
-            <div style={{ padding: '40px 48px 32px', borderBottom: '1px solid #1D4A38' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <img src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg" style={{ height: '36px', width: 'auto' }} alt="Sporr" />
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{ color: '#808C70', fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase', margin: '0 0 3px' }}>PROOF OF PERFORMANCE REPORT</p>
-                  <p style={{ color: '#F5F1E6', fontSize: '11px', margin: 0 }}>{dateStr}</p>
-                </div>
+          <div style={{ background: '#13322A', width: '210mm', minHeight: '297mm', padding: '48px', pageBreakAfter: 'always', boxSizing: 'border-box' }}>
+
+            {/* Logo row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1D4A38', paddingBottom: '24px', marginBottom: '48px' }}>
+              <img src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg" style={{ height: '36px', width: 'auto' }} alt="Sporr" />
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ color: '#808C70', fontSize: '10px', textTransform: 'uppercase', margin: '0 0 3px' }}>Proof of Performance Report</p>
+                <p style={{ color: '#F5F1E6', fontSize: '11px', margin: 0 }}>{dateStr}</p>
               </div>
             </div>
 
-            <div style={{ flex: 1, padding: '56px 48px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <p style={{ color: '#808C70', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', margin: '0 0 12px' }}>Prepared for</p>
-              <h1 style={{ color: '#F5F1E6', fontSize: '42px', fontWeight: '700', margin: '0 0 8px', lineHeight: 1.1 }}>{selectedContract.sponsors?.company_name}</h1>
-              <p style={{ color: '#808C70', fontSize: '18px', margin: '0 0 4px' }}>{orgName}</p>
-              <p style={{ color: '#5C6B63', fontSize: '13px', margin: '0 0 56px' }}>{selectedContract.title} · {selectedContract.season}</p>
+            {/* Prepared for */}
+            <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 10px' }}>Prepared for</p>
+            <h1 style={{ color: '#F5F1E6', fontSize: '40px', fontWeight: '700', margin: '0 0 8px', lineHeight: 1.1 }}>{selectedContract.sponsors?.company_name}</h1>
+            <p style={{ color: '#808C70', fontSize: '16px', margin: '0 0 4px' }}>{orgName}</p>
+            <p style={{ color: '#5C6B63', fontSize: '13px', margin: '0 0 48px' }}>{selectedContract.title} · {selectedContract.season}</p>
 
-              <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', marginBottom: '48px' }}>
-                <div style={{ background: '#808C70', borderRadius: '12px', padding: '28px 36px', textAlign: 'center' }}>
-                  <p style={{ color: 'white', fontSize: '64px', fontWeight: '700', margin: 0, lineHeight: 1 }}>{deliveryScore}%</p>
-                  <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', margin: '8px 0 0' }}>Delivery score</p>
-                </div>
-                <div>
-                  <div style={{ marginBottom: '16px' }}>
-                    <p style={{ color: '#808C70', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 4px' }}>Obligations delivered</p>
-                    <p style={{ color: '#F5F1E6', fontSize: '28px', fontWeight: '700', margin: 0 }}>{delivered.length} <span style={{ fontSize: '16px', color: '#5C6B63' }}>of {obligations.length}</span></p>
-                  </div>
-                  {totalAttendance > 0 && (
-                    <div style={{ marginBottom: '16px' }}>
-                      <p style={{ color: '#808C70', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 4px' }}>Season attendance</p>
-                      <p style={{ color: '#F5F1E6', fontSize: '28px', fontWeight: '700', margin: 0 }}>{totalAttendance.toLocaleString()}</p>
-                    </div>
-                  )}
-                  {totalReach > 0 && (
-                    <div>
-                      <p style={{ color: '#808C70', fontSize: '11px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 4px' }}>Total estimated reach</p>
-                      <p style={{ color: '#F5F1E6', fontSize: '28px', fontWeight: '700', margin: 0 }}>{totalReach.toLocaleString()}</p>
-                    </div>
-                  )}
-                </div>
+            {/* Delivery score box */}
+            <div style={{ background: '#808C70', borderRadius: '10px', padding: '24px 32px', display: 'inline-block', marginBottom: '32px' }}>
+              <p style={{ color: 'white', fontSize: '56px', fontWeight: '700', margin: '0 0 6px', lineHeight: 1 }}>{deliveryScore}%</p>
+              <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', textTransform: 'uppercase', margin: 0 }}>Delivery score</p>
+            </div>
+
+            {/* Key stats — stacked */}
+            <div style={{ marginBottom: '48px' }}>
+              <div style={{ borderBottom: '1px solid #1D4A38', paddingBottom: '12px', marginBottom: '12px' }}>
+                <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 4px' }}>Obligations delivered</p>
+                <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{delivered.length} of {obligations.length}</p>
               </div>
+              {totalAttendance > 0 && (
+                <div style={{ borderBottom: '1px solid #1D4A38', paddingBottom: '12px', marginBottom: '12px' }}>
+                  <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 4px' }}>Season attendance</p>
+                  <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{totalAttendance.toLocaleString()}</p>
+                </div>
+              )}
+              {totalReach > 0 && (
+                <div style={{ borderBottom: '1px solid #1D4A38', paddingBottom: '12px', marginBottom: '12px' }}>
+                  <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 4px' }}>Total estimated reach</p>
+                  <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{totalReach.toLocaleString()}</p>
+                </div>
+              )}
+            </div>
 
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span style={{ color: '#5C6B63', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase' }}>Delivery rate</span>
-                  <span style={{ color: '#808C70', fontSize: '10px' }}>{deliveryScore}%</span>
-                </div>
-                <div style={{ background: '#1D4A38', borderRadius: '3px', height: '6px', overflow: 'hidden' }}>
-                  <div style={{ background: '#808C70', height: '100%', width: `${deliveryScore}%`, borderRadius: '3px' }} />
-                </div>
+            {/* Delivery progress bar */}
+            <div style={{ marginBottom: '8px' }}>
+              <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 8px' }}>Delivery rate — {deliveryScore}%</p>
+              <div style={{ background: '#1D4A38', borderRadius: '3px', height: '6px' }}>
+                <div style={{ background: '#808C70', height: '6px', width: `${deliveryScore}%`, borderRadius: '3px' }} />
               </div>
             </div>
 
-            <div style={{ padding: '24px 48px', borderTop: '1px solid #1D4A38', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            {/* Cover footer */}
+            <div style={{ marginTop: '40px', paddingTop: '16px', borderTop: '1px solid #1D4A38', display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ color: '#5C6B63', fontSize: '10px' }}>Sporr — proof of performance made easy</span>
               <span style={{ color: '#5C6B63', fontSize: '10px' }}>sporr.io</span>
             </div>
           </div>
 
-          {/* PAGE 2: THANK YOU + SEASON SUMMARY */}
+                    {/* PAGE 2: THANK YOU + SEASON SUMMARY */}
           <div style={{ padding: '48px', pageBreakAfter: 'always', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
               <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
