@@ -65,7 +65,10 @@ export default function ProofPackPage() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!session) { router.push('/login'); return }
-        if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
+        async (event, session) => {
+  if (!session) { router.push('/login'); return }
+
+  const { data: userData } = await supabase
 
         const { data: userData } = await supabase
           .from('users')
