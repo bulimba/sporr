@@ -309,9 +309,11 @@ export default function ProofPackPage() {
           {/* Cover */}
           <div style={{ background: '#13322A', padding: '48px', minHeight: '297mm', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', pageBreakAfter: 'always' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ background: '#F5F1E6', padding: '8px 16px', borderRadius: '4px' }}>
-                <span style={{ color: '#13322A', fontSize: '18px', fontWeight: '700', letterSpacing: '4px' }}>SPORR</span>
-              </div>
+             <img 
+  src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+  style={{ height: '40px', width: 'auto' }}
+  alt="Sporr"
+/>
               <div style={{ textAlign: 'right' }}>
                 <p style={{ color: '#808C70', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', margin: '0 0 4px' }}>Prepared for</p>
                 <p style={{ color: '#F5F1E6', fontSize: '16px', fontWeight: '700', margin: 0 }}>{selectedContract.sponsors?.company_name}</p>
