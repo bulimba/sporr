@@ -199,7 +199,7 @@ export default function ProofPackPage() {
           <Link href="/dashboard">
             <img src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg" alt="Sporr" className="h-20" />
           </Link>
-          <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">\u2190 Dashboard</Link>
+          <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">← Dashboard</Link>
         </nav>
 
         <div className="max-w-3xl mx-auto px-6 py-10">
@@ -212,7 +212,7 @@ export default function ProofPackPage() {
             <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Select contract</h2>
             <select className="input" value={selectedContract?.id || ''} onChange={e => handleSelectContract(e.target.value)}>
               <option value="">Choose a contract...</option>
-              {contracts.map(c => <option key={c.id} value={c.id}>{c.title} \u2014 {c.sponsors?.company_name}</option>)}
+              {contracts.map(c => <option key={c.id} value={c.id}>{c.title} — {c.sponsors?.company_name}</option>)}
             </select>
           </div>
 
@@ -288,7 +288,7 @@ export default function ProofPackPage() {
                     </div>
                   </div>
 
-                  <button onClick={() => setStep(2)} className="btn-primary w-full">Continue \u2192</button>
+                  <button onClick={() => setStep(2)} className="btn-primary w-full">Continue →</button>
                 </div>
               )}
 
@@ -328,8 +328,8 @@ export default function ProofPackPage() {
                   </div>
 
                   <div className="flex gap-3">
-                    <button onClick={() => setStep(1)} className="btn-secondary flex-1">\u2190 Back</button>
-                    <button onClick={() => setStep(3)} className="btn-primary flex-1">Review \u2192</button>
+                    <button onClick={() => setStep(1)} className="btn-secondary flex-1">← Back</button>
+                    <button onClick={() => setStep(3)} className="btn-primary flex-1">Review →</button>
                   </div>
                 </div>
               )}
@@ -341,14 +341,14 @@ export default function ProofPackPage() {
                     <div className="space-y-3">
                       {[
                         ['Contract', selectedContract.title],
-                        ['Sponsor', selectedContract.sponsors?.company_name || '\u2014'],
-                        ['Send to', selectedContract.sponsors?.contact_email || '\u26a0 No email on file'],
+                        ['Sponsor', selectedContract.sponsors?.company_name || '—'],
+                        ['Send to', selectedContract.sponsors?.contact_email || '⚠ No email on file'],
                         ['Season', selectedContract.season],
                         ['Delivery score', `${deliveryScore}% (${delivered.length} of ${obligations.length})`],
-                        ['Total attendance', totalAttendance > 0 ? totalAttendance.toLocaleString() : '\u2014'],
-                        ['Estimated reach', totalReach > 0 ? totalReach.toLocaleString() : '\u2014'],
-                        ['Contract value', contractValue > 0 ? nok(contractValue) : '\u2014'],
-                        ['Proposed renewal', renewalValue > 0 ? nok(renewalValue) : '\u2014'],
+                        ['Total attendance', totalAttendance > 0 ? totalAttendance.toLocaleString() : '—'],
+                        ['Estimated reach', totalReach > 0 ? totalReach.toLocaleString() : '—'],
+                        ['Contract value', contractValue > 0 ? nok(contractValue) : '—'],
+                        ['Proposed renewal', renewalValue > 0 ? nok(renewalValue) : '—'],
                       ].map(([label, value]) => (
                         <div key={label} className="flex justify-between items-center py-2 border-b border-sporr-sage-lt last:border-0">
                           <span className="text-sporr-muted text-sm">{label}</span>
@@ -362,13 +362,13 @@ export default function ProofPackPage() {
 
                   {sent ? (
                     <div className="card text-center py-8">
-                      <div className="text-4xl mb-4">\u2713</div>
+                      <div className="text-4xl mb-4">✓</div>
                       <p className="text-sporr-dark font-medium text-lg mb-2">Proof Pack sent</p>
                       <p className="text-sporr-muted text-sm">{selectedContract.sponsors?.company_name} will receive it shortly.</p>
                     </div>
                   ) : (
                     <div className="flex gap-3">
-                      <button onClick={() => setStep(2)} className="btn-secondary flex-1">\u2190 Back</button>
+                      <button onClick={() => setStep(2)} className="btn-secondary flex-1">← Back</button>
                       <button onClick={() => window.print()} className="btn-secondary flex-1">Download PDF</button>
                       <button onClick={handleSendEmail} disabled={sending || !selectedContract.sponsors?.contact_email} className="btn-primary flex-1 disabled:opacity-50">
                         {sending ? 'Sending...' : 'Send to sponsor'}
@@ -401,7 +401,7 @@ export default function ProofPackPage() {
               <p style={{ color: '#808C70', fontSize: '11px', letterSpacing: '3px', textTransform: 'uppercase', margin: '0 0 12px' }}>Prepared for</p>
               <h1 style={{ color: '#F5F1E6', fontSize: '42px', fontWeight: '700', margin: '0 0 8px', lineHeight: 1.1 }}>{selectedContract.sponsors?.company_name}</h1>
               <p style={{ color: '#808C70', fontSize: '18px', margin: '0 0 4px' }}>{orgName}</p>
-              <p style={{ color: '#5C6B63', fontSize: '13px', margin: '0 0 56px' }}>{selectedContract.title} \u00b7 {selectedContract.season}</p>
+              <p style={{ color: '#5C6B63', fontSize: '13px', margin: '0 0 56px' }}>{selectedContract.title} · {selectedContract.season}</p>
 
               <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-end', marginBottom: '48px' }}>
                 <div style={{ background: '#808C70', borderRadius: '12px', padding: '28px 36px', textAlign: 'center' }}>
@@ -440,7 +440,7 @@ export default function ProofPackPage() {
             </div>
 
             <div style={{ padding: '24px 48px', borderTop: '1px solid #1D4A38', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ color: '#5C6B63', fontSize: '10px' }}>Sporr \u2014 proof of performance made easy</span>
+              <span style={{ color: '#5C6B63', fontSize: '10px' }}>Sporr — proof of performance made easy</span>
               <span style={{ color: '#5C6B63', fontSize: '10px' }}>sporr.io</span>
             </div>
           </div>
@@ -449,7 +449,7 @@ export default function ProofPackPage() {
           <div style={{ padding: '48px', pageBreakAfter: 'always', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
               <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-              <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr \u2014 proof of performance made easy</span>
+              <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr — proof of performance made easy</span>
               <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
             </div>
 
@@ -458,7 +458,7 @@ export default function ProofPackPage() {
                 <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 20px' }}>A message from {orgName}</h2>
                 <div style={{ background: '#F7F5EF', borderLeft: '5px solid #13322A', padding: '24px 28px', borderRadius: '0 8px 8px 0' }}>
                   <p style={{ color: '#2D3830', fontSize: '13px', lineHeight: '1.8', margin: '0 0 16px', whiteSpace: 'pre-wrap' }}>{metrics.thank_you_message}</p>
-                  {metrics.club_contact_name && <p style={{ color: '#5C6B63', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>\u2014 {metrics.club_contact_name}, {orgName}</p>}
+                  {metrics.club_contact_name && <p style={{ color: '#5C6B63', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>— {metrics.club_contact_name}, {orgName}</p>}
                 </div>
               </div>
             )}
@@ -466,7 +466,7 @@ export default function ProofPackPage() {
             <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 20px' }}>Season at a glance</h2>
             <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
               {[
-                { num: metrics.total_fixtures || '\u2014', label: 'Fixtures' },
+                { num: metrics.total_fixtures || '—', label: 'Fixtures' },
                 { num: obligations.length, label: 'Obligations contracted' },
                 { num: delivered.length, label: 'Obligations delivered' },
                 { num: `${deliveryScore}%`, label: 'Delivery score', dark: true },
@@ -487,7 +487,7 @@ export default function ProofPackPage() {
             </div>
 
             <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-              <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr \u2014 proof of performance made easy \u00b7 sporr.io</span>
+              <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr — proof of performance made easy · sporr.io</span>
               <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 2</span>
             </div>
           </div>
@@ -497,7 +497,7 @@ export default function ProofPackPage() {
             <div style={{ padding: '48px', pageBreakAfter: 'always', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
                 <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-                <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr \u2014 proof of performance made easy</span>
+                <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr — proof of performance made easy</span>
                 <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
               </div>
 
@@ -547,7 +547,7 @@ export default function ProofPackPage() {
                   <div style={{ flex: 1, background: '#13322A', borderRadius: '8px', padding: '20px' }}>
                     <p style={{ color: '#808C70', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px' }}>Estimated media value</p>
                     <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{nok(estimatedMediaValue)}</p>
-                    {roiMultiple && <p style={{ color: '#808C70', fontSize: '10px', margin: '4px 0 0' }}>{roiMultiple}\u00d7 return on investment</p>}
+                    {roiMultiple && <p style={{ color: '#808C70', fontSize: '10px', margin: '4px 0 0' }}>{roiMultiple}× return on investment</p>}
                   </div>
                 )}
               </div>
@@ -560,7 +560,7 @@ export default function ProofPackPage() {
               )}
 
               <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-                <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr \u2014 proof of performance made easy \u00b7 sporr.io</span>
+                <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr — proof of performance made easy · sporr.io</span>
                 <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 3</span>
               </div>
             </div>
@@ -570,11 +570,11 @@ export default function ProofPackPage() {
           <div style={{ padding: '48px', pageBreakAfter: photoProofs.length > 0 ? 'always' : 'avoid', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
               <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-              <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr \u2014 proof of performance made easy</span>
+              <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr — proof of performance made easy</span>
               <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
             </div>
 
-            <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Deliverables \u2014 promised vs delivered</h2>
+            <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Deliverables — promised vs delivered</h2>
             <p style={{ color: '#5C6B63', fontSize: '12px', margin: '0 0 24px' }}>A verified record of every commitment made and kept</p>
 
             <div style={{ marginBottom: '24px' }}>
@@ -589,7 +589,7 @@ export default function ProofPackPage() {
                   <span style={{ color: '#808C70', fontSize: '11px', width: '80px', textAlign: 'center', textTransform: 'capitalize' }}>{ob.proof_type}</span>
                   <span style={{ width: '80px', textAlign: 'right' }}>
                     {ob.status === 'delivered'
-                      ? <span style={{ background: '#13322A', color: '#F5F1E6', fontSize: '9px', fontWeight: '700', padding: '3px 8px', borderRadius: '3px' }}>\u2713 DONE</span>
+                      ? <span style={{ background: '#13322A', color: '#F5F1E6', fontSize: '9px', fontWeight: '700', padding: '3px 8px', borderRadius: '3px' }}>✓ DONE</span>
                       : ob.status === 'not_applicable'
                       ? <span style={{ background: '#EEF0E8', color: '#5C6B63', fontSize: '9px', padding: '3px 8px', borderRadius: '3px' }}>N/A</span>
                       : <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: '9px', padding: '3px 8px', borderRadius: '3px' }}>PENDING</span>
@@ -602,13 +602,13 @@ export default function ProofPackPage() {
             {pending.length > 0 && (
               <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: '6px', padding: '12px 16px', marginBottom: '24px' }}>
                 <p style={{ color: '#92400E', fontSize: '11px', margin: 0 }}>
-                  <strong>{pending.length} obligation{pending.length > 1 ? 's' : ''} pending</strong> \u2014 {orgName} is committed to completing {pending.length > 1 ? 'these deliverables' : 'this deliverable'} as agreed.
+                  <strong>{pending.length} obligation{pending.length > 1 ? 's' : ''} pending</strong> — {orgName} is committed to completing {pending.length > 1 ? 'these deliverables' : 'this deliverable'} as agreed.
                 </p>
               </div>
             )}
 
             <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-              <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr \u2014 proof of performance made easy \u00b7 sporr.io</span>
+              <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr — proof of performance made easy · sporr.io</span>
               <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 4</span>
             </div>
           </div>
@@ -618,7 +618,7 @@ export default function ProofPackPage() {
             <div style={{ padding: '48px', pageBreakAfter: (metrics.renewal_package || renewalValue > 0) ? 'always' : 'avoid', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
                 <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-                <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr \u2014 proof of performance made easy</span>
+                <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr — proof of performance made easy</span>
                 <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
               </div>
 
@@ -632,7 +632,7 @@ export default function ProofPackPage() {
                     <span style={{ color: '#13322A', fontSize: '12px', fontWeight: '600' }}>{photoProofs[0].description}</span>
                     <span style={{ color: '#5C6B63', fontSize: '10px' }}>
                       {photoProofs[0].proofs[0].captured_at && new Date(photoProofs[0].proofs[0].captured_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      {photoProofs[0].proofs[0].geo_lat && ` \u00b7 ${photoProofs[0].proofs[0].geo_lat.toFixed(3)}\u00b0N`}
+                      {photoProofs[0].proofs[0].geo_lat && ` · ${photoProofs[0].proofs[0].geo_lat.toFixed(3)}\u00b0N`}
                     </span>
                   </div>
                 </div>
@@ -652,7 +652,7 @@ export default function ProofPackPage() {
               )}
 
               <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-                <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr \u2014 proof of performance made easy \u00b7 sporr.io</span>
+                <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr — proof of performance made easy · sporr.io</span>
                 <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 5</span>
               </div>
             </div>
@@ -663,11 +663,11 @@ export default function ProofPackPage() {
             <div style={{ padding: '48px', position: 'relative', boxSizing: 'border-box', minHeight: '297mm', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
                 <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-                <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr \u2014 proof of performance made easy</span>
+                <span style={{ color: '#808C70', fontSize: '10px' }}>Sporr — proof of performance made easy</span>
                 <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
               </div>
 
-              <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Next season \u2014 renewal proposal</h2>
+              <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Next season — renewal proposal</h2>
               <p style={{ color: '#5C6B63', fontSize: '12px', margin: '0 0 32px' }}>Building on a successful {deliveryScore}% delivery rate</p>
 
               {contractValue > 0 && renewalValue > 0 && (
@@ -677,7 +677,7 @@ export default function ProofPackPage() {
                     <p style={{ color: '#13322A', fontSize: '28px', fontWeight: '700', margin: '0 0 4px' }}>{nok(contractValue)}</p>
                     <p style={{ color: '#5C6B63', fontSize: '11px', margin: 0 }}>{selectedContract.season}</p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', color: '#808C70', fontSize: '24px' }}>\u2192</div>
+                  <div style={{ display: 'flex', alignItems: 'center', color: '#808C70', fontSize: '24px' }}>→</div>
                   <div style={{ flex: 1, background: '#13322A', borderRadius: '8px', padding: '24px', textAlign: 'center' }}>
                     <p style={{ color: '#808C70', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px' }}>Proposed renewal</p>
                     <p style={{ color: '#F5F1E6', fontSize: '28px', fontWeight: '700', margin: '0 0 4px' }}>{nok(renewalValue)}</p>
@@ -689,11 +689,11 @@ export default function ProofPackPage() {
               {roiMultiple && (
                 <div style={{ background: '#EEF0E8', borderRadius: '8px', padding: '20px 24px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
                   <div style={{ textAlign: 'center', minWidth: '80px' }}>
-                    <p style={{ color: '#13322A', fontSize: '36px', fontWeight: '700', margin: 0, lineHeight: 1 }}>{roiMultiple}\u00d7</p>
+                    <p style={{ color: '#13322A', fontSize: '36px', fontWeight: '700', margin: 0, lineHeight: 1 }}>{roiMultiple}×</p>
                     <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '4px 0 0' }}>ROI</p>
                   </div>
                   <p style={{ color: '#2D3830', fontSize: '13px', lineHeight: '1.6', margin: 0, flex: 1 }}>
-                    Based on an estimated media value of {nok(estimatedMediaValue)} against an investment of {nok(contractValue)}, your sponsorship of {orgName} delivered an estimated {roiMultiple}\u00d7 return on investment this season.
+                    Based on an estimated media value of {nok(estimatedMediaValue)} against an investment of {nok(contractValue)}, your sponsorship of {orgName} delivered an estimated {roiMultiple}× return on investment this season.
                   </p>
                 </div>
               )}
@@ -712,11 +712,11 @@ export default function ProofPackPage() {
                 <p style={{ color: '#808C70', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', margin: '0 0 8px' }}>Next steps</p>
                 <p style={{ color: '#F5F1E6', fontSize: '16px', fontWeight: '700', margin: '0 0 8px' }}>We would love to continue this partnership</p>
                 <p style={{ color: '#808C70', fontSize: '12px', margin: '0 0 16px' }}>Please reach out to {metrics.club_contact_name || orgName} to confirm your renewal for the upcoming season.</p>
-                <p style={{ color: '#5C6B63', fontSize: '11px', margin: 0, fontStyle: 'italic' }}>This proposal was generated automatically by Sporr \u00b7 sporr.io</p>
+                <p style={{ color: '#5C6B63', fontSize: '11px', margin: 0, fontStyle: 'italic' }}>This proposal was generated automatically by Sporr · sporr.io</p>
               </div>
 
               <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-                <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr \u2014 proof of performance made easy \u00b7 sporr.io</span>
+                <span style={{ color: '#5C6B63', fontSize: '9px' }}>Sporr — proof of performance made easy · sporr.io</span>
                 <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Final page</span>
               </div>
             </div>
