@@ -6,13 +6,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 type Organisation = { id: string; name: string; tier: string }
-type Stats = { sponsors: number; contracts: number; obligations_due: number }
-
+type Stats = { sponsors: number; contracts: number; obligations_due: number; sessions: number }
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
   const [org, setOrg] = useState<Organisation | null>(null)
-  const [stats, setStats] = useState<Stats>({ sponsors: 0, contracts: 0, obligations_due: 0 })
+  const [stats, setStats] = useState<Stats>({ sponsors: 0, contracts: 0, obligations_due: 0, sessions: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -23,12 +22,13 @@ export default function DashboardPage() {
       if (!userData) { setLoading(false); return }
       const { data: orgData } = await supabase.from('organisations').select('id, name, tier').eq('id', userData.org_id).single()
       setOrg(orgData)
-      const [sponsorsRes, contractsRes, obligationsRes] = await Promise.all([
-        supabase.from('sponsors').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
-        supabase.from('contracts').select('id', { count: 'exact' }).eq('org_id', userData.org_id).eq('status', 'active'),
-        supabase.from('obligations').select('id', { count: 'exact' }).eq('org_id', userData.org_id).eq('status', 'pending'),
-      ])
-      setStats({ sponsors: sponsorsRes.count || 0, contracts: contractsRes.count || 0, obligations_due: obligationsRes.count || 0 })
+      const [sponsorsRes, contractsRes, obligationsRes, sessionsRes] = await Promise.all([
+  supabase.from('sponsors').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
+  supabase.from('contracts').select('id', { count: 'exact' }).eq('org_id', userData.org_id).eq('status', 'active'),
+  supabase.from('obligations').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
+  supabase.from('audit_sessions').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
+])
+setStats({ sponsors: sponsorsRes.count || 0, contracts: contractsRes.count || 0, obligations_due: obligationsRes.count || 0, sessions: sessionsRes.count || 0 })
       setLoading(false)
     }
     load()
@@ -97,10 +97,10 @@ export default function DashboardPage() {
           <div className="space-y-4">
             {[
               { done: true, label: 'Create your account', sub: "You're in." },
-              { done: stats.sponsors > 0, label: 'Add your first sponsor', sub: 'Add a company that supports your club.' },
-              { done: stats.contracts > 0, label: 'Add your first obligation', sub: 'Tell Sporr what you agreed to deliver.' },
-              { done: false, label: 'Capture your first proof', sub: 'Launch an audit session on match day.' },
-              { done: false, label: 'Send your first Proof Pack', sub: 'Deliver timestamped evidence to your sponsor.' },
+{ done: stats.sponsors > 0, label: 'Add your first sponsor', sub: 'Add a company that supports your club.' },
+{ done: stats.obligations_due > 0, label: 'Add your first obligation', sub: 'Tell Sporr what you agreed to deliver.' },
+{ done: stats.sessions > 0, label: 'Capture your first proof', sub: 'Launch an audit session on match day.' },
+{ done: false, label: 'Send your first Proof Pack', sub: 'Deliver timestamped evidence to your sponsor.' },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-4">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-medium ${item.done ? 'bg-sporr-dark text-sporr-cream' : 'bg-sporr-sage-lt text-sporr-muted'}`}>
