@@ -108,8 +108,8 @@ export default function DashboardPage() {
 
           {/* Your sponsors */}
           <Link href="/dashboard/sponsors" className="bg-white rounded-2xl border border-sporr-sage-lt p-6 hover:border-sporr-dark transition-colors flex flex-col">
-            <h2 className="text-sporr-dark text-xl font-medium mb-3">Your sponsors</h2>
-            <p className="text-sporr-muted text-sm leading-relaxed flex-1">
+            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Your sponsors</h2>
+            <p className="text-sporr-muted text-base leading-relaxed flex-1">
               Add and manage the sponsors supporting your club.
             </p>
             <div className="border-t border-sporr-sage-lt mt-6 pt-4">
@@ -121,8 +121,8 @@ Manage obligations →
 
           {/* Match day — featured */}
           <div className="bg-white rounded-2xl border-2 border-sporr-dark p-6 flex flex-col">
-            <h2 className="text-sporr-dark text-xl font-medium mb-3">Match day</h2>
-            <p className="text-sporr-muted text-sm leading-relaxed flex-1">
+            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Match day</h2>
+            <p className="text-sporr-muted text-base leading-relaxed flex-1">
               Capture proof of today's event.
             </p>
             <div className="border-t border-sporr-sage-lt mt-6 pt-4 flex items-center justify-between gap-3">
@@ -146,8 +146,8 @@ Manage obligations →
 
           {/* Your club */}
           <Link href="/dashboard/club" className="bg-white rounded-2xl border border-sporr-sage-lt p-6 hover:border-sporr-dark transition-colors flex flex-col">
-            <h2 className="text-sporr-dark text-xl font-medium mb-3">Your club</h2>
-            <p className="text-sporr-muted text-sm leading-relaxed flex-1">
+            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Your club</h2>
+            <p className="text-sporr-muted text-base leading-relaxed flex-1">
               Manage your club profile, team details, and administrator access.
             </p>
           </Link>
