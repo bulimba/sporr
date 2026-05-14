@@ -1,29 +1,40 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
+const ALL_SPORTS = [
+  'Athletics', 'Badminton', 'Basketball', 'Biathlon', 'Boxing', 'Chess',
+  'Cricket', 'Cross country skiing', 'Curling', 'Cycling', 'Darts', 'Esports',
+  'Fencing', 'Field Hockey', 'Football', 'Futsal', 'Gaelic Football', 'Golf', 
+  'Gymnastics', 'Handball', 'Hurling', 'Ice hockey', 'Kayaking', 'Kickboxing', 
+  'Marathons', 'Martial arts', 'MMA', 'Motorsport', 'Netball', 'Padel', 
+  'Pickleball', 'Rowing', 'Rugby Union', 'Rugby league', 'Running', 
+  'Sailing / Regatta', 'Shooting', 'Skateboarding', 'Skiing', 'Ski jumping', 
+  'Snowboarding', 'Squash', 'Swimming', 'Table tennis', 'Tennis', 'Triathlon', 
+  'Volleyball', 'Beach volleyball', 'Water polo', 'Other'
+]
+
 type OrgData = {
-  id: string
-  name: string
-  tier: string
-  sport: string | null
-  division: string | null
-  country: string | null
+  id: string; name: string; tier: string
+  sports: string[] | null; country: string | null
+  sponsorship_contact_name: string | null
+  sponsorship_contact_email: string | null
+  sponsorship_contact_phone: string | null
+  governing_body_name: string | null
+  governing_body_website: string | null
 }
 
 type UserData = {
-  id: string
-  full_name: string | null
-  email: string | null
-  role: string
+  id: string; full_name: string | null; email: string | null; role: string
 }
 
 export default function ClubPage() {
   const router = useRouter()
   const supabase = createClient()
+  const sportSearchRef = useRef<HTMLInputElement>(null)
 
   const [org, setOrg] = useState<OrgData | null>(null)
   const [user, setUser] = useState<UserData | null>(null)
@@ -32,12 +43,34 @@ export default function ClubPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sportSearch, setSportSearch] = useState('')
+  const [showSportDropdown, setShowSportDropdown] = useState(false)
 
   const [form, setForm] = useState({
-    name: '', sport: '', division: '', country: 'NO',
+    name: '',
+    sports: [] as string[],
+    country: 'NO',
+    sponsorship_contact_name: '',
+    sponsorship_contact_email: '',
+    sponsorship_contact_phone: '',
+    governing_body_name: '',
+    governing_body_website: '',
   })
 
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
+
+  const toggleSport = (sport: string) => {
+    setForm(prev => {
+      const current = prev.sports
+      if (current.includes(sport)) return { ...prev, sports: current.filter(s => s !== sport) }
+      if (current.length >= 4) return prev
+      return { ...prev, sports: [...current, sport] }
+    })
+  }
+
+  const filteredSports = ALL_SPORTS.filter(s =>
+    s.toLowerCase().includes(sportSearch.toLowerCase()) && !form.sports.includes(s)
+  )
 
   useEffect(() => {
     async function load() {
@@ -46,21 +79,24 @@ export default function ClubPage() {
 
       const { data: userData } = await supabase.from('users').select('id, org_id, full_name, email, role').eq('id', session.user.id).single()
       if (!userData) { setLoading(false); return }
-
       setUser(userData as UserData)
       setOrgId(userData.org_id)
 
-      const { data: orgData } = await supabase.from('organisations').select('id, name, tier, sport, division, country').eq('id', userData.org_id).single()
+      const { data: orgData } = await supabase.from('organisations').select('id, name, tier, sports, country, sponsorship_contact_name, sponsorship_contact_email, sponsorship_contact_phone, governing_body_name, governing_body_website').eq('id', userData.org_id).single()
+
       if (orgData) {
         setOrg(orgData as OrgData)
         setForm({
           name: orgData.name || '',
-          sport: (orgData as any).sport || '',
-          division: (orgData as any).division || '',
-          country: (orgData as any).country || 'NO',
+          sports: orgData.sports || [],
+          country: orgData.country || 'NO',
+          sponsorship_contact_name: orgData.sponsorship_contact_name || '',
+          sponsorship_contact_email: orgData.sponsorship_contact_email || '',
+          sponsorship_contact_phone: orgData.sponsorship_contact_phone || '',
+          governing_body_name: orgData.governing_body_name || '',
+          governing_body_website: orgData.governing_body_website || '',
         })
       }
-
       setLoading(false)
     }
     load()
@@ -68,24 +104,21 @@ export default function ClubPage() {
 
   async function handleSave() {
     if (!orgId) return
-    setSaving(true)
-    setError(null)
-    setSaved(false)
+    setSaving(true); setError(null); setSaved(false)
 
-    const { error: saveError } = await supabase
-      .from('organisations')
-      .update({ name: form.name, country: form.country })
-      .eq('id', orgId)
+    const { error: saveError } = await supabase.from('organisations').update({
+      name: form.name,
+      sports: form.sports,
+      country: form.country,
+      sponsorship_contact_name: form.sponsorship_contact_name || null,
+      sponsorship_contact_email: form.sponsorship_contact_email || null,
+      sponsorship_contact_phone: form.sponsorship_contact_phone || null,
+      governing_body_name: form.governing_body_name || null,
+      governing_body_website: form.governing_body_website || null,
+    }).eq('id', orgId)
 
-    if (saveError) {
-      setError(saveError.message)
-      setSaving(false)
-      return
-    }
-
-    setOrg(prev => prev ? { ...prev, name: form.name, country: form.country } : null)
-    setSaved(true)
-    setSaving(false)
+    if (saveError) { setError(saveError.message); setSaving(false); return }
+    setSaved(true); setSaving(false)
     setTimeout(() => setSaved(false), 3000)
   }
 
@@ -94,13 +127,11 @@ export default function ClubPage() {
     router.push('/')
   }
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
-        <div className="text-sporr-muted text-sm">Loading...</div>
-      </main>
-    )
-  }
+  if (loading) return (
+    <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
+      <div className="text-sporr-muted text-sm">Loading...</div>
+    </main>
+  )
 
   return (
     <main className="min-h-screen bg-sporr-cream">
@@ -112,34 +143,71 @@ export default function ClubPage() {
       </nav>
 
       <div className="max-w-3xl mx-auto px-6 py-10">
-
         <div className="mb-10">
           <h1 className="text-sporr-dark text-2xl font-medium mb-1">Your club</h1>
           <p className="text-sporr-muted text-sm">Club profile and account settings</p>
         </div>
 
+        {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>}
+        {saved && <div className="bg-sporr-sage-lt border border-sporr-sage text-sporr-dark text-sm rounded-lg px-4 py-3 mb-6">✓ Changes saved</div>}
+
         {/* Club profile */}
         <div className="card mb-6">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-6">Club profile</h2>
-
-          {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>}
-          {saved && <div className="bg-sporr-sage-lt border border-sporr-sage text-sporr-dark text-sm rounded-lg px-4 py-3 mb-6">✓ Changes saved</div>}
-
-          <div className="space-y-4 mb-6">
+          <div className="space-y-4">
             <div>
               <label className="label">Club name</label>
               <input className="input" value={form.name} onChange={e => update('name', e.target.value)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">Sport</label>
-                <input className="input" placeholder="Football, handball, volleyball..." value={form.sport} onChange={e => update('sport', e.target.value)} />
-              </div>
-              <div>
-                <label className="label">Division or level</label>
-                <input className="input" placeholder="Eliteserien, Division 1..." value={form.division} onChange={e => update('division', e.target.value)} />
-              </div>
+
+            {/* Sports represented */}
+            <div>
+              <label className="label">Sports represented <span className="text-sporr-muted font-normal">(up to 4)</span></label>
+
+              {/* Selected sports tags */}
+              {form.sports.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {form.sports.map(sport => (
+                    <span key={sport} className="flex items-center gap-1 bg-sporr-dark text-sporr-cream text-sm px-3 py-1 rounded-full">
+                      {sport}
+                      <button onClick={() => toggleSport(sport)} className="text-sporr-sage hover:text-sporr-cream ml-1">✕</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Search input */}
+              {form.sports.length < 4 && (
+                <div className="relative">
+                  <input
+                    ref={sportSearchRef}
+                    className="input"
+                    placeholder="Type to search sports..."
+                    value={sportSearch}
+                    onChange={e => { setSportSearch(e.target.value); setShowSportDropdown(true) }}
+                    onFocus={() => setShowSportDropdown(true)}
+                    onBlur={() => setTimeout(() => setShowSportDropdown(false), 150)}
+                  />
+                  {showSportDropdown && filteredSports.length > 0 && (
+                    <div className="absolute z-10 top-full left-0 right-0 bg-white border border-sporr-sage-lt rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                      {filteredSports.slice(0, 20).map(sport => (
+                        <button
+                          key={sport}
+                          className="w-full text-left px-4 py-2.5 text-sporr-dark text-sm hover:bg-sporr-sage-lt transition-colors"
+                          onMouseDown={() => { toggleSport(sport); setSportSearch(''); }}
+                        >
+                          {sport}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {form.sports.length >= 4 && (
+                <p className="text-sporr-muted text-xs mt-1">Maximum of 4 sports selected. Remove one to add another.</p>
+              )}
             </div>
+
             <div>
               <label className="label">Country</label>
               <select className="input" value={form.country} onChange={e => update('country', e.target.value)}>
@@ -147,6 +215,7 @@ export default function ClubPage() {
                 <option value="SE">Sweden</option>
                 <option value="DK">Denmark</option>
                 <option value="FI">Finland</option>
+                <option value="IE">Ireland</option>
                 <option value="GB">United Kingdom</option>
                 <option value="AU">Australia</option>
                 <option value="NZ">New Zealand</option>
@@ -156,13 +225,51 @@ export default function ClubPage() {
               </select>
             </div>
           </div>
-
-          <button onClick={handleSave} disabled={saving} className="btn-primary disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save changes'}
-          </button>
         </div>
 
-        {/* Account info */}
+        {/* Sponsorship contact */}
+        <div className="card mb-6">
+          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Sponsorship contact</h2>
+          <p className="text-sporr-muted text-sm mb-6">The person at your club who handles sponsorship relationships — appears on Proof Packs sent to sponsors.</p>
+          <div className="space-y-4">
+            <div>
+              <label className="label">Full name</label>
+              <input className="input" placeholder="Club president, GM, or sponsorship manager" value={form.sponsorship_contact_name} onChange={e => update('sponsorship_contact_name', e.target.value)} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="label">Email</label>
+                <input type="email" className="input" placeholder="sponsorship@yourclub.no" value={form.sponsorship_contact_email} onChange={e => update('sponsorship_contact_email', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Phone</label>
+                <input className="input" placeholder="+47..." value={form.sponsorship_contact_phone} onChange={e => update('sponsorship_contact_phone', e.target.value)} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Governing body */}
+        <div className="card mb-6">
+          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Governing body</h2>
+          <p className="text-sporr-muted text-sm mb-6">If your club is affiliated with a sports federation or governing body — particularly relevant if sponsors distribute funds through a federation.</p>
+          <div className="space-y-4">
+            <div>
+              <label className="label">Governing body name</label>
+              <input className="input" placeholder="e.g. Norges Fotballforbund, Handball Norway..." value={form.governing_body_name} onChange={e => update('governing_body_name', e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Website (optional)</label>
+              <input className="input" placeholder="https://..." value={form.governing_body_website} onChange={e => update('governing_body_website', e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        <button onClick={handleSave} disabled={saving} className="btn-primary w-full mb-10 disabled:opacity-50">
+          {saving ? 'Saving...' : 'Save changes'}
+        </button>
+
+        {/* Your account */}
         <div className="card mb-6">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-6">Your account</h2>
           <div className="space-y-3">
@@ -180,14 +287,14 @@ export default function ClubPage() {
           </div>
         </div>
 
-        {/* Danger zone */}
-        <div className="card border-red-100">
-          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Account</h2>
+        {/* Account actions */}
+        <div className="card">
+          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Account actions</h2>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sporr-dark text-sm font-medium">Sign out</p>
-                <p className="text-sporr-muted text-xs mt-0.5">Sign out of your Sporr account on this device</p>
+                <p className="text-sporr-muted text-xs mt-0.5">Sign out of Sporr on this device</p>
               </div>
               <button onClick={handleSignOut} className="btn-secondary text-sm py-2 px-4">Sign out</button>
             </div>
