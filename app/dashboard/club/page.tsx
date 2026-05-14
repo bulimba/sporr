@@ -59,14 +59,32 @@ export default function ClubPage() {
 
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
 
-  const toggleSport = (sport: string) => {
-    setForm(prev => {
-      const current = prev.sports
-      if (current.includes(sport)) return { ...prev, sports: current.filter(s => s !== sport) }
-      if (current.length >= 4) return prev
-      return { ...prev, sports: [...current, sport] }
-    })
+  const [otherSportInput, setOtherSportInput] = useState('')
+const [showOtherInput, setShowOtherInput] = useState(false)
+
+const toggleSport = (sport: string) => {
+  if (sport === 'Other') {
+    setShowOtherInput(true)
+    return
   }
+  setForm(prev => {
+    const current = prev.sports
+    if (current.includes(sport)) return { ...prev, sports: current.filter(s => s !== sport) }
+    if (current.length >= 4) return prev
+    return { ...prev, sports: [...current, sport] }
+  })
+}
+
+const addOtherSport = () => {
+  const trimmed = otherSportInput.trim()
+  if (!trimmed) return
+  setForm(prev => {
+    if (prev.sports.includes(trimmed) || prev.sports.length >= 4) return prev
+    return { ...prev, sports: [...prev.sports, trimmed] }
+  })
+  setOtherSportInput('')
+  setShowOtherInput(false)
+}
 
   const filteredSports = ALL_SPORTS.filter(s =>
     s.toLowerCase().includes(sportSearch.toLowerCase()) && !form.sports.includes(s)
