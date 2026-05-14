@@ -28,7 +28,7 @@ export default function Home() {
         </Link>
         <Link
           href="/login"
-          className="text-sporr-sage hover:text-sporr-cream text-base transition-colors duration-150 underline underline-offset-4"
+          className="text-sporr-cream hover:text-sporr-sage text-base transition-colors duration-150 underline underline-offset-4"
         >
           Sign in
         </Link>
@@ -46,8 +46,8 @@ export default function Home() {
           className="block bg-sporr-mid rounded-2xl border border-sporr-mid hover:border-sporr-sage transition-colors duration-150 px-8 py-6"
         >
           <p className="text-sporr-cream font-medium text-xl mb-2">See how it works</p>
-          <p className="text-sporr-sage text-base leading-relaxed">
-            A two-minute walkthrough of how Sporr helps clubs capture and deliver proof to their sponsors.
+          <p className="text-sporr-cream text-base leading-relaxed">
+            See how Sporr helps clubs capture and deliver proof to their sponsors.
           </p>
         </Link>
 
@@ -56,8 +56,8 @@ export default function Home() {
           href="/sponsors"
           className="block bg-transparent rounded-2xl border border-sporr-mid hover:border-sporr-sage transition-colors duration-150 px-8 py-5"
         >
-          <p className="text-sporr-sage text-xs font-medium uppercase tracking-widest mb-1">For sponsors</p>
-          <p className="text-sporr-sage text-lg hover:text-sporr-cream transition-colors">
+          <p className="text-sporr-cream text-xs font-medium uppercase tracking-widest mb-1">For sponsors</p>
+          <p className="text-sporr-cream text-lg hover:text-sporr-sage transition-colors">
             Discover your next sports partnership →
           </p>
         </Link>
@@ -65,7 +65,7 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <div className="mt-16 text-sporr-muted text-xs tracking-wide">
+      <div className="mt-16 text-sporr-cream text-xs tracking-wide">
         sporr.io · Version 0.1
       </div>
 
