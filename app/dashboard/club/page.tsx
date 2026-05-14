@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 const ALL_SPORTS = [
- 'Football', 'Golf', 'Handball', 'Gymnastics', 'Cross country skiing',
+ 'Football', 'Handball', 'Gymnastics', 'Golf', 'Cross country skiing',
  'Cycling', 'Swimming', 'Athletics', 'Ice hockey', 'Basketball', 'Volleyball',
  'Badminton', 'Beach volleyball', 'Biathlon', 'Boxing', 'Chess', 'Cricket',
  'Curling', 'Dance', 'Darts', 'Esports', 'Fencing', 'Field Hockey', 'Futsal',
@@ -45,6 +45,8 @@ export default function ClubPage() {
   const [error, setError] = useState<string | null>(null)
   const [sportSearch, setSportSearch] = useState('')
   const [showSportDropdown, setShowSportDropdown] = useState(false)
+  const [otherSportInput, setOtherSportInput] = useState('')
+  const [showOtherInput, setShowOtherInput] = useState(false)
 
   const [form, setForm] = useState({
     name: '',
@@ -59,32 +61,35 @@ export default function ClubPage() {
 
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
 
-  const [otherSportInput, setOtherSportInput] = useState('')
-const [showOtherInput, setShowOtherInput] = useState(false)
-
-const toggleSport = (sport: string) => {
-  if (sport === 'Other') {
-    setShowOtherInput(true)
-    return
+  const toggleSport = (sport: string) => {
+    if (sport === 'Other') {
+      setShowOtherInput(true)
+      setShowSportDropdown(false)
+      setSportSearch('')
+      return
+    }
+    setForm(prev => {
+      const current = prev.sports
+      if (current.includes(sport)) return { ...prev, sports: current.filter(s => s !== sport) }
+      if (current.length >= 4) return prev
+      return { ...prev, sports: [...current, sport] }
+    })
   }
-  setForm(prev => {
-    const current = prev.sports
-    if (current.includes(sport)) return { ...prev, sports: current.filter(s => s !== sport) }
-    if (current.length >= 4) return prev
-    return { ...prev, sports: [...current, sport] }
-  })
-}
 
-const addOtherSport = () => {
-  const trimmed = otherSportInput.trim()
-  if (!trimmed) return
-  setForm(prev => {
-    if (prev.sports.includes(trimmed) || prev.sports.length >= 4) return prev
-    return { ...prev, sports: [...prev.sports, trimmed] }
-  })
-  setOtherSportInput('')
-  setShowOtherInput(false)
-}
+  const addOtherSport = () => {
+    const trimmed = otherSportInput.trim()
+    if (!trimmed) return
+    setForm(prev => {
+      if (prev.sports.includes(trimmed) || prev.sports.length >= 4) return prev
+      return { ...prev, sports: [...prev.sports, trimmed] }
+    })
+    setOtherSportInput('')
+    setShowOtherInput(false)
+  }
+
+  const removeSport = (sport: string) => {
+    setForm(prev => ({ ...prev, sports: prev.sports.filter(s => s !== sport) }))
+  }
 
   const filteredSports = ALL_SPORTS.filter(s =>
     s.toLowerCase().includes(sportSearch.toLowerCase()) && !form.sports.includes(s)
@@ -95,12 +100,16 @@ const addOtherSport = () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session) { router.push('/login'); return }
 
-      const { data: userData } = await supabase.from('users').select('id, org_id, full_name, email, role').eq('id', session.user.id).single()
+      const { data: userData } = await supabase
+        .from('users').select('id, org_id, full_name, email, role').eq('id', session.user.id).single()
       if (!userData) { setLoading(false); return }
       setUser(userData as UserData)
       setOrgId(userData.org_id)
 
-      const { data: orgData } = await supabase.from('organisations').select('id, name, tier, sports, country, sponsorship_contact_name, sponsorship_contact_email, sponsorship_contact_phone, governing_body_name, governing_body_website').eq('id', userData.org_id).single()
+      const { data: orgData } = await supabase
+        .from('organisations')
+        .select('id, name, tier, sports, country, sponsorship_contact_name, sponsorship_contact_email, sponsorship_contact_phone, governing_body_name, governing_body_website')
+        .eq('id', userData.org_id).single()
 
       if (orgData) {
         setOrg(orgData as OrgData)
@@ -180,7 +189,9 @@ const addOtherSport = () => {
 
             {/* Sports represented */}
             <div>
-              <label className="label">Sports represented <span className="text-sporr-muted font-normal">(up to 4)</span></label>
+              <label className="label">
+                Sports represented <span className="text-sporr-muted font-normal">(up to 4)</span>
+              </label>
 
               {/* Selected sports tags */}
               {form.sports.length > 0 && (
@@ -188,14 +199,14 @@ const addOtherSport = () => {
                   {form.sports.map(sport => (
                     <span key={sport} className="flex items-center gap-1 bg-sporr-dark text-sporr-cream text-sm px-3 py-1 rounded-full">
                       {sport}
-                      <button onClick={() => toggleSport(sport)} className="text-sporr-sage hover:text-sporr-cream ml-1">✕</button>
+                      <button onClick={() => removeSport(sport)} className="text-sporr-sage hover:text-sporr-cream ml-1 leading-none">✕</button>
                     </span>
                   ))}
                 </div>
               )}
 
-              {/* Search input */}
-              {form.sports.length < 4 && (
+              {/* Search dropdown */}
+              {form.sports.length < 4 && !showOtherInput && (
                 <div className="relative">
                   <input
                     ref={sportSearchRef}
@@ -207,20 +218,37 @@ const addOtherSport = () => {
                     onBlur={() => setTimeout(() => setShowSportDropdown(false), 150)}
                   />
                   {showSportDropdown && filteredSports.length > 0 && (
-                    <div className="absolute z-10 top-full left-0 right-0 bg-white border border-sporr-sage-lt rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                    <div className="absolute z-10 top-full left-0 right-0 bg-white border border-sporr-sage-lt rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
                       {filteredSports.map(sport => (
                         <button
                           key={sport}
-                          className="w-full text-left px-4 py-2.5 text-sporr-dark text-sm hover:bg-sporr-sage-lt transition-colors"
-                          onMouseDown={() => { toggleSport(sport); setSportSearch(''); }}
+                          className={`w-full text-left px-4 py-2.5 text-sm hover:bg-sporr-sage-lt transition-colors ${sport === 'Other' ? 'text-sporr-muted italic border-t border-sporr-sage-lt' : 'text-sporr-dark'}`}
+                          onMouseDown={() => { toggleSport(sport); setSportSearch('') }}
                         >
-                          {sport}
+                          {sport === 'Other' ? '+ Add a sport not listed here' : sport}
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
               )}
+
+              {/* Other sport free-text input */}
+              {showOtherInput && (
+                <div className="flex gap-2 mt-1">
+                  <input
+                    className="input flex-1"
+                    placeholder="Type the sport name..."
+                    value={otherSportInput}
+                    onChange={e => setOtherSportInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addOtherSport() }}
+                    autoFocus
+                  />
+                  <button onClick={addOtherSport} className="btn-primary text-sm py-2 px-4">Add</button>
+                  <button onClick={() => { setShowOtherInput(false); setOtherSportInput('') }} className="btn-secondary text-sm py-2 px-4">Cancel</button>
+                </div>
+              )}
+
               {form.sports.length >= 4 && (
                 <p className="text-sporr-muted text-xs mt-1">Maximum of 4 sports selected. Remove one to add another.</p>
               )}
@@ -248,7 +276,9 @@ const addOtherSport = () => {
         {/* Sponsorship contact */}
         <div className="card mb-6">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Sponsorship contact</h2>
-          <p className="text-sporr-muted text-sm mb-6">The person at your club who handles sponsorship relationships — appears on Proof Packs sent to sponsors.</p>
+          <p className="text-sporr-muted text-sm mb-6">
+            The person at your club who handles sponsorship relationships — appears on Proof Packs sent to sponsors.
+          </p>
           <div className="space-y-4">
             <div>
               <label className="label">Full name</label>
@@ -270,7 +300,9 @@ const addOtherSport = () => {
         {/* Governing body */}
         <div className="card mb-6">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Governing body</h2>
-          <p className="text-sporr-muted text-sm mb-6">If your club is affiliated with a sports federation or governing body — particularly relevant if sponsors distribute funds through a federation.</p>
+          <p className="text-sporr-muted text-sm mb-6">
+            If your club is affiliated with a sports federation or governing body — particularly relevant if sponsors distribute funds through a federation.
+          </p>
           <div className="space-y-4">
             <div>
               <label className="label">Governing body name</label>
