@@ -432,14 +432,12 @@ export default function ProofPackPage() {
             {/* Delivery progress bar */}
             <div style={{ marginBottom: '8px' }}>
               <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 8px' }}>Delivery rate — {deliveryScore}%</p>
-<table style={{ width: '100%', borderCollapse: 'collapse', height: '8px' }}>
-  <tbody>
-    <tr>
-      <td style={{ background: '#808C70', width: `${deliveryScore}%`, borderRadius: '3px 0 0 3px' }}></td>
-      <td style={{ background: '#1D4A38', width: `${100 - deliveryScore}%`, borderRadius: '0 3px 3px 0' }}></td>
-    </tr>
-  </tbody>
-</table>
+              <table style={{ width: '100%', borderCollapse: 'collapse', height: '6px' }} cellPadding="0" cellSpacing="0">
+                <tbody><tr>
+                  <td style={{ background: '#808C70', width: `${deliveryScore}%`, borderRadius: '3px 0 0 3px', height: '6px' }}></td>
+                  {deliveryScore < 100 && <td style={{ background: '#1D4A38', width: `${100-deliveryScore}%`, borderRadius: '0 3px 3px 0', height: '6px' }}></td>}
+                </tr></tbody>
+              </table>
             </div>
 
             {/* Cover footer */}
@@ -481,9 +479,12 @@ export default function ProofPackPage() {
                 </div>
               ))}
             </div>
-            <div style={{ background: '#EEF0E8', borderRadius: '4px', height: '8px', overflow: 'hidden', marginBottom: '8px' }}>
-              <div style={{ background: '#13322A', height: '100%', width: `${deliveryScore}%`, borderRadius: '4px' }} />
-            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse', height: '8px', marginBottom: '8px' }} cellPadding="0" cellSpacing="0">
+              <tbody><tr>
+                <td style={{ background: '#13322A', width: `${deliveryScore}%`, borderRadius: '4px 0 0 4px', height: '8px' }}></td>
+                {deliveryScore < 100 && <td style={{ background: '#EEF0E8', width: `${100-deliveryScore}%`, borderRadius: '0 4px 4px 0', height: '8px' }}></td>}
+              </tr></tbody>
+            </table>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
               <span style={{ color: '#5C6B63', fontSize: '10px' }}>0%</span>
               <span style={{ color: '#13322A', fontSize: '10px', fontWeight: '700' }}>{deliveryScore}% delivered</span>
