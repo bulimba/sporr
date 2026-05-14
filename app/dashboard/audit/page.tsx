@@ -17,6 +17,7 @@ type Session = {
   session_token: string
   status: string
   created_at: string
+  attendance: number | null
   events: { title: string } | null
 }
 
@@ -38,6 +39,7 @@ export default function AuditPage() {
     new_event_title: '',
     new_event_venue: '',
     new_event_date: '',
+    attendance: '',
   })
 
   const update = (field: string, value: string) =>
@@ -46,31 +48,18 @@ export default function AuditPage() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-  if (!session) { router.push('/login'); return }
-  if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
+        if (!session) { router.push('/login'); return }
+        if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
 
         const { data: userData } = await supabase
-          .from('users')
-          .select('org_id')
-          .eq('id', session.user.id)
-          .single()
-
+          .from('users').select('org_id').eq('id', session.user.id).single()
         if (!userData) { setLoading(false); return }
 
         setOrgId(userData.org_id)
 
         const [eventsRes, sessionsRes] = await Promise.all([
-          supabase
-            .from('events')
-            .select('id, title, venue, starts_at')
-            .eq('org_id', userData.org_id)
-            .order('starts_at', { ascending: false }),
-          supabase
-            .from('audit_sessions')
-            .select('id, session_token, status, created_at, events(title)')
-            .eq('org_id', userData.org_id)
-            .order('created_at', { ascending: false })
-            .limit(10),
+          supabase.from('events').select('id, title, venue, starts_at').eq('org_id', userData.org_id).order('starts_at', { ascending: false }),
+          supabase.from('audit_sessions').select('id, session_token, status, created_at, attendance, events(title)').eq('org_id', userData.org_id).order('created_at', { ascending: false }).limit(20),
         ])
 
         setEvents(eventsRes.data || [])
@@ -78,7 +67,6 @@ export default function AuditPage() {
         setLoading(false)
       }
     )
-
     return () => subscription.unsubscribe()
   }, [])
 
@@ -92,40 +80,19 @@ export default function AuditPage() {
     if (!eventId && form.new_event_title) {
       const { data: newEvent, error: eventError } = await supabase
         .from('events')
-        .insert({
-          org_id: orgId,
-          title: form.new_event_title,
-          venue: form.new_event_venue || null,
-          starts_at: form.new_event_date || null,
-        })
-        .select()
-        .single()
-
-      if (eventError) {
-        setError(eventError.message)
-        setLaunching(false)
-        return
-      }
-
+        .insert({ org_id: orgId, title: form.new_event_title, venue: form.new_event_venue || null, starts_at: form.new_event_date || null })
+        .select().single()
+      if (eventError) { setError(eventError.message); setLaunching(false); return }
       eventId = newEvent.id
       setEvents(prev => [newEvent, ...prev])
     }
 
     const { data: sessionData, error: sessionError } = await supabase
       .from('audit_sessions')
-      .insert({
-        org_id: orgId,
-        event_id: eventId || null,
-        status: 'active',
-      })
-      .select()
-      .single()
+      .insert({ org_id: orgId, event_id: eventId || null, status: 'active', attendance: form.attendance ? parseInt(form.attendance) : null })
+      .select().single()
 
-    if (sessionError) {
-      setError(sessionError.message)
-      setLaunching(false)
-      return
-    }
+    if (sessionError) { setError(sessionError.message); setLaunching(false); return }
 
     const token = sessionData.session_token
     const auditUrl = `${window.location.origin}/audit/${token}`
@@ -137,181 +104,158 @@ export default function AuditPage() {
     setLaunching(false)
   }
 
+  async function updateAttendance(sessionId: string, attendance: number) {
+    await supabase.from('audit_sessions').update({ attendance }).eq('id', sessionId)
+    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, attendance } : s))
+  }
+
+  const totalSeasonAttendance = sessions.reduce((sum, s) => sum + (s.attendance || 0), 0)
+
   if (loading) {
     return (
-      <main className="min-h-screen bg-sporr-light flex items-center justify-center">
+      <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
         <div className="text-sporr-muted text-sm">Loading...</div>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen bg-sporr-light">
+    <main className="min-h-screen bg-sporr-cream">
       <nav className="bg-sporr-dark px-6 py-4 flex items-center justify-between">
         <Link href="/dashboard">
-          <img
-  src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
-  alt="Sporr"
-  className="h-20"
-/>
+          <img src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg" alt="Sporr" className="h-20" />
         </Link>
-        <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">
-          ← Dashboard
-        </Link>
+        <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">← Dashboard</Link>
       </nav>
+
       <div className="max-w-4xl mx-auto px-6 py-10">
+
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-sporr-ink text-2xl font-medium mb-1">Audit sessions</h1>
+            <h1 className="text-sporr-dark text-2xl font-medium mb-1">Match day</h1>
             <p className="text-sporr-muted text-sm">Launch a session to capture proof on match day</p>
           </div>
           <button onClick={() => { setShowForm(true); setActiveSession(null) }} className="btn-primary">
             Launch session
           </button>
         </div>
-{activeSession && (
-          <div className="card mb-8 text-center border-sporr-sage">
-            <div className="bg-sporr-dark rounded-xl p-6 mb-6 inline-block">
-              <img
-                src={activeSession.qrUrl}
-                alt="Audit session QR code"
-                className="w-48 h-48 mx-auto"
-              />
+
+        {totalSeasonAttendance > 0 && (
+          <div className="card mb-6 flex items-center justify-between">
+            <div>
+              <p className="text-sporr-muted text-xs uppercase tracking-widest mb-1">Season attendance total</p>
+              <p className="text-sporr-dark text-3xl font-medium">{totalSeasonAttendance.toLocaleString()}</p>
             </div>
-            <h2 className="text-sporr-ink text-lg font-medium mb-2">Session active</h2>
-            <p className="text-sporr-muted text-sm mb-4">
-              Scan this QR code on your phone to open the field auditor
-            </p>
-            <div className="bg-sporr-light rounded-lg px-4 py-3 mb-6">
-              <p className="text-sporr-muted text-xs uppercase tracking-widest mb-1">Direct link</p>
-              
-                <a href={`/audit/${activeSession.token}`}
-               
-                className="text-sporr-dark text-sm font-medium hover:text-sporr-mid break-all"
-              >
-                {window.location.origin}/audit/{activeSession.token}
-              </a>
-            </div>
-            <button onClick={() => setActiveSession(null)} className="btn-secondary">
-              Done
-            </button>
+            <p className="text-sporr-muted text-sm max-w-xs text-right">Used automatically in your Proof Pack audience calculations</p>
           </div>
         )}
+
+        {activeSession && (
+          <div className="card mb-8 text-center">
+            <div className="bg-sporr-dark rounded-xl p-6 mb-6 inline-block">
+              <img src={activeSession.qrUrl} alt="Audit QR code" className="w-48 h-48 mx-auto" />
+            </div>
+            <h2 className="text-sporr-dark text-lg font-medium mb-2">Session active</h2>
+            <p className="text-sporr-muted text-sm mb-4">Scan this QR code on your phone to open the field auditor</p>
+            <div className="bg-sporr-light rounded-lg px-4 py-3 mb-6">
+              <p className="text-sporr-muted text-xs uppercase tracking-widest mb-1">Direct link</p>
+              <a href={`/audit/${activeSession.token}`} className="text-sporr-dark text-sm font-medium break-all">
+                {typeof window !== 'undefined' ? window.location.origin : ''}/audit/{activeSession.token}
+              </a>
+            </div>
+            <button onClick={() => setActiveSession(null)} className="btn-secondary">Done</button>
+          </div>
+        )}
+
         {showForm && (
           <div className="card mb-8">
-            <h2 className="text-sporr-ink text-lg font-medium mb-6">Launch audit session</h2>
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
-                {error}
-              </div>
-            )}
+            <h2 className="text-sporr-dark text-lg font-medium mb-6">Launch audit session</h2>
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>}
+
             <div className="mb-6">
               <label className="label">Link to an existing event (optional)</label>
-              <select
-                className="input"
-                value={form.event_id}
-                onChange={e => update('event_id', e.target.value)}
-              >
+              <select className="input" value={form.event_id} onChange={e => update('event_id', e.target.value)}>
                 <option value="">No event — or create one below</option>
-                {events.map(e => (
-                  <option key={e.id} value={e.id}>
-                    {e.title}{e.venue ? ` — ${e.venue}` : ''}
-                  </option>
-                ))}
+                {events.map(e => <option key={e.id} value={e.id}>{e.title}{e.venue ? ` — ${e.venue}` : ''}</option>)}
               </select>
             </div>
+
             {!form.event_id && (
-              <div className="border-t border-sporr-sage-lt pt-6">
+              <div className="border-t border-sporr-sage-lt pt-6 mb-6">
                 <p className="text-sporr-muted text-sm mb-4">Or create a new event:</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
                     <label className="label">Event name</label>
-                    <input
-                      className="input"
-                      placeholder="vs Brann — Eliteserien"
-                      value={form.new_event_title}
-                      onChange={e => update('new_event_title', e.target.value)}
-                    />
+                    <input className="input" placeholder="vs Brann — Eliteserien" value={form.new_event_title} onChange={e => update('new_event_title', e.target.value)} />
                   </div>
                   <div>
                     <label className="label">Venue</label>
-                    <input
-                      className="input"
-                      placeholder="Color Line Stadion"
-                      value={form.new_event_venue}
-                      onChange={e => update('new_event_venue', e.target.value)}
-                    />
+                    <input className="input" placeholder="Color Line Stadion" value={form.new_event_venue} onChange={e => update('new_event_venue', e.target.value)} />
                   </div>
                   <div>
                     <label className="label">Date</label>
-                    <input
-                      type="date"
-                      className="input"
-                      value={form.new_event_date}
-                      onChange={e => update('new_event_date', e.target.value)}
-                    />
+                    <input type="date" className="input" value={form.new_event_date} onChange={e => update('new_event_date', e.target.value)} />
                   </div>
                 </div>
               </div>
             )}
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleLaunch}
-                disabled={launching}
-                className="btn-primary disabled:opacity-50"
-              >
+
+            <div className="border-t border-sporr-sage-lt pt-6 mb-6">
+              <label className="label">Match day attendance</label>
+              <input type="number" className="input max-w-xs" placeholder="600" value={form.attendance} onChange={e => update('attendance', e.target.value)} />
+              <p className="text-sporr-muted text-xs mt-1">Tallied across all sessions for your Proof Pack</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button onClick={handleLaunch} disabled={launching} className="btn-primary disabled:opacity-50">
                 {launching ? 'Launching...' : 'Generate QR code'}
               </button>
-              <button
-                onClick={() => { setShowForm(false); setError(null) }}
-                className="btn-secondary"
-              >
-                Cancel
-              </button>
+              <button onClick={() => { setShowForm(false); setError(null) }} className="btn-secondary">Cancel</button>
             </div>
           </div>
         )}
+
         {sessions.length > 0 && (
           <div>
-            <h2 className="text-sporr-ink text-sm font-medium uppercase tracking-widest mb-4">
-              Recent sessions
-            </h2>
+            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Recent sessions</h2>
             <div className="space-y-3">
               {sessions.map(session => (
                 <div key={session.id} className="card">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
-                      <p className="text-sporr-ink font-medium">
-                        {session.events?.title || 'No event linked'}
-                      </p>
+                      <p className="text-sporr-dark font-medium">{session.events?.title || 'No event linked'}</p>
                       <p className="text-sporr-muted text-xs mt-0.5">
-                        {new Date(session.created_at).toLocaleDateString('en-GB', {
-                          day: 'numeric', month: 'short', year: 'numeric'
-                        })}
+                        {new Date(session.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <label className="text-sporr-muted text-xs whitespace-nowrap">Attendance</label>
+                        <input
+                          type="number"
+                          className="border border-sporr-sage-lt rounded-lg px-3 py-1.5 text-sm w-24 text-sporr-dark focus:outline-none focus:border-sporr-dark"
+                          placeholder="0"
+                          defaultValue={session.attendance || ''}
+                          onBlur={e => {
+                            const val = parseInt(e.target.value)
+                            if (!isNaN(val)) updateAttendance(session.id, val)
+                          }}
+                        />
+                      </div>
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${
                         session.status === 'active' ? 'bg-sporr-sage-lt text-sporr-dark' :
                         session.status === 'completed' ? 'bg-sporr-light text-sporr-muted' :
                         'bg-red-50 text-red-600'
-                      }`}>
-                        {session.status}
-                      </span>
-                      
-                        <a href={`/audit/${session.session_token}`}
-                        
-                        className="text-sporr-sage hover:text-sporr-dark text-sm transition-colors"
-                      >
-                        Open →
-                      </a>
+                      }`}>{session.status}</span>
+                      <a href={`/audit/${session.session_token}`} className="text-sporr-sage hover:text-sporr-dark text-sm transition-colors">Open →</a>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-        )}      </div>
+        )}
+      </div>
     </main>
   )
 }
