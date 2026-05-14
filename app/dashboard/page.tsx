@@ -110,7 +110,7 @@ export default function DashboardPage() {
           <Link href="/dashboard/sponsors" className="bg-white rounded-2xl border border-sporr-sage-lt p-6 hover:border-sporr-dark transition-colors flex flex-col">
             <h2 className="text-sporr-dark text-xl font-medium mb-3">Your sponsors</h2>
             <p className="text-sporr-muted text-sm leading-relaxed flex-1">
-              Add and manage the companies supporting your club this season.
+              Add and manage the sponsors supporting your club.
             </p>
             <div className="border-t border-sporr-sage-lt mt-6 pt-4">
               <Link href="/dashboard/obligations" className="flex items-center gap-2 text-sporr-muted text-sm hover:text-sporr-dark transition-colors">
@@ -123,7 +123,7 @@ Manage obligations →
           <div className="bg-white rounded-2xl border-2 border-sporr-dark p-6 flex flex-col">
             <h2 className="text-sporr-dark text-xl font-medium mb-3">Match day</h2>
             <p className="text-sporr-muted text-sm leading-relaxed flex-1">
-              Launch an audit session for today's event and capture proof of your sponsor obligations.
+              Capture proof of today's event.
             </p>
             <div className="border-t border-sporr-sage-lt mt-6 pt-4 flex items-center justify-between gap-3">
               {activeSession ? (
