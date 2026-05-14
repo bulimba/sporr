@@ -99,10 +99,10 @@ export default function DashboardPage() {
               <p className="text-sporr-dark font-medium mb-1">Match day</p>
               <p className="text-sporr-muted text-sm">Photograph and confirm delivery</p>
             </Link>
-            <Link href="/proof-pack" className="card hover:border-sporr-dark transition-colors text-left block bg-sporr-dark">
-              <p className="text-sporr-dark font-medium mb-1">Proof Pack</p>
-              <p className="text-sporr-muted text-sm">Send your proof of performance report</p>
-            </Link>
+            <Link href="/proof-pack" className="bg-sporr-dark border border-sporr-dark rounded-xl p-6 hover:bg-sporr-mid transition-colors text-left block">
+  <p className="text-sporr-cream font-medium mb-1">Proof Pack</p>
+  <p className="text-sporr-sage text-sm">Send your proof of performance report</p>
+</Link>
           </div>
         </div>
 
