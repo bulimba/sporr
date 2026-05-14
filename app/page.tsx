@@ -2,14 +2,13 @@ import Link from 'next/link'
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-sporr-dark flex flex-col items-center justify-center px-6 py-16">
-
-      {/* Logo */}
-      <div className="mb-16 text-center">
-        <img
-          src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
-          alt="Sporr"
-          className="h-20 mx-auto mb-12"
+    <main className="min-h-screen bg-sporr-dark flex items-center justify-center px-6 py-12">
+      <div className="max-w-md w-full">
+        <div className="text-center mb-10">
+          <img
+            src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+            alt="Sporr"
+            className="h-24 mx-auto mb-6"
         />
 
         {/* Tagline — stands alone */}
