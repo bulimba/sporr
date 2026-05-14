@@ -31,9 +31,11 @@ export default function Home() {
             See how it works
           </Link>
           <Link href="/sponsors"
-            className="bg-sporr-mid text-sporr-cream font-medium px-6 py-3 rounded-lg hover:bg-sporr-sage hover:text-sporr-dark transition-colors duration-150 text-center min-w-[180px]">
-            Looking for a sponsor?
-          </Link>
+  className="bg-sporr-mid rounded-xl hover:bg-sporr-sage hover:text-sporr-dark transition-colors duration-150 text-left px-6 py-4 min-w-[220px] block group">
+  <p className="text-sporr-cream font-medium text-base mb-1 group-hover:text-sporr-dark">Discover your next sports partnership</p>
+  <p className="text-sporr-sage text-xs leading-relaxed mb-2 group-hover:text-sporr-dark">Clubs, tournaments, and mass-participation events in your area</p>
+
+</Link>
         </div>
       </div>
       <div className="absolute bottom-8 text-sporr-muted text-xs tracking-wide">
