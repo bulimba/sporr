@@ -65,7 +65,7 @@ export default function Home() {
     <main className="min-h-screen bg-sporr-dark flex flex-col lg:flex-row">
 
       {/* ── RIGHT PANEL — sticky account panel ── */}
-      <div className="lg:w-[440px] lg:flex-shrink-0 bg-sporr-cream lg:sticky lg:top-0 lg:h-screen flex flex-col px-8 py-12 lg:py-0">
+      <div className="lg:w-[440px] lg:flex-shrink-0 bg-sporr-cream lg:sticky lg:top-0 lg:h-screen flex flex-col px-8 py-12 lg:py-0 lg:order-last">
 
         {/* Logo on right panel */}
         <div className="hidden lg:flex items-center h-24 flex-shrink-0 border-b border-sporr-sage-lt">
@@ -199,7 +199,7 @@ export default function Home() {
 
 
       {/* ── LEFT PANEL — scrollable content ── */}
-      <div className="lg:flex-1 px-8 py-12 lg:px-16 lg:py-20 flex flex-col">
+      <div className="lg:flex-1 px-8 py-12 lg:px-16 lg:py-20 flex flex-col lg:order-first">
 
         {/* Logo — sticky on desktop */}
         <div className="lg:sticky lg:top-0 lg:bg-sporr-dark lg:pt-6 lg:pb-4 lg:z-10 mb-12">
