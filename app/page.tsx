@@ -28,10 +28,11 @@ const steps = [
 ]
 
 export default function Home() {
-  const [mode, setMode] = useState<'signup' | 'login'>('signup')
+  const [rightMode, setRightMode] = useState<'account' | 'reset'>('account')
   const [loading, setLoading] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState({ email: '', password: '' })
+  const [form, setForm] = useState({ email: '', password: '', resetEmail: '' })
   const supabase = createClient()
 
   const update = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }))
@@ -48,14 +49,26 @@ export default function Home() {
     window.location.href = '/dashboard'
   }
 
+  async function handleReset(e: React.FormEvent) {
+    e.preventDefault()
+    setLoading(true)
+    setError(null)
+    const { error } = await supabase.auth.resetPasswordForEmail(form.resetEmail, {
+      redirectTo: `${window.location.origin}/dashboard`,
+    })
+    if (error) { setError(error.message); setLoading(false); return }
+    setResetSent(true)
+    setLoading(false)
+  }
+
   return (
     <main className="min-h-screen bg-sporr-dark flex flex-col lg:flex-row">
 
-      {/* LEFT PANEL — scrollable content */}
+      {/* ── LEFT PANEL — scrollable content ── */}
       <div className="lg:flex-1 px-8 py-12 lg:px-16 lg:py-20 flex flex-col">
 
-        {/* Logo */}
-        <div className="mb-16">
+        {/* Logo — sticky on desktop */}
+        <div className="lg:sticky lg:top-0 lg:bg-sporr-dark lg:pt-6 lg:pb-4 lg:z-10 mb-12">
           <img
             src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
             alt="Sporr"
@@ -73,15 +86,17 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Sponsor link */}
+        {/* Sponsor link — larger */}
         <div className="mb-16">
           <Link
             href="/sponsors"
-            className="inline-flex items-center gap-3 border border-sporr-mid rounded-xl px-5 py-3 text-sporr-sage text-sm hover:border-sporr-sage hover:text-sporr-cream transition-colors"
+            className="inline-flex items-center gap-3 border border-sporr-mid rounded-2xl px-6 py-4 hover:border-sporr-sage transition-colors group"
           >
-            <span className="text-xs uppercase tracking-widest font-medium text-sporr-muted">For sponsors</span>
+            <span className="text-sporr-muted text-sm uppercase tracking-widest font-medium">For sponsors</span>
             <span className="text-sporr-mid">·</span>
-            <span>Discover your next sports partnership →</span>
+            <span className="text-sporr-cream text-lg font-medium group-hover:text-sporr-sage transition-colors">
+              Discover your next sports partnership →
+            </span>
           </Link>
         </div>
 
@@ -128,96 +143,137 @@ export default function Home() {
 
       </div>
 
-      {/* RIGHT PANEL — fixed form */}
-      <div className="lg:w-[440px] lg:flex-shrink-0 bg-sporr-cream lg:sticky lg:top-0 lg:h-screen flex items-center justify-center px-8 py-12">
-        <div className="w-full max-w-sm">
+      {/* ── RIGHT PANEL — sticky account panel ── */}
+      <div className="lg:w-[440px] lg:flex-shrink-0 bg-sporr-cream lg:sticky lg:top-0 lg:h-screen flex flex-col px-8 py-12 lg:py-0">
 
-          {/* Mode toggle */}
-          <div className="flex gap-1 bg-sporr-sage-lt rounded-xl p-1 mb-8">
-            <button
-              onClick={() => { setMode('signup'); setError(null) }}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                mode === 'signup'
-                  ? 'bg-white text-sporr-dark shadow-sm'
-                  : 'text-sporr-muted hover:text-sporr-dark'
-              }`}
-            >
-              Create account
-            </button>
-            <button
-              onClick={() => { setMode('login'); setError(null) }}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                mode === 'login'
-                  ? 'bg-white text-sporr-dark shadow-sm'
-                  : 'text-sporr-muted hover:text-sporr-dark'
-              }`}
-            >
-              Sign in
-            </button>
-          </div>
-
-          <h2 className="text-sporr-dark text-2xl font-medium mb-2">
-            {mode === 'signup' ? 'Start for free' : 'Welcome back'}
-          </h2>
-          <p className="text-sporr-muted text-sm mb-8">
-            {mode === 'signup'
-              ? 'Set up your club in under ten minutes. No credit card required.'
-              : 'Sign in to your Sporr dashboard.'}
-          </p>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
-              {error}
-            </div>
-          )}
-
-          {mode === 'login' ? (
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div>
-                <label className="label">Email address</label>
-                <input
-                  type="email"
-                  className="input"
-                  placeholder="you@yourclub.no"
-                  value={form.email}
-                  onChange={e => update('email', e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">Password</label>
-                <input
-                  type="password"
-                  className="input"
-                  placeholder="Your password"
-                  value={form.password}
-                  onChange={e => update('password', e.target.value)}
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-sporr-dark text-sporr-cream font-medium py-3.5 rounded-lg hover:bg-sporr-mid transition-colors disabled:opacity-50 mt-2"
-              >
-                {loading ? 'Signing in...' : 'Sign in'}
-              </button>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <Link
-                href="/signup"
-                className="block w-full bg-sporr-dark text-sporr-cream font-medium py-3.5 rounded-lg hover:bg-sporr-mid transition-colors text-center"
-              >
-                Create your account →
-              </Link>
-              <p className="text-sporr-muted text-xs text-center">
-                Free to start · No credit card required
-              </p>
-            </div>
-          )}
-
+        {/* Logo on right panel */}
+        <div className="hidden lg:flex items-center h-24 flex-shrink-0 border-b border-sporr-sage-lt">
+          <img
+            src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+            alt="Sporr"
+            className="h-12"
+          />
         </div>
+
+        <div className="flex-1 flex items-center">
+          <div className="w-full max-w-sm mx-auto">
+
+            {rightMode === 'account' && (
+              <>
+                <h2 className="text-sporr-dark text-2xl font-medium mb-8">My account</h2>
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
+                    {error}
+                  </div>
+                )}
+
+                <form onSubmit={handleLogin} className="space-y-4 mb-4">
+                  <div>
+                    <label className="label">Sign in</label>
+                    <input
+                      type="email"
+                      className="input mb-3"
+                      placeholder="Email address"
+                      value={form.email}
+                      onChange={e => update('email', e.target.value)}
+                      required
+                    />
+                    <input
+                      type="password"
+                      className="input"
+                      placeholder="Password"
+                      value={form.password}
+                      onChange={e => update('password', e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => { setRightMode('reset'); setError(null) }}
+                    className="text-sporr-muted text-sm hover:text-sporr-dark transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-sporr-dark text-sporr-cream font-medium py-3.5 rounded-lg hover:bg-sporr-mid transition-colors disabled:opacity-50"
+                  >
+                    {loading ? 'Signing in...' : 'Sign in'}
+                  </button>
+                </form>
+
+                <div className="border-t border-sporr-sage-lt pt-6 flex items-center justify-between gap-4">
+                  <p className="text-sporr-muted text-sm">Don't have an account?</p>
+                  <Link
+                    href="/signup"
+                    className="bg-red-700 hover:bg-red-800 text-white text-sm font-medium px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap"
+                  >
+                    Create account
+                  </Link>
+                </div>
+              </>
+            )}
+
+            {rightMode === 'reset' && (
+              <>
+                <button
+                  onClick={() => { setRightMode('account'); setError(null); setResetSent(false) }}
+                  className="text-sporr-muted text-sm hover:text-sporr-dark transition-colors mb-6 flex items-center gap-1"
+                >
+                  ← Back to sign in
+                </button>
+
+                <h2 className="text-sporr-dark text-2xl font-medium mb-2">Reset password</h2>
+                <p className="text-sporr-muted text-sm mb-8">
+                  Enter your email address and we'll send you a link to reset your password.
+                </p>
+
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
+                    {error}
+                  </div>
+                )}
+
+                {resetSent ? (
+                  <div className="bg-sporr-sage-lt border border-sporr-sage rounded-lg px-4 py-4 text-center">
+                    <p className="text-sporr-dark font-medium mb-1">Check your inbox</p>
+                    <p className="text-sporr-muted text-sm">We've sent a password reset link to {form.resetEmail}</p>
+                  </div>
+                ) : (
+                  <form onSubmit={handleReset} className="space-y-4">
+                    <div>
+                      <label className="label">Email address</label>
+                      <input
+                        type="email"
+                        className="input"
+                        placeholder="you@yourclub.no"
+                        value={form.resetEmail}
+                        onChange={e => update('resetEmail', e.target.value)}
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="w-full bg-sporr-dark text-sporr-cream font-medium py-3.5 rounded-lg hover:bg-sporr-mid transition-colors disabled:opacity-50"
+                    >
+                      {loading ? 'Sending...' : 'Send reset link'}
+                    </button>
+                  </form>
+                )}
+              </>
+            )}
+
+          </div>
+        </div>
+
+        {/* Right panel footer */}
+        <div className="hidden lg:block h-12 flex-shrink-0 border-t border-sporr-sage-lt" />
+
       </div>
 
     </main>
