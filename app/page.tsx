@@ -9,7 +9,7 @@ export default function Home() {
         <img
           src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
           alt="Sporr"
-          className="h-20 mx-auto mb-12"
+          className="h-24 mx-auto mb-12"
         />
 
         {/* Tagline — stands alone */}
@@ -40,13 +40,13 @@ export default function Home() {
       {/* Secondary cards */}
       <div className="w-full max-w-lg space-y-4">
 
-        {/* See how it works — prominent */}
+        {/* How it works — prominent */}
         <Link
           href="/how-it-works"
           className="block bg-sporr-mid rounded-2xl border border-sporr-mid hover:border-sporr-sage transition-colors duration-150 px-8 py-6"
         >
           <p className="text-sporr-cream font-medium text-xl mb-2">See how it works</p>
-          <p className="text-sporr-cream text-base leading-relaxed">
+          <p className="text-sporr-cream text-lg leading-relaxed">
             See how Sporr helps clubs capture and deliver proof to their sponsors.
           </p>
         </Link>
