@@ -64,85 +64,6 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-sporr-dark flex flex-col lg:flex-row">
 
-      {/* ── LEFT PANEL — scrollable content ── */}
-      <div className="lg:flex-1 px-8 py-12 lg:px-16 lg:py-20 flex flex-col">
-
-        {/* Logo — sticky on desktop */}
-        <div className="lg:sticky lg:top-0 lg:bg-sporr-dark lg:pt-6 lg:pb-4 lg:z-10 mb-12">
-          <img
-            src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
-            alt="Sporr"
-            className="h-16"
-          />
-        </div>
-
-        {/* Hero */}
-        <div className="mb-12">
-          <h1 className="text-sporr-cream text-4xl lg:text-5xl font-medium leading-tight mb-6 max-w-lg">
-            Proof of sponsorship performance made easy
-          </h1>
-          <p className="text-sporr-sage text-lg leading-relaxed max-w-md">
-            Sporr gives sports clubs the tools to capture, document, and deliver proof of sponsorship — automatically.
-          </p>
-        </div>
-
-        {/* Sponsor link — larger */}
-        <div className="mb-16">
-          <Link
-            href="/sponsors"
-            className="inline-flex items-center gap-3 border border-sporr-mid rounded-2xl px-6 py-4 hover:border-sporr-sage transition-colors group"
-          >
-            <span className="text-sporr-muted text-sm uppercase tracking-widest font-medium">For sponsors</span>
-            <span className="text-sporr-mid">·</span>
-            <span className="text-sporr-cream text-lg font-medium group-hover:text-sporr-sage transition-colors">
-              Discover your next sports partnership →
-            </span>
-          </Link>
-        </div>
-
-        {/* How it works */}
-        <div className="mb-16">
-          <p className="text-sporr-sage text-xs uppercase tracking-widest font-medium mb-10">How it works</p>
-          <div className="space-y-10">
-            {steps.map((step, i) => (
-              <div key={i} className="flex gap-6">
-                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-sporr-mid flex items-center justify-center">
-                  <span className="text-sporr-sage text-xs font-medium">{step.number}</span>
-                </div>
-                <div className="pt-1">
-                  <h3 className="text-sporr-cream font-medium text-lg mb-2">{step.title}</h3>
-                  <p className="text-sporr-sage text-base leading-relaxed">{step.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Features */}
-        <div className="mb-16">
-          <p className="text-sporr-sage text-xs uppercase tracking-widest font-medium mb-8">Built for clubs</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { title: 'No app download', description: 'Volunteers access the field auditor from a QR code in their browser' },
-              { title: 'Multi-sponsor', description: 'One session captures proof for all sponsors simultaneously' },
-              { title: 'Verified proof', description: 'Every photo is timestamped and geo-tagged automatically' },
-              { title: 'GDPR compliant', description: 'All data stored in the EU — clubs control their own data' },
-            ].map((f, i) => (
-              <div key={i} className="bg-sporr-mid rounded-xl p-5">
-                <p className="text-sporr-cream font-medium mb-1">{f.title}</p>
-                <p className="text-sporr-sage text-sm leading-relaxed">{f.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="mt-auto pt-8 border-t border-sporr-mid">
-          <p className="text-sporr-muted text-xs">Sporr — proof of performance made easy · sporr.io</p>
-        </div>
-
-      </div>
-
       {/* ── RIGHT PANEL — sticky account panel ── */}
       <div className="lg:w-[440px] lg:flex-shrink-0 bg-sporr-cream lg:sticky lg:top-0 lg:h-screen flex flex-col px-8 py-12 lg:py-0">
 
@@ -273,6 +194,86 @@ export default function Home() {
 
         {/* Right panel footer */}
         <div className="hidden lg:block h-12 flex-shrink-0 border-t border-sporr-sage-lt" />
+
+      </div>
+
+
+      {/* ── LEFT PANEL — scrollable content ── */}
+      <div className="lg:flex-1 px-8 py-12 lg:px-16 lg:py-20 flex flex-col">
+
+        {/* Logo — sticky on desktop */}
+        <div className="lg:sticky lg:top-0 lg:bg-sporr-dark lg:pt-6 lg:pb-4 lg:z-10 mb-12">
+          <img
+            src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+            alt="Sporr"
+            className="h-16"
+          />
+        </div>
+
+        {/* Hero */}
+        <div className="mb-12">
+          <h1 className="text-sporr-cream text-4xl lg:text-5xl font-medium leading-tight mb-6 max-w-lg">
+            Proof of sponsorship performance made easy
+          </h1>
+          <p className="text-sporr-sage text-lg leading-relaxed max-w-md">
+            Sporr gives sports clubs the tools to capture, document, and deliver proof of sponsorship — automatically.
+          </p>
+        </div>
+
+        {/* Sponsor link — larger */}
+        <div className="mb-16">
+          <Link
+            href="/sponsors"
+            className="inline-flex items-center gap-3 border border-sporr-mid rounded-2xl px-6 py-4 hover:border-sporr-sage transition-colors group"
+          >
+            <span className="text-sporr-muted text-sm uppercase tracking-widest font-medium">For sponsors</span>
+            <span className="text-sporr-mid">·</span>
+            <span className="text-sporr-cream text-lg font-medium group-hover:text-sporr-sage transition-colors">
+              Discover your next sports partnership →
+            </span>
+          </Link>
+        </div>
+
+        {/* How it works */}
+        <div className="mb-16">
+          <p className="text-sporr-sage text-xs uppercase tracking-widest font-medium mb-10">How it works</p>
+          <div className="space-y-10">
+            {steps.map((step, i) => (
+              <div key={i} className="flex gap-6">
+                <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-sporr-mid flex items-center justify-center">
+                  <span className="text-sporr-sage text-xs font-medium">{step.number}</span>
+                </div>
+                <div className="pt-1">
+                  <h3 className="text-sporr-cream font-medium text-lg mb-2">{step.title}</h3>
+                  <p className="text-sporr-sage text-base leading-relaxed">{step.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Features */}
+        <div className="mb-16">
+          <p className="text-sporr-sage text-xs uppercase tracking-widest font-medium mb-8">Built for clubs</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {[
+              { title: 'No app download', description: 'Volunteers access the field auditor from a QR code in their browser' },
+              { title: 'Multi-sponsor', description: 'One session captures proof for all sponsors simultaneously' },
+              { title: 'Verified proof', description: 'Every photo is timestamped and geo-tagged automatically' },
+              { title: 'GDPR compliant', description: 'All data stored in the EU — clubs control their own data' },
+            ].map((f, i) => (
+              <div key={i} className="bg-sporr-mid rounded-xl p-5">
+                <p className="text-sporr-cream font-medium mb-1">{f.title}</p>
+                <p className="text-sporr-sage text-sm leading-relaxed">{f.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-auto pt-8 border-t border-sporr-mid">
+          <p className="text-sporr-muted text-xs">Sporr — proof of performance made easy · sporr.io</p>
+        </div>
 
       </div>
 
