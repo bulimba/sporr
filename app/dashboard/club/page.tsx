@@ -6,15 +6,15 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 const ALL_SPORTS = [
-  'Athletics', 'Badminton', 'Basketball', 'Biathlon', 'Boxing', 'Chess',
-  'Cricket', 'Cross country skiing', 'Curling', 'Cycling', 'Darts', 'Esports',
-  'Fencing', 'Field Hockey', 'Football', 'Futsal', 'Gaelic Football', 'Golf', 
-  'Gymnastics', 'Handball', 'Hurling', 'Ice hockey', 'Kayaking', 'Kickboxing', 
-  'Marathons', 'Martial arts', 'MMA', 'Motorsport', 'Netball', 'Padel', 
-  'Pickleball', 'Rowing', 'Rugby Union', 'Rugby league', 'Running', 
-  'Sailing / Regatta', 'Shooting', 'Skateboarding', 'Skiing', 'Ski jumping', 
-  'Snowboarding', 'Squash', 'Swimming', 'Table tennis', 'Tennis', 'Triathlon', 
-  'Volleyball', 'Beach volleyball', 'Water polo', 'Other'
+ 'Football', 'Golf', 'Handball', 'Gymnastics', 'Cross country skiing',
+ 'Cycling', 'Swimming', 'Athletics', 'Ice hockey', 'Basketball', 'Volleyball',
+ 'Badminton', 'Beach volleyball', 'Biathlon', 'Boxing', 'Chess', 'Cricket',
+ 'Curling', 'Dance', 'Darts', 'Esports', 'Fencing', 'Field Hockey', 'Futsal',
+ 'Gaelic Football', 'Hurling', 'Kayaking', 'Kickboxing', 'Marathons',
+ 'Martial arts', 'MMA', 'Motorsport', 'Netball', 'Padel', 'Pickleball',
+ 'Rowing', 'Rugby league', 'Rugby Union', 'Running', 'Sailing / Regatta',
+ 'Shooting', 'Skateboarding', 'Skiing', 'Ski jumping', 'Snowboarding',
+ 'Squash', 'Table tennis', 'Tennis', 'Triathlon', 'Water polo', 'Other'
 ]
 
 type OrgData = {
@@ -190,7 +190,7 @@ export default function ClubPage() {
                   />
                   {showSportDropdown && filteredSports.length > 0 && (
                     <div className="absolute z-10 top-full left-0 right-0 bg-white border border-sporr-sage-lt rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                      {filteredSports.slice(0, 20).map(sport => (
+                      {filteredSports.map(sport => (
                         <button
                           key={sport}
                           className="w-full text-left px-4 py-2.5 text-sporr-dark text-sm hover:bg-sporr-sage-lt transition-colors"
