@@ -155,7 +155,7 @@ export default function SponsorsPage() {
           <div className="bg-sporr-dark rounded-2xl px-6 py-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
             <div>
               <p className="text-sporr-cream text-sm font-medium mb-0.5">Free plan — 1 sponsor limit reached</p>
-              <p className="text-sporr-sage text-xs">Upgrade to Club (Kr 490/mnd) to add unlimited sponsors at any tier.</p>
+              <p className="text-sporr-cream text-xs">Upgrade to Club (490kr /mnd) to add up to five sponsors with professional proof packs.</p>
             </div>
             <Link href="/dashboard/club" className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0">
               Upgrade plan →
