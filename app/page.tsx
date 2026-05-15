@@ -228,7 +228,7 @@ export default function Home() {
           >
             <span className="text-sporr-cream text-sm uppercase tracking-widest font-medium">For sponsors</span>
             <span className="text-sporr-mid">·</span>
-            <span className="text-sporr-cream text-lg font-medium group-hover:text-sporr-sage transition-colors">
+            <span className="text-sporr-sage text-lg font-medium group-hover:text-sporr-mid transition-colors">
               Discover your next sports partnership →
             </span>
           </Link>
@@ -257,7 +257,7 @@ export default function Home() {
           <p className="text-sporr-sage text-xs uppercase tracking-widest font-medium mb-8">Built for clubs</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {[
-              { title: 'No app download', description: 'Volunteers access the field auditor from a QR code in their browser' },
+              { title: 'No app download', description: 'Volunteers access the field auditor from a QR code in their mobile browser' },
               { title: 'Multi-sponsor', description: 'One session captures proof for all sponsors simultaneously' },
               { title: 'Verified proof', description: 'Every photo is timestamped and geo-tagged automatically' },
               { title: 'GDPR compliant', description: 'All data stored in the EU — clubs control their own data' },
