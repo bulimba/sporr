@@ -1,5 +1,4 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -18,13 +17,21 @@ type Session = {
   status: string
   created_at: string
   attendance: number | null
+  delivery_context: string
   events: { title: string } | null
 }
+
+const DELIVERY_CONTEXTS = [
+  { value: 'match_day', label: 'Match day' },
+  { value: 'training', label: 'Training' },
+  { value: 'digital', label: 'Digital' },
+  { value: 'season_long', label: 'Season long' },
+  { value: 'event', label: 'Event' },
+]
 
 export default function AuditPage() {
   const router = useRouter()
   const supabase = createClient()
-
   const [events, setEvents] = useState<Event[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [orgId, setOrgId] = useState<string | null>(null)
@@ -33,13 +40,13 @@ export default function AuditPage() {
   const [launching, setLaunching] = useState(false)
   const [activeSession, setActiveSession] = useState<{ token: string, qrUrl: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
-
   const [form, setForm] = useState({
     event_id: '',
     new_event_title: '',
     new_event_venue: '',
     new_event_date: '',
     attendance: '',
+    delivery_context: 'match_day',
   })
 
   const update = (field: string, value: string) =>
@@ -48,20 +55,16 @@ export default function AuditPage() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (!session) { router.push('/login'); return }
+        if (!session) { router.push('/'); return }
         if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
-
         const { data: userData } = await supabase
           .from('users').select('org_id').eq('id', session.user.id).single()
         if (!userData) { setLoading(false); return }
-
         setOrgId(userData.org_id)
-
         const [eventsRes, sessionsRes] = await Promise.all([
           supabase.from('events').select('id, title, venue, starts_at').eq('org_id', userData.org_id).order('starts_at', { ascending: false }),
-          supabase.from('audit_sessions').select('id, session_token, status, created_at, attendance, events(title)').eq('org_id', userData.org_id).order('created_at', { ascending: false }).limit(20),
+          supabase.from('audit_sessions').select('id, session_token, status, created_at, attendance, delivery_context, events(title)').eq('org_id', userData.org_id).order('created_at', { ascending: false }).limit(20),
         ])
-
         setEvents(eventsRes.data || [])
         setSessions((sessionsRes.data as unknown as Session[]) || [])
         setLoading(false)
@@ -74,9 +77,7 @@ export default function AuditPage() {
     if (!orgId) return
     setLaunching(true)
     setError(null)
-
     let eventId = form.event_id
-
     if (!eventId && form.new_event_title) {
       const { data: newEvent, error: eventError } = await supabase
         .from('events')
@@ -86,18 +87,20 @@ export default function AuditPage() {
       eventId = newEvent.id
       setEvents(prev => [newEvent, ...prev])
     }
-
     const { data: sessionData, error: sessionError } = await supabase
       .from('audit_sessions')
-      .insert({ org_id: orgId, event_id: eventId || null, status: 'active', attendance: form.attendance ? parseInt(form.attendance) : null })
+      .insert({
+        org_id: orgId,
+        event_id: eventId || null,
+        status: 'active',
+        attendance: form.attendance ? parseInt(form.attendance) : null,
+        delivery_context: form.delivery_context,
+      })
       .select().single()
-
     if (sessionError) { setError(sessionError.message); setLaunching(false); return }
-
     const token = sessionData.session_token
     const auditUrl = `${window.location.origin}/audit/${token}`
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(auditUrl)}`
-
     setActiveSession({ token, qrUrl })
     setSessions(prev => [sessionData as unknown as Session, ...prev])
     setShowForm(false)
@@ -127,9 +130,7 @@ export default function AuditPage() {
         </Link>
         <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">← Dashboard</Link>
       </nav>
-
       <div className="max-w-4xl mx-auto px-6 py-10">
-
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-sporr-dark text-2xl font-medium mb-1">Match day</h1>
@@ -173,6 +174,16 @@ export default function AuditPage() {
             {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>}
 
             <div className="mb-6">
+              <label className="label">Session type</label>
+              <select className="input" value={form.delivery_context} onChange={e => update('delivery_context', e.target.value)}>
+                {DELIVERY_CONTEXTS.map(ctx => (
+                  <option key={ctx.value} value={ctx.value}>{ctx.label}</option>
+                ))}
+              </select>
+              <p className="text-sporr-muted text-xs mt-1">Obligations with this delivery context will be auto-delivered when proof is captured</p>
+            </div>
+
+            <div className="mb-6">
               <label className="label">Link to an existing event (optional)</label>
               <select className="input" value={form.event_id} onChange={e => update('event_id', e.target.value)}>
                 <option value="">No event — or create one below</option>
@@ -201,7 +212,7 @@ export default function AuditPage() {
             )}
 
             <div className="border-t border-sporr-sage-lt pt-6 mb-6">
-              <label className="label">Match day attendance</label>
+              <label className="label">Attendance</label>
               <input type="number" className="input max-w-xs" placeholder="600" value={form.attendance} onChange={e => update('attendance', e.target.value)} />
               <p className="text-sporr-muted text-xs mt-1">Tallied across all sessions for your Proof Pack</p>
             </div>
@@ -225,6 +236,8 @@ export default function AuditPage() {
                     <div>
                       <p className="text-sporr-dark font-medium">{session.events?.title || 'No event linked'}</p>
                       <p className="text-sporr-muted text-xs mt-0.5">
+                        {DELIVERY_CONTEXTS.find(c => c.value === session.delivery_context)?.label || 'Match day'}
+                        {' · '}
                         {new Date(session.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </p>
                     </div>
