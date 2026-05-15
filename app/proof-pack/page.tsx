@@ -64,6 +64,49 @@ const defaultMetrics: SeasonMetrics = {
 
 const nok = (val: number) => `Kr ${val.toLocaleString('nb-NO')}`
 
+// Diagonal watermark overlay — rendered on every print page for free tier
+const FreePlanWatermark = () => (
+  <div style={{
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    pointerEvents: 'none',
+    overflow: 'hidden',
+    zIndex: 10,
+  }}>
+    {/* Diagonal banner across the middle */}
+    <div style={{
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%) rotate(-35deg)',
+      background: 'rgba(19, 50, 42, 0.07)',
+      border: '3px solid rgba(19, 50, 42, 0.12)',
+      borderRadius: '4px',
+      padding: '12px 48px',
+      whiteSpace: 'nowrap',
+    }}>
+      <p style={{
+        color: 'rgba(19, 50, 42, 0.25)',
+        fontSize: '28px',
+        fontWeight: '800',
+        letterSpacing: '6px',
+        textTransform: 'uppercase',
+        margin: 0,
+        fontFamily: 'Helvetica, Arial, sans-serif',
+      }}>SPORR FREE PLAN</p>
+      <p style={{
+        color: 'rgba(19, 50, 42, 0.18)',
+        fontSize: '11px',
+        letterSpacing: '2px',
+        textTransform: 'uppercase',
+        margin: '4px 0 0',
+        fontFamily: 'Helvetica, Arial, sans-serif',
+        textAlign: 'center',
+      }}>sporr.io · upgrade to remove</p>
+    </div>
+  </div>
+)
+
 export default function ProofPackPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -88,7 +131,8 @@ export default function ProofPackPage() {
     setMetrics(prev => ({ ...prev, [field]: value }))
 
   const isFree = orgTier === 'free'
-  const atSendLimit = isFree && proofPacksSent >= 1
+  // PDF download and email send share the same counter — 1 total on free
+  const atLimit = isFree && proofPacksSent >= 1
 
   useEffect(() => {
     async function load() {
@@ -140,85 +184,67 @@ export default function ProofPackPage() {
     if (contract) loadObligations(contractId)
   }
 
+  async function incrementCounter() {
+    if (!orgId) return
+    await supabase
+      .from('organisations')
+      .update({ proof_packs_sent: proofPacksSent + 1 })
+      .eq('id', orgId)
+    setProofPacksSent(prev => prev + 1)
+  }
+
   async function saveSnapshot(): Promise<string | null> {
     if (!selectedContract || !orgId) return null
-
     const totalAttendance = parseInt(metrics.total_attendance) || 0
     const totalImpressions = parseInt(metrics.social_impressions) || 0
     const contractValue = selectedContract.value_nok || 0
     const cpmRate = parseInt(metrics.cpm_rate) || 50
     const estimatedMediaValue = totalImpressions > 0 ? Math.round(totalImpressions * cpmRate / 1000) : 0
-    const roiMultiple = contractValue > 0 && estimatedMediaValue > 0
-      ? (estimatedMediaValue / contractValue).toFixed(1)
-      : null
-    const costPerPerson = totalAttendance > 0
-      ? (contractValue / totalAttendance).toFixed(0)
-      : null
+    const roiMultiple = contractValue > 0 && estimatedMediaValue > 0 ? (estimatedMediaValue / contractValue).toFixed(1) : null
+    const costPerPerson = totalAttendance > 0 ? (contractValue / totalAttendance).toFixed(0) : null
     const delivered = obligations.filter(o => o.status === 'delivered')
-    const deliveryScore = obligations.length > 0
-      ? Math.round((delivered.length / obligations.length) * 100)
-      : 0
-    const photoUrls = delivered
-      .filter(o => o.proofs[0]?.photo_url)
-      .map(o => ({
-        url: o.proofs[0].photo_url!,
-        description: o.description || '',
-        captured_at: o.proofs[0].captured_at,
-        geo_lat: o.proofs[0].geo_lat,
-      }))
-    const obligationSnapshot = obligations.map(o => ({
-      description: o.description,
-      proof_type: o.proof_type,
-      status: o.status,
+    const deliveryScore = obligations.length > 0 ? Math.round((delivered.length / obligations.length) * 100) : 0
+    const photoUrls = delivered.filter(o => o.proofs[0]?.photo_url).map(o => ({
+      url: o.proofs[0].photo_url!,
+      description: o.description || '',
+      captured_at: o.proofs[0].captured_at,
+      geo_lat: o.proofs[0].geo_lat,
     }))
-
-    const { data, error } = await supabase
-      .from('proof_pack_snapshots')
-      .insert({
-        org_id: orgId,
-        contract_id: selectedContract.id,
-        sponsor_name: selectedContract.sponsors?.company_name || '',
-        club_name: orgName,
-        contract_title: selectedContract.title,
-        season: selectedContract.season,
-        delivery_score: deliveryScore,
-        delivered_count: delivered.length,
-        total_count: obligations.length,
-        total_attendance: totalAttendance,
-        total_impressions: totalImpressions,
-        contract_value_nok: contractValue,
-        estimated_media_value_nok: estimatedMediaValue,
-        roi_multiple: roiMultiple,
-        cost_per_person: costPerPerson,
-        thank_you_message: metrics.thank_you_message || null,
-        club_contact_name: metrics.club_contact_name || null,
-        renewal_package: metrics.renewal_package || null,
-        renewal_value_nok: metrics.renewal_value_nok ? parseInt(metrics.renewal_value_nok) : null,
-        media_coverage: metrics.media_coverage || null,
-        total_fixtures: metrics.total_fixtures || null,
-        obligations: obligationSnapshot,
-        photo_urls: photoUrls,
-      })
-      .select('token')
-      .single()
-
+    const { data, error } = await supabase.from('proof_pack_snapshots').insert({
+      org_id: orgId,
+      contract_id: selectedContract.id,
+      sponsor_name: selectedContract.sponsors?.company_name || '',
+      club_name: orgName,
+      contract_title: selectedContract.title,
+      season: selectedContract.season,
+      delivery_score: deliveryScore,
+      delivered_count: delivered.length,
+      total_count: obligations.length,
+      total_attendance: totalAttendance,
+      total_impressions: totalImpressions,
+      contract_value_nok: contractValue,
+      estimated_media_value_nok: estimatedMediaValue,
+      roi_multiple: roiMultiple,
+      cost_per_person: costPerPerson,
+      thank_you_message: metrics.thank_you_message || null,
+      club_contact_name: metrics.club_contact_name || null,
+      renewal_package: metrics.renewal_package || null,
+      renewal_value_nok: metrics.renewal_value_nok ? parseInt(metrics.renewal_value_nok) : null,
+      media_coverage: metrics.media_coverage || null,
+      total_fixtures: metrics.total_fixtures || null,
+      obligations: obligations.map(o => ({ description: o.description, proof_type: o.proof_type, status: o.status })),
+      photo_urls: photoUrls,
+    }).select('token').single()
     if (error || !data) return null
     return data.token
   }
 
   async function handleSendEmail() {
-    if (!selectedContract || !selectedContract.sponsors?.contact_email) {
-      setError('No sponsor email on file.')
-      return
-    }
-    if (atSendLimit) return
-    setSending(true)
-    setError(null)
-
-    // Save snapshot first to get public link
+    if (!selectedContract || !selectedContract.sponsors?.contact_email) { setError('No sponsor email on file.'); return }
+    if (atLimit) return
+    setSending(true); setError(null)
     const token = await saveSnapshot()
     const packUrl = token ? `${window.location.origin}/pack/${token}` : null
-
     try {
       const response = await fetch('/api/send-proof-pack', {
         method: 'POST',
@@ -231,39 +257,23 @@ export default function ProofPackPage() {
           contractTitle: selectedContract.title,
           season: selectedContract.season,
           narrative: metrics.thank_you_message,
-          obligations,
-          metrics,
-          packUrl,
+          obligations, metrics, packUrl,
         }),
       })
-      if (!response.ok) {
-        const err = await response.json()
-        setError(err.error || 'Failed to send.')
-        setSending(false)
-        return
-      }
-      if (orgId) {
-        await supabase
-          .from('organisations')
-          .update({ proof_packs_sent: proofPacksSent + 1 })
-          .eq('id', orgId)
-        setProofPacksSent(prev => prev + 1)
-      }
+      if (!response.ok) { const err = await response.json(); setError(err.error || 'Failed to send.'); setSending(false); return }
+      await incrementCounter()
       if (packUrl) setPublicLink(packUrl)
-      setSent(true)
-      setSending(false)
-    } catch {
-      setError('Network error.')
-      setSending(false)
-    }
+      setSent(true); setSending(false)
+    } catch { setError('Network error.'); setSending(false) }
   }
 
   async function handleDownloadPDF() {
-    // Save snapshot before printing so the link exists
+    if (atLimit) return
     if (!publicLink && selectedContract) {
       const token = await saveSnapshot()
       if (token) setPublicLink(`${window.location.origin}/pack/${token}`)
     }
+    await incrementCounter()
     window.print()
   }
 
@@ -281,16 +291,13 @@ export default function ProofPackPage() {
   const renewalUplift = contractValue > 0 && renewalValue > 0 ? Math.round(((renewalValue - contractValue) / contractValue) * 100) : null
   const photoProofs = delivered.filter(o => o.proofs[0]?.photo_url)
   const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  const FooterText = isFree ? 'SPORR FREE PLAN · sporr.io · upgrade to remove watermark' : 'Sporr — proof of performance made easy · sporr.io'
 
-  const WatermarkText = isFree ? 'Generated by Sporr — Free Plan · sporr.io' : 'Sporr — proof of performance made easy · sporr.io'
-
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
-        <div className="text-sporr-muted text-sm">Loading...</div>
-      </main>
-    )
-  }
+  if (loading) return (
+    <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
+      <div className="text-sporr-muted text-sm">Loading...</div>
+    </main>
+  )
 
   return (
     <>
@@ -319,18 +326,18 @@ export default function ProofPackPage() {
           </div>
 
           {isFree && (
-            <div className={`rounded-2xl px-6 py-4 mb-6 flex items-center justify-between gap-4 flex-wrap ${atSendLimit ? 'bg-sporr-dark' : 'bg-sporr-sage-lt'}`}>
+            <div className={`rounded-2xl px-6 py-4 mb-6 flex items-center justify-between gap-4 flex-wrap ${atLimit ? 'bg-sporr-dark' : 'bg-sporr-sage-lt'}`}>
               <div>
-                <p className={`text-sm font-medium mb-0.5 ${atSendLimit ? 'text-sporr-cream' : 'text-sporr-dark'}`}>
-                  {atSendLimit ? 'Free plan — Proof Pack send limit reached' : 'Free plan — 1 Proof Pack send included'}
+                <p className={`text-sm font-medium mb-0.5 ${atLimit ? 'text-sporr-cream' : 'text-sporr-dark'}`}>
+                  {atLimit ? 'Free plan — Proof Pack limit reached' : 'Free plan — 1 Proof Pack included'}
                 </p>
-                <p className={`text-xs ${atSendLimit ? 'text-sporr-sage' : 'text-sporr-muted'}`}>
-                  {atSendLimit
-                    ? 'Upgrade to Club (Kr 490/mnd) to send unlimited Proof Packs.'
-                    : 'You have 1 free Proof Pack send. PDF downloads are unlimited. Sent reports include a free plan watermark.'}
+                <p className={`text-xs ${atLimit ? 'text-sporr-sage' : 'text-sporr-muted'}`}>
+                  {atLimit
+                    ? 'Upgrade to Club (Kr 490/mnd) to send and download unlimited Proof Packs.'
+                    : 'Includes 1 Proof Pack — send by email or download as PDF. Reports include a watermark. Upgrade to remove it.'}
                 </p>
               </div>
-              {atSendLimit && (
+              {atLimit && (
                 <Link href="/dashboard/club" className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0">
                   Upgrade plan →
                 </Link>
@@ -373,7 +380,6 @@ export default function ProofPackPage() {
                       </div>
                     </div>
                   </div>
-
                   <div className="card">
                     <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-6">Audience & exposure</h2>
                     <div className="grid grid-cols-2 gap-4">
@@ -396,7 +402,6 @@ export default function ProofPackPage() {
                       </div>
                     </div>
                   </div>
-
                   <div className="card">
                     <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Delivery summary</h2>
                     <div className="grid grid-cols-3 gap-3 mb-4">
@@ -417,7 +422,6 @@ export default function ProofPackPage() {
                       <div className="h-full bg-sporr-dark rounded-full" style={{ width: `${deliveryScore}%` }} />
                     </div>
                   </div>
-
                   <button onClick={() => setStep(2)} className="btn-primary w-full">Continue →</button>
                 </div>
               )}
@@ -437,7 +441,6 @@ export default function ProofPackPage() {
                       </div>
                     </div>
                   </div>
-
                   <div className="card">
                     <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-6">Renewal proposal</h2>
                     <div className="space-y-4">
@@ -456,7 +459,6 @@ export default function ProofPackPage() {
                       </div>
                     </div>
                   </div>
-
                   <div className="flex gap-3">
                     <button onClick={() => setStep(1)} className="btn-secondary flex-1">← Back</button>
                     <button onClick={() => setStep(3)} className="btn-primary flex-1">Review →</button>
@@ -498,15 +500,13 @@ export default function ProofPackPage() {
                       {publicLink && (
                         <div className="bg-sporr-light rounded-xl px-4 py-3 mb-4 text-left">
                           <p className="text-sporr-muted text-xs uppercase tracking-widest mb-1">Public link for sponsor</p>
-                          <a href={publicLink} target="_blank" rel="noopener noreferrer" className="text-sporr-dark text-sm font-medium break-all hover:underline">
-                            {publicLink}
-                          </a>
+                          <a href={publicLink} target="_blank" rel="noopener noreferrer" className="text-sporr-dark text-sm font-medium break-all hover:underline">{publicLink}</a>
                         </div>
                       )}
                       {isFree && (
                         <div className="bg-sporr-dark rounded-xl p-4 mt-2">
-                          <p className="text-sporr-cream text-sm font-medium mb-1">You've used your free Proof Pack send</p>
-                          <p className="text-sporr-sage text-xs mb-3">Upgrade to Club to send unlimited Proof Packs — Kr 490/mnd.</p>
+                          <p className="text-sporr-cream text-sm font-medium mb-1">You've used your free Proof Pack</p>
+                          <p className="text-sporr-sage text-xs mb-3">Upgrade to Club to send and download unlimited Proof Packs without a watermark — Kr 490/mnd.</p>
                           <Link href="/dashboard/club" className="inline-block bg-sporr-cream text-sporr-dark text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors">
                             Upgrade now →
                           </Link>
@@ -515,12 +515,12 @@ export default function ProofPackPage() {
                     </div>
                   ) : (
                     <>
-                      {atSendLimit && (
+                      {atLimit && (
                         <div className="bg-sporr-dark rounded-2xl p-6">
                           <p className="text-sporr-sage text-xs uppercase tracking-widest mb-1">Free plan limit reached</p>
-                          <p className="text-sporr-cream font-medium mb-1">You've used your 1 free Proof Pack send</p>
+                          <p className="text-sporr-cream font-medium mb-1">You've used your 1 free Proof Pack</p>
                           <p className="text-sporr-sage text-sm leading-relaxed mb-4">
-                            PDF downloads are still available. Upgrade to Club to send unlimited Proof Packs directly to sponsors.
+                            Upgrade to Club to send and download unlimited Proof Packs — without a watermark.
                           </p>
                           <Link href="/dashboard/club" className="inline-block bg-sporr-cream text-sporr-dark text-sm font-medium px-4 py-3 rounded-lg hover:bg-sporr-sage-lt transition-colors">
                             Upgrade to Club — Kr 490/mnd →
@@ -529,13 +529,19 @@ export default function ProofPackPage() {
                       )}
                       <div className="flex gap-3">
                         <button onClick={() => setStep(2)} className="btn-secondary flex-1">← Back</button>
-                        <button onClick={handleDownloadPDF} className="btn-secondary flex-1">Download PDF</button>
+                        <button
+                          onClick={handleDownloadPDF}
+                          disabled={atLimit}
+                          className="btn-secondary flex-1 disabled:opacity-50"
+                        >
+                          {atLimit ? 'Upgrade to download' : 'Download PDF'}
+                        </button>
                         <button
                           onClick={handleSendEmail}
-                          disabled={sending || !selectedContract.sponsors?.contact_email || atSendLimit}
+                          disabled={sending || !selectedContract.sponsors?.contact_email || atLimit}
                           className="btn-primary flex-1 disabled:opacity-50"
                         >
-                          {sending ? 'Sending...' : atSendLimit ? 'Upgrade to send' : 'Send to sponsor'}
+                          {sending ? 'Sending...' : atLimit ? 'Upgrade to send' : 'Send to sponsor'}
                         </button>
                       </div>
                     </>
@@ -547,11 +553,13 @@ export default function ProofPackPage() {
         </div>
       </main>
 
+      {/* PRINT VERSION */}
       {selectedContract && (
         <div className="print-only" style={{ fontFamily: 'Helvetica, Arial, sans-serif', color: '#111814', background: 'white', width: '210mm', margin: '0 auto' }}>
 
           {/* COVER PAGE */}
           <div style={{ background: '#13322A', width: '210mm', minHeight: '297mm', padding: '48px', pageBreakAfter: 'always', boxSizing: 'border-box', position: 'relative' }}>
+            {isFree && <FreePlanWatermark />}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1D4A38', paddingBottom: '24px', marginBottom: '48px' }}>
               <img src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg" style={{ height: '36px', width: 'auto' }} alt="Sporr" />
               <div style={{ textAlign: 'right' }}>
@@ -591,20 +599,18 @@ export default function ProofPackPage() {
                 {deliveryScore < 100 && <td style={{ background: '#1D4A38', width: `${100 - deliveryScore}%`, borderRadius: '0 3px 3px 0', height: '6px' }}></td>}
               </tr></tbody>
             </table>
-            {publicLink && (
-              <p style={{ color: '#5C6B63', fontSize: '10px', marginTop: '12px' }}>View online: {publicLink}</p>
-            )}
+            {publicLink && <p style={{ color: '#5C6B63', fontSize: '10px', marginTop: '12px' }}>View online: {publicLink}</p>}
             <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #1D4A38', paddingTop: '12px' }}>
-              <span style={{ color: '#5C6B63', fontSize: '10px' }}>{WatermarkText}</span>
-              <span style={{ color: '#5C6B63', fontSize: '10px' }}>sporr.io</span>
+              <span style={{ color: '#5C6B63', fontSize: '10px' }}>{FooterText}</span>
             </div>
           </div>
 
           {/* PAGE 2 */}
           <div style={{ padding: '48px', pageBreakAfter: 'always', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
+            {isFree && <FreePlanWatermark />}
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
               <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-              <span style={{ color: '#808C70', fontSize: '10px' }}>{WatermarkText}</span>
+              <span style={{ color: '#808C70', fontSize: '10px' }}>{isFree ? 'SPORR FREE PLAN' : 'Sporr — proof of performance made easy'}</span>
               <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
             </div>
             {metrics.thank_you_message && (
@@ -637,7 +643,7 @@ export default function ProofPackPage() {
               </tr></tbody>
             </table>
             <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-              <span style={{ color: '#5C6B63', fontSize: '9px' }}>{WatermarkText}</span>
+              <span style={{ color: '#5C6B63', fontSize: '9px' }}>{FooterText}</span>
               <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 2</span>
             </div>
           </div>
@@ -645,9 +651,10 @@ export default function ProofPackPage() {
           {/* PAGE 3: AUDIENCE & ROI */}
           {(totalAttendance > 0 || totalImpressions > 0 || metrics.media_coverage) && (
             <div style={{ padding: '48px', pageBreakAfter: 'always', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
+              {isFree && <FreePlanWatermark />}
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
                 <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-                <span style={{ color: '#808C70', fontSize: '10px' }}>{WatermarkText}</span>
+                <span style={{ color: '#808C70', fontSize: '10px' }}>{isFree ? 'SPORR FREE PLAN' : 'Sporr — proof of performance made easy'}</span>
                 <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
               </div>
               <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Audience & exposure</h2>
@@ -704,7 +711,7 @@ export default function ProofPackPage() {
                 </div>
               )}
               <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-                <span style={{ color: '#5C6B63', fontSize: '9px' }}>{WatermarkText}</span>
+                <span style={{ color: '#5C6B63', fontSize: '9px' }}>{FooterText}</span>
                 <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 3</span>
               </div>
             </div>
@@ -712,9 +719,10 @@ export default function ProofPackPage() {
 
           {/* PAGE 4: DELIVERABLES */}
           <div style={{ padding: '48px', pageBreakAfter: photoProofs.length > 0 ? 'always' : 'avoid', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
+            {isFree && <FreePlanWatermark />}
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
               <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-              <span style={{ color: '#808C70', fontSize: '10px' }}>{WatermarkText}</span>
+              <span style={{ color: '#808C70', fontSize: '10px' }}>{isFree ? 'SPORR FREE PLAN' : 'Sporr — proof of performance made easy'}</span>
               <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
             </div>
             <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Deliverables — promised vs delivered</h2>
@@ -748,7 +756,7 @@ export default function ProofPackPage() {
               </div>
             )}
             <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-              <span style={{ color: '#5C6B63', fontSize: '9px' }}>{WatermarkText}</span>
+              <span style={{ color: '#5C6B63', fontSize: '9px' }}>{FooterText}</span>
               <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 4</span>
             </div>
           </div>
@@ -756,9 +764,10 @@ export default function ProofPackPage() {
           {/* PAGE 5: VISUAL EVIDENCE */}
           {photoProofs.length > 0 && (
             <div style={{ padding: '48px', pageBreakAfter: (metrics.renewal_package || renewalValue > 0) ? 'always' : 'avoid', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
+              {isFree && <FreePlanWatermark />}
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
                 <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-                <span style={{ color: '#808C70', fontSize: '10px' }}>{WatermarkText}</span>
+                <span style={{ color: '#808C70', fontSize: '10px' }}>{isFree ? 'SPORR FREE PLAN' : 'Sporr — proof of performance made easy'}</span>
                 <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
               </div>
               <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Visual evidence</h2>
@@ -788,7 +797,7 @@ export default function ProofPackPage() {
                 </div>
               )}
               <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-                <span style={{ color: '#5C6B63', fontSize: '9px' }}>{WatermarkText}</span>
+                <span style={{ color: '#5C6B63', fontSize: '9px' }}>{FooterText}</span>
                 <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 5</span>
               </div>
             </div>
@@ -797,9 +806,10 @@ export default function ProofPackPage() {
           {/* FINAL PAGE: RENEWAL */}
           {(metrics.renewal_package || renewalValue > 0) && (
             <div style={{ padding: '48px', position: 'relative', boxSizing: 'border-box', minHeight: '297mm', display: 'flex', flexDirection: 'column' }}>
+              {isFree && <FreePlanWatermark />}
               <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
                 <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-                <span style={{ color: '#808C70', fontSize: '10px' }}>{WatermarkText}</span>
+                <span style={{ color: '#808C70', fontSize: '10px' }}>{isFree ? 'SPORR FREE PLAN' : 'Sporr — proof of performance made easy'}</span>
                 <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
               </div>
               <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Next season — renewal proposal</h2>
@@ -844,10 +854,10 @@ export default function ProofPackPage() {
                 <p style={{ color: '#F5F1E6', fontSize: '16px', fontWeight: '700', margin: '0 0 8px' }}>We would love to continue this partnership</p>
                 <p style={{ color: '#808C70', fontSize: '12px', margin: '0 0 16px' }}>Please reach out to {metrics.club_contact_name || orgName} to confirm your renewal for the upcoming season.</p>
                 {publicLink && <p style={{ color: '#5C6B63', fontSize: '10px', margin: '0 0 8px' }}>View this report online: {publicLink}</p>}
-                <p style={{ color: '#5C6B63', fontSize: '11px', margin: 0, fontStyle: 'italic' }}>{WatermarkText}</p>
+                <p style={{ color: '#5C6B63', fontSize: '11px', margin: 0, fontStyle: 'italic' }}>{FooterText}</p>
               </div>
               <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-                <span style={{ color: '#5C6B63', fontSize: '9px' }}>{WatermarkText}</span>
+                <span style={{ color: '#5C6B63', fontSize: '9px' }}>{FooterText}</span>
                 <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Final page</span>
               </div>
             </div>
