@@ -87,8 +87,8 @@ export default function ProofPackPage() {
       if (!session) { router.push('/login'); return }
       const { data: userData } = await supabase.from('users').select('org_id').eq('id', session.user.id).single()
       if (!userData) { setLoading(false); return }
-      const { data: orgData } = await supabase.from('organisations').select('name').eq('id', userData.org_id).single()
-      setOrgName(orgData?.name || '')
+      const { data: orgData } = await supabase.from('organisations').select('name, sponsorship_contact_name').eq('id', userData.org_id).single()
+setOrgName(orgData?.name || '')
       const { data: contractsData } = await supabase
         .from('contracts')
         .select('id, title, season, value_nok, start_date, end_date, sponsors(id, company_name, contact_email, contact_name)')
