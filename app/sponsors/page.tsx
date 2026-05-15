@@ -11,11 +11,11 @@ const SPORTS_INTERESTS = [
 ]
 
 const BUDGET_RANGES = [
-  { value: '1500-5000', label: 'Kr 1 500 – 5 000' },
-  { value: '5000-15000', label: 'Kr 5 000 – 15 000' },
-  { value: '15000-50000', label: 'Kr 15 000 – 50 000' },
-  { value: '50000-150000', label: 'Kr 50 000 – 150 000' },
-  { value: '150000+', label: 'Kr 150 000+' },
+  { value: '1500-5000', label: '1 500 – 5 000kr' },
+  { value: '5000-15000', label: '5 000 – 15 000kr' },
+  { value: '15000-50000', label: '15 000 – 50 000kr' },
+  { value: '50000-150000', label: '50 000 – 150 000kr' },
+  { value: '150000+', label: '150 000kr +' },
   { value: 'unsure', label: 'Not sure yet' },
 ]
 
@@ -128,7 +128,7 @@ export default function SponsorsPage() {
                 Find clubs, tournaments, and mass-participation events in your area. Tell us what you're looking for and we'll make the introduction.
               </p>
               <div className="inline-block bg-sporr-sage text-sporr-dark text-sm font-medium px-4 py-2 rounded-lg">
-                Club packages from Kr 1 500
+                Club packages from 1 500kr
               </div>
             </div>
 
