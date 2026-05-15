@@ -224,9 +224,9 @@ export default function Home() {
         <div className="mb-16">
           <Link
             href="/sponsors"
-            className="inline-flex items-center gap-3 border border-red-700 rounded-2xl px-6 py-4 hover:border-red-500 transition-colors group"
+            className="inline-flex items-center gap-3 border border-red-500 rounded-2xl px-6 py-4 hover:border-red-700 transition-colors group"
           >
-            <span className="text-sporr-muted text-sm uppercase tracking-widest font-medium">For sponsors</span>
+            <span className="text-sporr-cream text-sm uppercase tracking-widest font-medium">For sponsors</span>
             <span className="text-sporr-mid">·</span>
             <span className="text-sporr-cream text-lg font-medium group-hover:text-sporr-sage transition-colors">
               Discover your next sports partnership →
@@ -264,7 +264,7 @@ export default function Home() {
             ].map((f, i) => (
               <div key={i} className="bg-sporr-mid rounded-xl p-5">
                 <p className="text-sporr-cream font-medium mb-1">{f.title}</p>
-                <p className="text-sporr-sage text-sm leading-relaxed">{f.description}</p>
+                <p className="text-sporr-cream text-sm leading-relaxed">{f.description}</p>
               </div>
             ))}
           </div>
@@ -273,9 +273,9 @@ export default function Home() {
         {/* Footer */}
         <div className="mt-auto pt-8 border-t border-sporr-mid">
           <div className="flex items-center gap-4 flex-wrap">
-  <p className="text-sporr-muted text-xs">Sporr — proof of performance made easy · sporr.io</p>
-  <Link href="/terms" className="text-sporr-muted text-xs hover:text-sporr-cream transition-colors">Terms</Link>
-  <Link href="/privacy" className="text-sporr-muted text-xs hover:text-sporr-cream transition-colors">Privacy</Link>
+  <p className="text-sporr-cream text-xs">Sporr — proof of performance made easy · sporr.io</p>
+  <Link href="/terms" className="text-sporr-cream text-xs hover:text-sporr-muted transition-colors">Terms</Link>
+  <Link href="/privacy" className="text-sporr-cream text-xs hover:text-sporr-muted transition-colors">Privacy</Link>
 </div>
         </div>
 
