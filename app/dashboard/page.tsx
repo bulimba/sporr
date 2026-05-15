@@ -21,7 +21,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
+      if (!session) { router.push('/'); return }
 
       const { data: userData } = await supabase.from('users').select('org_id').eq('id', session.user.id).single()
       if (!userData) { setLoading(false); return }
@@ -94,7 +94,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 text-sporr-muted text-sm flex-wrap">
             <span>Season <strong className="text-sporr-dark">{currentSeason}</strong></span>
             <span className="text-sporr-sage-lt">·</span>
-            <span><strong className="text-sporr-dark">{stats.sessions}</strong> match day{stats.sessions !== 1 ? 's' : ''} logged</span>
+            <span><strong className="text-sporr-dark">{stats.sessions}</strong> session{stats.sessions !== 1 ? 's' : ''} logged</span>
             <span className="text-sporr-sage-lt">·</span>
             <span><strong className="text-sporr-dark">{stats.sponsors}</strong> active sponsor{stats.sponsors !== 1 ? 's' : ''}</span>
           </div>
@@ -114,21 +114,21 @@ export default function DashboardPage() {
             </p>
             <div className="border-t border-sporr-sage-lt mt-6 pt-4">
               <Link href="/dashboard/obligations" className="flex items-center gap-2 text-sporr-muted text-sm hover:text-sporr-dark transition-colors">
-Manage obligations →
+                Manage obligations →
               </Link>
             </div>
           </Link>
 
-          {/* Match day — featured */}
+          {/* Today's session — featured */}
           <div className="bg-white rounded-2xl border-2 border-sporr-dark p-6 flex flex-col">
-            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Match day</h2>
+            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Today's session</h2>
             <p className="text-sporr-muted text-base leading-relaxed flex-1">
-              Capture proof of today's match or event.
+              Capture proof of match days, events, and other obligations.
             </p>
-            <div className="border-t border-sporr-sage-lt mt-6 pt-4 flex items-center justify-between gap-3">
+            <div className="border-t border-sporr-sage-lt mt-6 pt-4">
               <Link href="/dashboard/audit" className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-mid transition-colors whitespace-nowrap">
-  {activeSession ? 'Manage session →' : 'Start session →'}
-</Link>
+                {activeSession ? 'Manage session →' : 'Start session →'}
+              </Link>
             </div>
           </div>
 
@@ -143,15 +143,15 @@ Manage obligations →
         </div>
 
         {/* Proof Pack banner */}
-        <Link href="/proof-pack" className="bg-red-700 rounded-2xl px-6 py-5 flex items-center justify-between hover:bg-red-50 transition-colors mt-auto">
+        <Link href="/proof-pack" className="bg-sporr-dark rounded-2xl px-6 py-5 flex items-center justify-between hover:bg-sporr-mid transition-colors mt-auto">
           <div className="flex items-center gap-4">
             <div>
               <p className="text-sporr-sage text-xs uppercase tracking-widest mb-0.5">Proof Pack</p>
               <p className="text-sporr-cream font-medium">
                 {nextDueDate
-                  ? `Next Proof of Performance Report · due ${nextDueDate.date}`
+                  ? `Next Proof of Performance · due ${nextDueDate.date}`
                   : stats.sessions > 0
-                  ? 'Send sponsor's Proof Pack'
+                  ? "Send your sponsor's Proof of Performance"
                   : 'Generate your first Proof Pack when ready'}
               </p>
             </div>
