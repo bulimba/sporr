@@ -96,6 +96,10 @@ setOrgName(orgData?.name || '')
         .eq('status', 'active')
         .order('created_at', { ascending: false })
       setContracts((contractsData as unknown as Contract[]) || [])
+if (orgData?.sponsorship_contact_name) {
+  setMetrics(prev => ({ ...prev, club_contact_name: orgData.sponsorship_contact_name! }))
+}
+setLoading(false)
       setLoading(false)
     }
     load()
