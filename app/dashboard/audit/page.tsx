@@ -133,8 +133,8 @@ export default function AuditPage() {
       <div className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-sporr-dark text-2xl font-medium mb-1">Match day</h1>
-            <p className="text-sporr-muted text-sm">Launch a session to capture proof on match day</p>
+            <h1 className="text-sporr-dark text-2xl font-medium mb-1">Today's session</h1>
+<p className="text-sporr-muted text-sm">Capture proof of match days, events, and other obligations</p>
           </div>
           <button onClick={() => { setShowForm(true); setActiveSession(null) }} className="btn-primary">
             Launch session
