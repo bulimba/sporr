@@ -21,44 +21,40 @@ const PLANS = [
   {
     tier: 'club',
     label: 'Club',
-    price: '490kr /mo',
-    description: 'Unlimited sponsors at any tier · 10GB storage · Unlimited Proof Packs',
+    price: '490kr/month',
+    description: 'Up to 5 sponsors · All tiers · 10GB storage · Unlimited Proof Packs',
     selfServe: true,
     upgradableFrom: ['free'],
   },
   {
     tier: 'pro',
     label: 'Pro',
-    price: '1,490kr /mo',
-    description: 'Multiple contracts · 50GB storage · Priority support',
+    price: '1 490kr/month',
+    description: 'Up to 20 sponsors · 50GB storage · Priority support',
     selfServe: true,
     upgradableFrom: ['free', 'club'],
   },
   {
     tier: 'agency',
     label: 'Agency',
-    price: '4,900kr /mo',
-    description: 'Multi-club management · 100GB storage · Dedicated account manager',
+    price: '4 900kr/month',
+    description: '5–50 clubs · 100GB storage · Dedicated account manager',
     selfServe: false,
     upgradableFrom: ['free', 'club', 'pro'],
   },
-  {
-    tier: 'federation_a',
-    label: 'Federation A',
-    price: '9 900kr/mo',
-    description: 'Small federations · Negotiated storage · Federation dashboard',
-    selfServe: false,
-    upgradableFrom: [],
-  },
-  {
-    tier: 'enterprise',
-    label: 'Enterprise',
-    price: '50,000–250,000kr /yr',
-    description: 'Corporate sponsors · Brand dashboards · Custom SLA',
-    selfServe: false,
-    upgradableFrom: [],
-  },
 ]
+
+const STORAGE_LIMITS: Record<string, number> = {
+  free: 100,
+  club: 10240,
+  pro: 51200,
+  agency: 102400,
+}
+
+function formatStorage(mb: number): string {
+  if (mb < 1024) return `${mb} MB`
+  return `${(mb / 1024).toFixed(1)} GB`
+}
 
 type OrgData = {
   id: string; name: string; tier: string
@@ -92,6 +88,7 @@ export default function ClubPage() {
   const [showOtherInput, setShowOtherInput] = useState(false)
   const [upgradeTarget, setUpgradeTarget] = useState<typeof PLANS[0] | null>(null)
   const [upgradeMethod, setUpgradeMethod] = useState<'vipps' | 'card' | 'invoice' | null>(null)
+  const [photoCount, setPhotoCount] = useState(0)
 
   const [form, setForm] = useState({
     name: '',
@@ -149,23 +146,24 @@ export default function ClubPage() {
       if (!userData) { setLoading(false); return }
       setUser(userData as UserData)
       setOrgId(userData.org_id)
-      const { data: orgData } = await supabase
-        .from('organisations')
-        .select('id, name, tier, sports, country, sponsorship_contact_name, sponsorship_contact_email, sponsorship_contact_phone, governing_body_name, governing_body_website')
-        .eq('id', userData.org_id).single()
-      if (orgData) {
-        setOrg(orgData as OrgData)
+      const [orgRes, photosRes] = await Promise.all([
+        supabase.from('organisations').select('id, name, tier, sports, country, sponsorship_contact_name, sponsorship_contact_email, sponsorship_contact_phone, governing_body_name, governing_body_website').eq('id', userData.org_id).single(),
+        supabase.from('proofs').select('id', { count: 'exact' }).eq('org_id', userData.org_id).not('photo_url', 'is', null),
+      ])
+      if (orgRes.data) {
+        setOrg(orgRes.data as OrgData)
         setForm({
-          name: orgData.name || '',
-          sports: orgData.sports || [],
-          country: orgData.country || 'NO',
-          sponsorship_contact_name: orgData.sponsorship_contact_name || '',
-          sponsorship_contact_email: orgData.sponsorship_contact_email || '',
-          sponsorship_contact_phone: orgData.sponsorship_contact_phone || '',
-          governing_body_name: orgData.governing_body_name || '',
-          governing_body_website: orgData.governing_body_website || '',
+          name: orgRes.data.name || '',
+          sports: orgRes.data.sports || [],
+          country: orgRes.data.country || 'NO',
+          sponsorship_contact_name: orgRes.data.sponsorship_contact_name || '',
+          sponsorship_contact_email: orgRes.data.sponsorship_contact_email || '',
+          sponsorship_contact_phone: orgRes.data.sponsorship_contact_phone || '',
+          governing_body_name: orgRes.data.governing_body_name || '',
+          governing_body_website: orgRes.data.governing_body_website || '',
         })
       }
+      setPhotoCount(photosRes.count || 0)
       setLoading(false)
     }
     load()
@@ -196,6 +194,10 @@ export default function ClubPage() {
 
   const currentTier = org?.tier || 'free'
   const availablePlans = PLANS.filter(p => p.upgradableFrom.includes(currentTier))
+  const estimatedUsageMB = photoCount * 1
+  const tierLimit = STORAGE_LIMITS[currentTier] || 100
+  const usagePct = Math.min(Math.round((estimatedUsageMB / tierLimit) * 100), 100)
+  const nearLimit = usagePct >= 80
 
   if (loading) return (
     <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
@@ -216,29 +218,19 @@ export default function ClubPage() {
                 <h2 className="text-sporr-dark text-xl font-medium mb-1">{upgradeTarget.label}</h2>
                 <p className="text-sporr-dark text-2xl font-medium mb-2">{upgradeTarget.price}</p>
                 <p className="text-sporr-muted text-sm leading-relaxed mb-6">{upgradeTarget.description}</p>
-
                 {upgradeTarget.selfServe ? (
                   <>
                     <p className="text-sporr-dark text-sm font-medium mb-3">Choose payment method</p>
                     <div className="space-y-3 mb-6">
-                      <button
-                        onClick={() => setUpgradeMethod('vipps')}
-                        className="w-full flex items-center justify-between border-2 border-sporr-sage-lt rounded-xl px-4 py-3 hover:border-sporr-dark transition-colors"
-                      >
+                      <button onClick={() => setUpgradeMethod('vipps')} className="w-full flex items-center justify-between border-2 border-sporr-sage-lt rounded-xl px-4 py-3 hover:border-sporr-dark transition-colors">
                         <span className="text-sporr-dark font-medium">Vipps</span>
                         <span className="text-sporr-muted text-xs">Recommended for Norway</span>
                       </button>
-                      <button
-                        onClick={() => setUpgradeMethod('card')}
-                        className="w-full flex items-center justify-between border-2 border-sporr-sage-lt rounded-xl px-4 py-3 hover:border-sporr-dark transition-colors"
-                      >
+                      <button onClick={() => setUpgradeMethod('card')} className="w-full flex items-center justify-between border-2 border-sporr-sage-lt rounded-xl px-4 py-3 hover:border-sporr-dark transition-colors">
                         <span className="text-sporr-dark font-medium">Card payment</span>
                         <span className="text-sporr-muted text-xs">Visa, Mastercard</span>
                       </button>
-                      <button
-                        onClick={() => setUpgradeMethod('invoice')}
-                        className="w-full flex items-center justify-between border-2 border-sporr-sage-lt rounded-xl px-4 py-3 hover:border-sporr-dark transition-colors"
-                      >
+                      <button onClick={() => setUpgradeMethod('invoice')} className="w-full flex items-center justify-between border-2 border-sporr-sage-lt rounded-xl px-4 py-3 hover:border-sporr-dark transition-colors">
                         <span className="text-sporr-dark font-medium">Invoice</span>
                         <span className="text-sporr-muted text-xs">30-day payment terms</span>
                       </button>
@@ -246,20 +238,14 @@ export default function ClubPage() {
                   </>
                 ) : (
                   <>
-                    <p className="text-sporr-muted text-sm leading-relaxed mb-6">
-                      This plan requires a tailored setup. Contact us and we'll get you onboarded within 24 hours.
-                    </p>
-                    <a
-                      href={`mailto:hello@sporr.io?subject=Upgrade enquiry — ${upgradeTarget.label} plan&body=Hi Sporr team,%0A%0AI'd like to upgrade to the ${upgradeTarget.label} plan.%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0APlease get in touch to discuss next steps.`}
-                      className="block w-full bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-3 rounded-lg text-center hover:bg-sporr-mid transition-colors mb-3"
-                    >
+                    <p className="text-sporr-muted text-sm leading-relaxed mb-6">This plan requires a tailored setup. Contact us and we'll get you onboarded within 24 hours.</p>
+                    <a href={`mailto:hello@sporr.io?subject=Upgrade enquiry — ${upgradeTarget.label} plan&body=Hi Sporr team,%0A%0AI'd like to upgrade to the ${upgradeTarget.label} plan.%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0APlease get in touch to discuss next steps.`}
+                      className="block w-full bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-3 rounded-lg text-center hover:bg-sporr-mid transition-colors mb-3">
                       Contact Sporr →
                     </a>
                   </>
                 )}
-                <button onClick={() => { setUpgradeTarget(null); setUpgradeMethod(null) }} className="w-full btn-secondary text-sm py-2.5">
-                  Cancel
-                </button>
+                <button onClick={() => { setUpgradeTarget(null); setUpgradeMethod(null) }} className="w-full btn-secondary text-sm py-2.5">Cancel</button>
               </>
             ) : (
               <>
@@ -272,18 +258,14 @@ export default function ClubPage() {
                   <p className="text-sporr-muted text-sm leading-relaxed">
                     {upgradeMethod === 'vipps' && 'Vipps payment is being set up. In the meantime, contact us to upgrade by invoice.'}
                     {upgradeMethod === 'card' && 'Card payment via Stripe is being set up. In the meantime, contact us to upgrade by invoice.'}
-                    {upgradeMethod === 'invoice' && 'Invoice payments are being set up. Contact us directly and we\'ll invoice you within 24 hours.'}
+                    {upgradeMethod === 'invoice' && "Invoice payments are being set up. Contact us directly and we'll invoice you within 24 hours."}
                   </p>
                 </div>
-                <a
-                  href={`mailto:hello@sporr.io?subject=Upgrade to ${upgradeTarget.label} — ${upgradeMethod}&body=Hi Sporr team,%0A%0AI'd like to upgrade to the ${upgradeTarget.label} plan via ${upgradeMethod}.%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0APlease get in touch to complete the upgrade.`}
-                  className="block w-full bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-3 rounded-lg text-center hover:bg-sporr-mid transition-colors mb-3"
-                >
+                <a href={`mailto:hello@sporr.io?subject=Upgrade to ${upgradeTarget.label} — ${upgradeMethod}&body=Hi Sporr team,%0A%0AI'd like to upgrade to the ${upgradeTarget.label} plan via ${upgradeMethod}.%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0APlease get in touch to complete the upgrade.`}
+                  className="block w-full bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-3 rounded-lg text-center hover:bg-sporr-mid transition-colors mb-3">
                   Contact us to complete upgrade →
                 </a>
-                <button onClick={() => setUpgradeMethod(null)} className="w-full btn-secondary text-sm py-2.5">
-                  ← Back
-                </button>
+                <button onClick={() => setUpgradeMethod(null)} className="w-full btn-secondary text-sm py-2.5">← Back</button>
               </>
             )}
           </div>
@@ -314,11 +296,8 @@ export default function ClubPage() {
               <label className="label">Club name</label>
               <input className="input" value={form.name} onChange={e => update('name', e.target.value)} />
             </div>
-
             <div>
-              <label className="label">
-                Sports represented <span className="text-sporr-muted font-normal">(up to 4)</span>
-              </label>
+              <label className="label">Sports represented <span className="text-sporr-muted font-normal">(up to 4)</span></label>
               {form.sports.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {form.sports.map(sport => (
@@ -331,11 +310,7 @@ export default function ClubPage() {
               )}
               {form.sports.length < 4 && !showOtherInput && (
                 <div className="relative">
-                  <input
-                    ref={sportSearchRef}
-                    className="input"
-                    placeholder="Type to search sports..."
-                    value={sportSearch}
+                  <input ref={sportSearchRef} className="input" placeholder="Type to search sports..." value={sportSearch}
                     onChange={e => { setSportSearch(e.target.value); setShowSportDropdown(true) }}
                     onFocus={() => setShowSportDropdown(true)}
                     onBlur={() => setTimeout(() => setShowSportDropdown(false), 150)}
@@ -343,11 +318,9 @@ export default function ClubPage() {
                   {showSportDropdown && filteredSports.length > 0 && (
                     <div className="absolute z-10 top-full left-0 right-0 bg-white border border-sporr-sage-lt rounded-lg shadow-lg mt-1 max-h-56 overflow-y-auto">
                       {filteredSports.map(sport => (
-                        <button
-                          key={sport}
+                        <button key={sport}
                           className={`w-full text-left px-4 py-2.5 text-sm hover:bg-sporr-sage-lt transition-colors ${sport === 'Other' ? 'text-sporr-muted italic border-t border-sporr-sage-lt' : 'text-sporr-dark'}`}
-                          onMouseDown={() => { toggleSport(sport); setSportSearch('') }}
-                        >
+                          onMouseDown={() => { toggleSport(sport); setSportSearch('') }}>
                           {sport === 'Other' ? '+ Add a sport not listed here' : sport}
                         </button>
                       ))}
@@ -357,23 +330,15 @@ export default function ClubPage() {
               )}
               {showOtherInput && (
                 <div className="flex gap-2 mt-1">
-                  <input
-                    className="input flex-1"
-                    placeholder="Type the sport name..."
-                    value={otherSportInput}
+                  <input className="input flex-1" placeholder="Type the sport name..." value={otherSportInput}
                     onChange={e => setOtherSportInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') addOtherSport() }}
-                    autoFocus
-                  />
+                    onKeyDown={e => { if (e.key === 'Enter') addOtherSport() }} autoFocus />
                   <button onClick={addOtherSport} className="btn-primary text-sm py-2 px-4">Add</button>
                   <button onClick={() => { setShowOtherInput(false); setOtherSportInput('') }} className="btn-secondary text-sm py-2 px-4">Cancel</button>
                 </div>
               )}
-              {form.sports.length >= 4 && (
-                <p className="text-sporr-muted text-xs mt-1">Maximum of 4 sports selected. Remove one to add another.</p>
-              )}
+              {form.sports.length >= 4 && <p className="text-sporr-muted text-xs mt-1">Maximum of 4 sports selected. Remove one to add another.</p>}
             </div>
-
             <div>
               <label className="label">Country</label>
               <select className="input" value={form.country} onChange={e => update('country', e.target.value)}>
@@ -396,9 +361,7 @@ export default function ClubPage() {
         {/* Sponsorship contact */}
         <div className="card mb-6">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Sponsorship contact</h2>
-          <p className="text-sporr-muted text-sm mb-6">
-            The person at your club who handles sponsorship relationships — appears on Proof Packs sent to sponsors.
-          </p>
+          <p className="text-sporr-muted text-sm mb-6">The person at your club who handles sponsorship relationships — appears on Proof Packs sent to sponsors.</p>
           <div className="space-y-4">
             <div>
               <label className="label">Full name</label>
@@ -420,9 +383,7 @@ export default function ClubPage() {
         {/* Governing body */}
         <div className="card mb-6">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Governing body</h2>
-          <p className="text-sporr-muted text-sm mb-6">
-            If your club is affiliated with a sports federation or governing body.
-          </p>
+          <p className="text-sporr-muted text-sm mb-6">If your club is affiliated with a sports federation or governing body.</p>
           <div className="space-y-4">
             <div>
               <label className="label">Governing body name</label>
@@ -457,6 +418,39 @@ export default function ClubPage() {
           </div>
         </div>
 
+        {/* Storage usage */}
+        <div className="card mb-6">
+          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Storage</h2>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sporr-muted text-sm">{formatStorage(estimatedUsageMB)} used</span>
+            <span className="text-sporr-dark text-sm font-medium">{formatStorage(tierLimit)} included</span>
+          </div>
+          <div className="h-2 bg-sporr-sage-lt rounded-full overflow-hidden mb-2">
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${usagePct >= 100 ? 'bg-red-600' : usagePct >= 80 ? 'bg-amber-500' : 'bg-sporr-dark'}`}
+              style={{ width: `${Math.max(usagePct, 2)}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <p className="text-sporr-muted text-xs">
+              {photoCount} proof photo{photoCount !== 1 ? 's' : ''} · estimated usage
+            </p>
+            <p className={`text-xs font-medium ${usagePct >= 100 ? 'text-red-600' : usagePct >= 80 ? 'text-amber-600' : 'text-sporr-muted'}`}>
+              {usagePct}% used
+            </p>
+          </div>
+          {nearLimit && (
+            <div className={`mt-3 rounded-lg px-4 py-3 ${usagePct >= 100 ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
+              <p className={`text-sm ${usagePct >= 100 ? 'text-red-700' : 'text-amber-700'}`}>
+                {usagePct >= 100
+                  ? 'Storage full — upgrade your plan to continue capturing proof photos.'
+                  : 'Storage nearly full — consider upgrading before your next match day.'}
+              </p>
+            </div>
+          )}
+          <p className="text-sporr-muted text-xs mt-2">Storage is estimated based on photo uploads. Actual usage may vary.</p>
+        </div>
+
         {/* Upgrade plan */}
         {availablePlans.length > 0 && (
           <div className="card mb-6">
@@ -482,15 +476,11 @@ export default function ClubPage() {
                   </button>
                 </div>
               ))}
-
-              {/* Higher tiers — contact only */}
               <div className="border border-sporr-sage-lt rounded-xl px-4 py-4">
                 <p className="text-sporr-dark font-medium mb-0.5">Federation, Enterprise & CSR</p>
-                <p className="text-sporr-muted text-xs leading-relaxed mb-3">9,900—500,000kr /yr · Custom setup · Dedicated support</p>
-                <a
-                  href={`mailto:hello@sporr.io?subject=Enterprise enquiry&body=Hi Sporr team,%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0AI'm interested in a Federation, Enterprise, or CSR plan. Please get in touch.`}
-                  className="text-sporr-dark text-sm underline hover:text-sporr-mid transition-colors"
-                >
+                <p className="text-sporr-muted text-xs leading-relaxed mb-3">9 900–500 000kr/year · Custom setup · Dedicated support</p>
+                <a href={`mailto:hello@sporr.io?subject=Enterprise enquiry&body=Hi Sporr team,%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0AI'm interested in a Federation, Enterprise, or CSR plan. Please get in touch.`}
+                  className="text-sporr-dark text-sm underline hover:text-sporr-mid transition-colors">
                   Contact Sporr to discuss →
                 </a>
               </div>
