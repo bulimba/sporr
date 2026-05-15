@@ -17,6 +17,49 @@ const ALL_SPORTS = [
  'Squash', 'Table tennis', 'Tennis', 'Triathlon', 'Water polo', 'Other'
 ]
 
+const PLANS = [
+  {
+    tier: 'club',
+    label: 'Club',
+    price: 'Kr 490/mo',
+    description: 'Unlimited sponsors at any tier · 10GB storage · Unlimited Proof Packs',
+    selfServe: true,
+    upgradableFrom: ['free'],
+  },
+  {
+    tier: 'pro',
+    label: 'Pro',
+    price: 'Kr 1,490/mo',
+    description: 'Multiple contracts · 50GB storage · Priority support',
+    selfServe: true,
+    upgradableFrom: ['free', 'club'],
+  },
+  {
+    tier: 'agency',
+    label: 'Agency',
+    price: 'Kr 4,900/mo',
+    description: 'Multi-club management · 100GB storage · Dedicated account manager',
+    selfServe: false,
+    upgradableFrom: ['free', 'club', 'pro'],
+  },
+  {
+    tier: 'federation_a',
+    label: 'Federation A',
+    price: 'Kr 9,900/mo',
+    description: 'Small federations · Negotiated storage · Federation dashboard',
+    selfServe: false,
+    upgradableFrom: [],
+  },
+  {
+    tier: 'enterprise',
+    label: 'Enterprise',
+    price: 'Kr 50,000–250,000/yr',
+    description: 'Corporate sponsors · Brand dashboards · Custom SLA',
+    selfServe: false,
+    upgradableFrom: [],
+  },
+]
+
 type OrgData = {
   id: string; name: string; tier: string
   sports: string[] | null; country: string | null
@@ -47,6 +90,8 @@ export default function ClubPage() {
   const [showSportDropdown, setShowSportDropdown] = useState(false)
   const [otherSportInput, setOtherSportInput] = useState('')
   const [showOtherInput, setShowOtherInput] = useState(false)
+  const [upgradeTarget, setUpgradeTarget] = useState<typeof PLANS[0] | null>(null)
+  const [upgradeMethod, setUpgradeMethod] = useState<'vipps' | 'card' | 'invoice' | null>(null)
 
   const [form, setForm] = useState({
     name: '',
@@ -98,19 +143,16 @@ export default function ClubPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/login'); return }
-
+      if (!session) { router.push('/'); return }
       const { data: userData } = await supabase
         .from('users').select('id, org_id, full_name, email, role').eq('id', session.user.id).single()
       if (!userData) { setLoading(false); return }
       setUser(userData as UserData)
       setOrgId(userData.org_id)
-
       const { data: orgData } = await supabase
         .from('organisations')
         .select('id, name, tier, sports, country, sponsorship_contact_name, sponsorship_contact_email, sponsorship_contact_phone, governing_body_name, governing_body_website')
         .eq('id', userData.org_id).single()
-
       if (orgData) {
         setOrg(orgData as OrgData)
         setForm({
@@ -132,7 +174,6 @@ export default function ClubPage() {
   async function handleSave() {
     if (!orgId) return
     setSaving(true); setError(null); setSaved(false)
-
     const { error: saveError } = await supabase.from('organisations').update({
       name: form.name,
       sports: form.sports,
@@ -143,7 +184,6 @@ export default function ClubPage() {
       governing_body_name: form.governing_body_name || null,
       governing_body_website: form.governing_body_website || null,
     }).eq('id', orgId)
-
     if (saveError) { setError(saveError.message); setSaving(false); return }
     setSaved(true); setSaving(false)
     setTimeout(() => setSaved(false), 3000)
@@ -154,6 +194,9 @@ export default function ClubPage() {
     router.push('/')
   }
 
+  const currentTier = org?.tier || 'free'
+  const availablePlans = PLANS.filter(p => p.upgradableFrom.includes(currentTier))
+
   if (loading) return (
     <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
       <div className="text-sporr-muted text-sm">Loading...</div>
@@ -162,6 +205,91 @@ export default function ClubPage() {
 
   return (
     <main className="min-h-screen bg-sporr-cream">
+
+      {/* Upgrade modal */}
+      {upgradeTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-6">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full">
+            {!upgradeMethod ? (
+              <>
+                <p className="text-sporr-sage text-xs uppercase tracking-widest mb-1">Upgrade to</p>
+                <h2 className="text-sporr-dark text-xl font-medium mb-1">{upgradeTarget.label}</h2>
+                <p className="text-sporr-dark text-2xl font-medium mb-2">{upgradeTarget.price}</p>
+                <p className="text-sporr-muted text-sm leading-relaxed mb-6">{upgradeTarget.description}</p>
+
+                {upgradeTarget.selfServe ? (
+                  <>
+                    <p className="text-sporr-dark text-sm font-medium mb-3">Choose payment method</p>
+                    <div className="space-y-3 mb-6">
+                      <button
+                        onClick={() => setUpgradeMethod('vipps')}
+                        className="w-full flex items-center justify-between border-2 border-sporr-sage-lt rounded-xl px-4 py-3 hover:border-sporr-dark transition-colors"
+                      >
+                        <span className="text-sporr-dark font-medium">Vipps</span>
+                        <span className="text-sporr-muted text-xs">Recommended for Norway</span>
+                      </button>
+                      <button
+                        onClick={() => setUpgradeMethod('card')}
+                        className="w-full flex items-center justify-between border-2 border-sporr-sage-lt rounded-xl px-4 py-3 hover:border-sporr-dark transition-colors"
+                      >
+                        <span className="text-sporr-dark font-medium">Card payment</span>
+                        <span className="text-sporr-muted text-xs">Visa, Mastercard</span>
+                      </button>
+                      <button
+                        onClick={() => setUpgradeMethod('invoice')}
+                        className="w-full flex items-center justify-between border-2 border-sporr-sage-lt rounded-xl px-4 py-3 hover:border-sporr-dark transition-colors"
+                      >
+                        <span className="text-sporr-dark font-medium">Invoice</span>
+                        <span className="text-sporr-muted text-xs">30-day payment terms</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sporr-muted text-sm leading-relaxed mb-6">
+                      This plan requires a tailored setup. Contact us and we'll get you onboarded within 24 hours.
+                    </p>
+                    <a
+                      href={`mailto:hello@sporr.io?subject=Upgrade enquiry — ${upgradeTarget.label} plan&body=Hi Sporr team,%0A%0AI'd like to upgrade to the ${upgradeTarget.label} plan.%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0APlease get in touch to discuss next steps.`}
+                      className="block w-full bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-3 rounded-lg text-center hover:bg-sporr-mid transition-colors mb-3"
+                    >
+                      Contact Sporr →
+                    </a>
+                  </>
+                )}
+                <button onClick={() => { setUpgradeTarget(null); setUpgradeMethod(null) }} className="w-full btn-secondary text-sm py-2.5">
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sporr-sage text-xs uppercase tracking-widest mb-1">
+                  {upgradeMethod === 'vipps' ? 'Pay with Vipps' : upgradeMethod === 'card' ? 'Card payment' : 'Invoice'}
+                </p>
+                <h2 className="text-sporr-dark text-xl font-medium mb-4">{upgradeTarget.label} — {upgradeTarget.price}</h2>
+                <div className="bg-sporr-sage-lt rounded-xl p-5 text-center mb-6">
+                  <p className="text-sporr-dark font-medium mb-1">Coming soon</p>
+                  <p className="text-sporr-muted text-sm leading-relaxed">
+                    {upgradeMethod === 'vipps' && 'Vipps payment is being set up. In the meantime, contact us to upgrade by invoice.'}
+                    {upgradeMethod === 'card' && 'Card payment via Stripe is being set up. In the meantime, contact us to upgrade by invoice.'}
+                    {upgradeMethod === 'invoice' && 'Invoice payments are being set up. Contact us directly and we\'ll invoice you within 24 hours.'}
+                  </p>
+                </div>
+                <a
+                  href={`mailto:hello@sporr.io?subject=Upgrade to ${upgradeTarget.label} — ${upgradeMethod}&body=Hi Sporr team,%0A%0AI'd like to upgrade to the ${upgradeTarget.label} plan via ${upgradeMethod}.%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0APlease get in touch to complete the upgrade.`}
+                  className="block w-full bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-3 rounded-lg text-center hover:bg-sporr-mid transition-colors mb-3"
+                >
+                  Contact us to complete upgrade →
+                </a>
+                <button onClick={() => setUpgradeMethod(null)} className="w-full btn-secondary text-sm py-2.5">
+                  ← Back
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <nav className="bg-sporr-dark px-6 py-4 flex items-center justify-between">
         <Link href="/dashboard">
           <img src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg" alt="Sporr" className="h-20" />
@@ -187,13 +315,10 @@ export default function ClubPage() {
               <input className="input" value={form.name} onChange={e => update('name', e.target.value)} />
             </div>
 
-            {/* Sports represented */}
             <div>
               <label className="label">
                 Sports represented <span className="text-sporr-muted font-normal">(up to 4)</span>
               </label>
-
-              {/* Selected sports tags */}
               {form.sports.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   {form.sports.map(sport => (
@@ -204,8 +329,6 @@ export default function ClubPage() {
                   ))}
                 </div>
               )}
-
-              {/* Search dropdown */}
               {form.sports.length < 4 && !showOtherInput && (
                 <div className="relative">
                   <input
@@ -232,8 +355,6 @@ export default function ClubPage() {
                   )}
                 </div>
               )}
-
-              {/* Other sport free-text input */}
               {showOtherInput && (
                 <div className="flex gap-2 mt-1">
                   <input
@@ -248,7 +369,6 @@ export default function ClubPage() {
                   <button onClick={() => { setShowOtherInput(false); setOtherSportInput('') }} className="btn-secondary text-sm py-2 px-4">Cancel</button>
                 </div>
               )}
-
               {form.sports.length >= 4 && (
                 <p className="text-sporr-muted text-xs mt-1">Maximum of 4 sports selected. Remove one to add another.</p>
               )}
@@ -301,7 +421,7 @@ export default function ClubPage() {
         <div className="card mb-6">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Governing body</h2>
           <p className="text-sporr-muted text-sm mb-6">
-            If your club is affiliated with a sports federation or governing body — particularly relevant if sponsors distribute funds through a federation.
+            If your club is affiliated with a sports federation or governing body.
           </p>
           <div className="space-y-4">
             <div>
@@ -336,26 +456,48 @@ export default function ClubPage() {
             ))}
           </div>
         </div>
-{/* Upgrade plan */}
-        {org?.tier === 'free' && (
-          <div className="card mb-6 bg-sporr-dark border-0">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sporr-sage text-xs uppercase tracking-widest mb-1">You're on the free plan</p>
-                <h2 className="text-sporr-cream text-lg font-medium mb-2">Upgrade to Club</h2>
-                <p className="text-sporr-sage text-sm leading-relaxed">
-                  Get 10GB storage, unlimited sessions, and priority support — for Kr 490/month.
-                </p>
+
+        {/* Upgrade plan */}
+        {availablePlans.length > 0 && (
+          <div className="card mb-6">
+            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Upgrade your plan</h2>
+            <p className="text-sporr-muted text-sm mb-6">
+              You're on the <strong className="text-sporr-dark capitalize">{currentTier}</strong> plan. Upgrade to unlock more sponsors, storage, and features.
+            </p>
+            <div className="space-y-3">
+              {availablePlans.map(plan => (
+                <div key={plan.tier} className="flex items-center justify-between border border-sporr-sage-lt rounded-xl px-4 py-4 gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sporr-dark font-medium">{plan.label}</p>
+                      <span className="text-sporr-dark text-sm font-medium">— {plan.price}</span>
+                    </div>
+                    <p className="text-sporr-muted text-xs leading-relaxed">{plan.description}</p>
+                  </div>
+                  <button
+                    onClick={() => { setUpgradeTarget(plan); setUpgradeMethod(null) }}
+                    className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-mid transition-colors whitespace-nowrap flex-shrink-0"
+                  >
+                    Upgrade →
+                  </button>
+                </div>
+              ))}
+
+              {/* Higher tiers — contact only */}
+              <div className="border border-sporr-sage-lt rounded-xl px-4 py-4">
+                <p className="text-sporr-dark font-medium mb-0.5">Federation, Enterprise & CSR</p>
+                <p className="text-sporr-muted text-xs leading-relaxed mb-3">Kr 9,900–500,000/yr · Custom setup · Dedicated support</p>
+                <a
+                  href={`mailto:hello@sporr.io?subject=Enterprise enquiry&body=Hi Sporr team,%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0AI'm interested in a Federation, Enterprise, or CSR plan. Please get in touch.`}
+                  className="text-sporr-dark text-sm underline hover:text-sporr-mid transition-colors"
+                >
+                  Contact Sporr to discuss →
+                </a>
               </div>
             </div>
-            
-              href="mailto:hello@sporr.io?subject=Upgrade to Club plan"
-              className="mt-6 inline-block bg-sporr-cream text-sporr-dark text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-sporr-sage-lt transition-colors"
-            >
-              Request upgrade →
-            </a>
           </div>
         )}
+
         {/* Account actions */}
         <div className="card">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Account actions</h2>
