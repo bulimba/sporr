@@ -212,7 +212,7 @@ export default function Home() {
 
         {/* Hero */}
         <div className="mb-12">
-          <h1 className="text-sporr-cream text-4xl lg:text-5xl font-medium leading-tight mb-6 max-w-lg">
+          <h1 className="text-sporr-sage text-4xl lg:text-5xl font-medium leading-tight mb-6 max-w-lg">
             Proof of sponsorship performance made easy
           </h1>
           <p className="text-sporr-cream text-lg leading-relaxed max-w-md">
