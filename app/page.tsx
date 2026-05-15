@@ -272,7 +272,11 @@ export default function Home() {
 
         {/* Footer */}
         <div className="mt-auto pt-8 border-t border-sporr-mid">
-          <p className="text-sporr-muted text-xs">Sporr — proof of performance made easy · sporr.io</p>
+          <div className="flex items-center gap-4 flex-wrap">
+  <p className="text-sporr-muted text-xs">Sporr — proof of performance made easy · sporr.io</p>
+  <Link href="/terms" className="text-sporr-muted text-xs hover:text-sporr-cream transition-colors">Terms</Link>
+  <Link href="/privacy" className="text-sporr-muted text-xs hover:text-sporr-cream transition-colors">Privacy</Link>
+</div>
         </div>
 
       </div>
