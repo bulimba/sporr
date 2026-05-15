@@ -215,7 +215,7 @@ export default function Home() {
           <h1 className="text-sporr-cream text-4xl lg:text-5xl font-medium leading-tight mb-6 max-w-lg">
             Proof of sponsorship performance made easy
           </h1>
-          <p className="text-sporr-sage text-lg leading-relaxed max-w-md">
+          <p className="text-sporr-cream text-lg leading-relaxed max-w-md">
             Sporr gives sports clubs the tools to capture, document, and deliver proof of sponsorship — right from the sidelines. 
           </p>
         </div>
