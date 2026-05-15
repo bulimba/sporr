@@ -8,7 +8,7 @@ const steps = [
   {
     number: '01',
     title: 'Add your sponsors and contracts',
-    description: 'Enter the sponsors supporting your club and define exactly what you have agreed to deliver — signage, kit logos, social posts, PA announcements. Every obligation is logged against the sponsor it belongs to.',
+    description: 'Enter the sponsors supporting your club and define exactly what you have agreed to deliver — signage, branding, social posts, PA announcements. Every obligation is logged against the sponsor it belongs to.',
   },
   {
     number: '02',
@@ -18,7 +18,7 @@ const steps = [
   {
     number: '03',
     title: 'Capture proof in real time',
-    description: 'Photograph banners, kit, signage, and screens as they happen. Every photo is automatically timestamped and geo-tagged. Sponsors receive verified proof — not just a photo.',
+    description: 'Photograph banners, branding, signage, and screens as they happen. Every photo is automatically timestamped and geo-tagged. Sponsors receive verified proof — not just a photo.',
   },
   {
     number: '04',
@@ -216,7 +216,7 @@ export default function Home() {
             Proof of sponsorship performance made easy
           </h1>
           <p className="text-sporr-sage text-lg leading-relaxed max-w-md">
-            Sporr gives sports clubs the tools to capture, document, and deliver proof of sponsorship — automatically.
+            Sporr gives sports clubs the tools to capture, document, and deliver proof of sponsorship — right from the sidelines. 
           </p>
         </div>
 
