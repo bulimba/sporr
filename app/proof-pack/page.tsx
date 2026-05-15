@@ -36,17 +36,26 @@ type Obligation = {
   }[]
 }
 
+type MediaHit = {
+  id: string
+  media_type: string
+  outlet_name: string
+  reach: number
+  cpm_override: number | null
+  notes: string | null
+  hit_date: string | null
+}
+
 type SeasonMetrics = {
   total_fixtures: string
   total_attendance: string
   social_posts: string
   social_impressions: string
-  media_coverage: string
   thank_you_message: string
   club_contact_name: string
   renewal_package: string
   renewal_value_nok: string
-  cpm_rate: string
+  social_cpm_rate: string
 }
 
 const defaultMetrics: SeasonMetrics = {
@@ -54,55 +63,36 @@ const defaultMetrics: SeasonMetrics = {
   total_attendance: '',
   social_posts: '',
   social_impressions: '',
-  media_coverage: '',
   thank_you_message: '',
   club_contact_name: '',
   renewal_package: '',
   renewal_value_nok: '',
-  cpm_rate: '50',
+  social_cpm_rate: '25',
 }
+
+const MEDIA_TYPES = [
+  { value: 'newspaper', label: 'Newspaper / print', defaultCpm: 50 },
+  { value: 'tv', label: 'Television', defaultCpm: 200 },
+  { value: 'radio', label: 'Radio', defaultCpm: 35 },
+  { value: 'online', label: 'Online / digital news', defaultCpm: 40 },
+  { value: 'podcast', label: 'Podcast', defaultCpm: 80 },
+  { value: 'social_3p', label: 'Third-party social media', defaultCpm: 25 },
+  { value: 'event_signage', label: 'Event signage / outdoor', defaultCpm: 15 },
+  { value: 'other', label: 'Other', defaultCpm: 30 },
+]
 
 const nok = (val: number) => `Kr ${val.toLocaleString('nb-NO')}`
 
-// Diagonal watermark overlay — rendered on every print page for free tier
+const mediaTypeLabel = (type: string) => MEDIA_TYPES.find(m => m.value === type)?.label || type
+const mediaCpm = (hit: MediaHit) => hit.cpm_override ?? (MEDIA_TYPES.find(m => m.value === hit.media_type)?.defaultCpm || 30)
+const mediaHitValue = (hit: MediaHit) => Math.round(hit.reach * mediaCpm(hit) / 1000)
+
+// Diagonal watermark overlay for free tier
 const FreePlanWatermark = () => (
-  <div style={{
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    pointerEvents: 'none',
-    overflow: 'hidden',
-    zIndex: 10,
-  }}>
-    {/* Diagonal banner across the middle */}
-    <div style={{
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%) rotate(-35deg)',
-      background: 'rgba(19, 50, 42, 0.07)',
-      border: '3px solid rgba(19, 50, 42, 0.12)',
-      borderRadius: '4px',
-      padding: '12px 48px',
-      whiteSpace: 'nowrap',
-    }}>
-      <p style={{
-        color: 'rgba(19, 50, 42, 0.25)',
-        fontSize: '28px',
-        fontWeight: '800',
-        letterSpacing: '6px',
-        textTransform: 'uppercase',
-        margin: 0,
-        fontFamily: 'Helvetica, Arial, sans-serif',
-      }}>SPORR FREE PLAN</p>
-      <p style={{
-        color: 'rgba(19, 50, 42, 0.18)',
-        fontSize: '11px',
-        letterSpacing: '2px',
-        textTransform: 'uppercase',
-        margin: '4px 0 0',
-        fontFamily: 'Helvetica, Arial, sans-serif',
-        textAlign: 'center',
-      }}>sporr.io · upgrade to remove</p>
+  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', overflow: 'hidden', zIndex: 10 }}>
+    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-35deg)', background: 'rgba(19, 50, 42, 0.07)', border: '3px solid rgba(19, 50, 42, 0.12)', borderRadius: '4px', padding: '12px 48px', whiteSpace: 'nowrap' }}>
+      <p style={{ color: 'rgba(19, 50, 42, 0.25)', fontSize: '28px', fontWeight: '800', letterSpacing: '6px', textTransform: 'uppercase', margin: 0, fontFamily: 'Helvetica, Arial, sans-serif' }}>SPORR FREE PLAN</p>
+      <p style={{ color: 'rgba(19, 50, 42, 0.18)', fontSize: '11px', letterSpacing: '2px', textTransform: 'uppercase', margin: '4px 0 0', fontFamily: 'Helvetica, Arial, sans-serif', textAlign: 'center' }}>sporr.io · upgrade to remove</p>
     </div>
   </div>
 )
@@ -114,6 +104,7 @@ export default function ProofPackPage() {
   const [contracts, setContracts] = useState<Contract[]>([])
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
   const [obligations, setObligations] = useState<Obligation[]>([])
+  const [mediaHits, setMediaHits] = useState<MediaHit[]>([])
   const [orgId, setOrgId] = useState<string | null>(null)
   const [orgName, setOrgName] = useState('')
   const [orgTier, setOrgTier] = useState('free')
@@ -131,7 +122,6 @@ export default function ProofPackPage() {
     setMetrics(prev => ({ ...prev, [field]: value }))
 
   const isFree = orgTier === 'free'
-  // PDF download and email send share the same counter — 1 total on free
   const atLimit = isFree && proofPacksSent >= 1
 
   useEffect(() => {
@@ -165,20 +155,19 @@ export default function ProofPackPage() {
 
   async function loadObligations(contractId: string) {
     setLoadingObligations(true)
-    const { data } = await supabase
-      .from('obligations')
-      .select('id, description, proof_type, status, proofs(id, photo_url, external_link, note, captured_at, geo_lat, geo_lng)')
-      .eq('contract_id', contractId)
-    setObligations((data as unknown as Obligation[]) || [])
+    const [oblRes, mediaRes] = await Promise.all([
+      supabase.from('obligations').select('id, description, proof_type, status, proofs(id, photo_url, external_link, note, captured_at, geo_lat, geo_lng)').eq('contract_id', contractId),
+      supabase.from('media_hits').select('*').eq('contract_id', contractId).order('hit_date', { ascending: false }),
+    ])
+    setObligations((oblRes.data as unknown as Obligation[]) || [])
+    setMediaHits((mediaRes.data as MediaHit[]) || [])
     setLoadingObligations(false)
   }
 
   function handleSelectContract(contractId: string) {
     const contract = contracts.find(c => c.id === contractId) || null
     setSelectedContract(contract)
-    setSent(false)
-    setPublicLink(null)
-    setError(null)
+    setSent(false); setPublicLink(null); setError(null)
     setMetrics(prev => ({ ...defaultMetrics, club_contact_name: prev.club_contact_name }))
     setStep(1)
     if (contract) loadObligations(contractId)
@@ -186,21 +175,21 @@ export default function ProofPackPage() {
 
   async function incrementCounter() {
     if (!orgId) return
-    await supabase
-      .from('organisations')
-      .update({ proof_packs_sent: proofPacksSent + 1 })
-      .eq('id', orgId)
+    await supabase.from('organisations').update({ proof_packs_sent: proofPacksSent + 1 }).eq('id', orgId)
     setProofPacksSent(prev => prev + 1)
   }
 
   async function saveSnapshot(): Promise<string | null> {
     if (!selectedContract || !orgId) return null
     const totalAttendance = parseInt(metrics.total_attendance) || 0
-    const totalImpressions = parseInt(metrics.social_impressions) || 0
+    const totalSocialImpressions = parseInt(metrics.social_impressions) || 0
+    const socialCpm = parseInt(metrics.social_cpm_rate) || 25
     const contractValue = selectedContract.value_nok || 0
-    const cpmRate = parseInt(metrics.cpm_rate) || 50
-    const estimatedMediaValue = totalImpressions > 0 ? Math.round(totalImpressions * cpmRate / 1000) : 0
-    const roiMultiple = contractValue > 0 && estimatedMediaValue > 0 ? (estimatedMediaValue / contractValue).toFixed(1) : null
+    const socialMediaValue = totalSocialImpressions > 0 ? Math.round(totalSocialImpressions * socialCpm / 1000) : 0
+    const legacyMediaValue = mediaHits.reduce((sum, hit) => sum + mediaHitValue(hit), 0)
+    const totalMediaValue = socialMediaValue + legacyMediaValue
+    const totalReach = totalAttendance + totalSocialImpressions + mediaHits.reduce((sum, h) => sum + h.reach, 0)
+    const roiMultiple = contractValue > 0 && totalMediaValue > 0 ? (totalMediaValue / contractValue).toFixed(1) : null
     const costPerPerson = totalAttendance > 0 ? (contractValue / totalAttendance).toFixed(0) : null
     const delivered = obligations.filter(o => o.status === 'delivered')
     const deliveryScore = obligations.length > 0 ? Math.round((delivered.length / obligations.length) * 100) : 0
@@ -221,16 +210,16 @@ export default function ProofPackPage() {
       delivered_count: delivered.length,
       total_count: obligations.length,
       total_attendance: totalAttendance,
-      total_impressions: totalImpressions,
+      total_impressions: totalReach,
       contract_value_nok: contractValue,
-      estimated_media_value_nok: estimatedMediaValue,
+      estimated_media_value_nok: totalMediaValue,
       roi_multiple: roiMultiple,
       cost_per_person: costPerPerson,
       thank_you_message: metrics.thank_you_message || null,
       club_contact_name: metrics.club_contact_name || null,
       renewal_package: metrics.renewal_package || null,
       renewal_value_nok: metrics.renewal_value_nok ? parseInt(metrics.renewal_value_nok) : null,
-      media_coverage: metrics.media_coverage || null,
+      media_coverage: mediaHits.map(h => `${mediaTypeLabel(h.media_type)}: ${h.outlet_name}`).join(', ') || null,
       total_fixtures: metrics.total_fixtures || null,
       obligations: obligations.map(o => ({ description: o.description, proof_type: o.proof_type, status: o.status })),
       photo_urls: photoUrls,
@@ -249,16 +238,7 @@ export default function ProofPackPage() {
       const response = await fetch('/api/send-proof-pack', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractId: selectedContract.id,
-          sponsorEmail: selectedContract.sponsors.contact_email,
-          sponsorName: selectedContract.sponsors.company_name,
-          clubName: orgName,
-          contractTitle: selectedContract.title,
-          season: selectedContract.season,
-          narrative: metrics.thank_you_message,
-          obligations, metrics, packUrl,
-        }),
+        body: JSON.stringify({ contractId: selectedContract.id, sponsorEmail: selectedContract.sponsors.contact_email, sponsorName: selectedContract.sponsors.company_name, clubName: orgName, contractTitle: selectedContract.title, season: selectedContract.season, narrative: metrics.thank_you_message, obligations, metrics, packUrl }),
       })
       if (!response.ok) { const err = await response.json(); setError(err.error || 'Failed to send.'); setSending(false); return }
       await incrementCounter()
@@ -277,16 +257,21 @@ export default function ProofPackPage() {
     window.print()
   }
 
+  // Derived values
   const delivered = obligations.filter(o => o.status === 'delivered')
   const pending = obligations.filter(o => o.status === 'pending')
   const deliveryScore = obligations.length > 0 ? Math.round((delivered.length / obligations.length) * 100) : 0
   const totalAttendance = parseInt(metrics.total_attendance) || 0
-  const totalImpressions = parseInt(metrics.social_impressions) || 0
-  const totalReach = totalAttendance + totalImpressions
+  const totalSocialImpressions = parseInt(metrics.social_impressions) || 0
+  const socialCpm = parseInt(metrics.social_cpm_rate) || 25
   const contractValue = selectedContract?.value_nok || 0
   const costPerPerson = totalAttendance > 0 ? (contractValue / totalAttendance).toFixed(0) : null
-  const estimatedMediaValue = totalImpressions > 0 ? Math.round(totalImpressions * (parseInt(metrics.cpm_rate) || 50) / 1000) : 0
-  const roiMultiple = contractValue > 0 && estimatedMediaValue > 0 ? (estimatedMediaValue / contractValue).toFixed(1) : null
+  const socialMediaValue = totalSocialImpressions > 0 ? Math.round(totalSocialImpressions * socialCpm / 1000) : 0
+  const legacyMediaValue = mediaHits.reduce((sum, hit) => sum + mediaHitValue(hit), 0)
+  const totalEstimatedMediaValue = socialMediaValue + legacyMediaValue
+  const totalMediaReach = mediaHits.reduce((sum, h) => sum + h.reach, 0)
+  const totalReach = totalAttendance + totalSocialImpressions + totalMediaReach
+  const roiMultiple = contractValue > 0 && totalEstimatedMediaValue > 0 ? (totalEstimatedMediaValue / contractValue).toFixed(1) : null
   const renewalValue = parseInt(metrics.renewal_value_nok) || 0
   const renewalUplift = contractValue > 0 && renewalValue > 0 ? Math.round(((renewalValue - contractValue) / contractValue) * 100) : null
   const photoProofs = delivered.filter(o => o.proofs[0]?.photo_url)
@@ -380,28 +365,59 @@ export default function ProofPackPage() {
                       </div>
                     </div>
                   </div>
+
                   <div className="card">
-                    <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-6">Audience & exposure</h2>
+                    <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Social media reach</h2>
+                    <p className="text-sporr-muted text-sm mb-4">Your club's own social posts for this sponsor</p>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="label">Social media posts for sponsor</label>
+                        <label className="label">Posts for sponsor</label>
                         <input className="input" type="number" placeholder="24" value={metrics.social_posts} onChange={e => updateMetric('social_posts', e.target.value)} />
                       </div>
                       <div>
-                        <label className="label">Estimated social impressions</label>
+                        <label className="label">Estimated impressions</label>
                         <input className="input" type="number" placeholder="45 000" value={metrics.social_impressions} onChange={e => updateMetric('social_impressions', e.target.value)} />
                       </div>
-                      <div className="col-span-2">
-                        <label className="label">Media coverage (optional)</label>
-                        <input className="input" placeholder="Local newspaper, club website, regional TV..." value={metrics.media_coverage} onChange={e => updateMetric('media_coverage', e.target.value)} />
-                      </div>
                       <div>
-                        <label className="label">CPM rate for value calculation (NOK)</label>
-                        <input className="input" type="number" placeholder="50" value={metrics.cpm_rate} onChange={e => updateMetric('cpm_rate', e.target.value)} />
-                        <p className="text-sporr-muted text-xs mt-1">Used to calculate estimated media value</p>
+                        <label className="label">Social CPM rate (NOK)</label>
+                        <input className="input" type="number" placeholder="25" value={metrics.social_cpm_rate} onChange={e => updateMetric('social_cpm_rate', e.target.value)} />
+                        <p className="text-sporr-muted text-xs mt-1">
+                          Estimated social value: {totalSocialImpressions > 0 ? nok(socialMediaValue) : '—'}
+                        </p>
                       </div>
                     </div>
                   </div>
+
+                  {/* Media hits summary */}
+                  <div className="card">
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest">Legacy & earned media</h2>
+                      <Link href="/dashboard/contracts" className="text-sporr-muted text-xs hover:text-sporr-dark transition-colors">Log hits in Contracts →</Link>
+                    </div>
+                    {mediaHits.length === 0 ? (
+                      <div className="bg-sporr-light rounded-xl p-4">
+                        <p className="text-sporr-muted text-sm mb-1">No media hits logged for this contract yet.</p>
+                        <p className="text-sporr-muted text-xs">Go to Contracts to log TV, newspaper, radio, and online coverage as it happens. It will appear here automatically.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {mediaHits.map(hit => (
+                          <div key={hit.id} className="flex items-center justify-between bg-sporr-light rounded-lg px-4 py-3">
+                            <div>
+                              <p className="text-sporr-dark text-sm font-medium">{hit.outlet_name}</p>
+                              <p className="text-sporr-muted text-xs mt-0.5">{mediaTypeLabel(hit.media_type)} · {hit.reach.toLocaleString('nb-NO')} reach</p>
+                            </div>
+                            <span className="text-sporr-dark text-sm font-medium ml-4">{nok(mediaHitValue(hit))}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between items-center px-4 py-2 border-t border-sporr-sage-lt">
+                          <span className="text-sporr-muted text-xs uppercase tracking-widest">Legacy media value</span>
+                          <span className="text-sporr-dark font-medium text-sm">{nok(legacyMediaValue)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="card">
                     <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Delivery summary</h2>
                     <div className="grid grid-cols-3 gap-3 mb-4">
@@ -422,6 +438,29 @@ export default function ProofPackPage() {
                       <div className="h-full bg-sporr-dark rounded-full" style={{ width: `${deliveryScore}%` }} />
                     </div>
                   </div>
+
+                  {/* ROI preview */}
+                  {totalEstimatedMediaValue > 0 && (
+                    <div className="card bg-sporr-dark border-0">
+                      <h2 className="text-sporr-sage text-xs uppercase tracking-widest mb-3">Total estimated media value</h2>
+                      <div className="space-y-2 mb-4">
+                        {socialMediaValue > 0 && (
+                          <div className="flex justify-between"><span className="text-sporr-sage text-sm">Social media</span><span className="text-sporr-cream text-sm font-medium">{nok(socialMediaValue)}</span></div>
+                        )}
+                        {legacyMediaValue > 0 && (
+                          <div className="flex justify-between"><span className="text-sporr-sage text-sm">Legacy & earned media</span><span className="text-sporr-cream text-sm font-medium">{nok(legacyMediaValue)}</span></div>
+                        )}
+                        <div className="flex justify-between border-t border-sporr-mid pt-2">
+                          <span className="text-sporr-cream text-sm font-medium">Total</span>
+                          <span className="text-sporr-cream text-sm font-medium">{nok(totalEstimatedMediaValue)}</span>
+                        </div>
+                      </div>
+                      {roiMultiple && contractValue > 0 && (
+                        <p className="text-sporr-sage text-xs">Against an investment of {nok(contractValue)}, this represents an estimated <strong className="text-sporr-cream">{roiMultiple}× ROI</strong></p>
+                      )}
+                    </div>
+                  )}
+
                   <button onClick={() => setStep(2)} className="btn-primary w-full">Continue →</button>
                 </div>
               )}
@@ -478,7 +517,10 @@ export default function ProofPackPage() {
                         ['Season', selectedContract.season],
                         ['Delivery score', `${deliveryScore}% (${delivered.length} of ${obligations.length})`],
                         ['Total attendance', totalAttendance > 0 ? totalAttendance.toLocaleString('nb-NO') : '—'],
-                        ['Estimated reach', totalReach > 0 ? totalReach.toLocaleString('nb-NO') : '—'],
+                        ['Social impressions', totalSocialImpressions > 0 ? totalSocialImpressions.toLocaleString('nb-NO') : '—'],
+                        ['Media hits', mediaHits.length > 0 ? `${mediaHits.length} (${nok(legacyMediaValue)} value)` : '—'],
+                        ['Total media value', totalEstimatedMediaValue > 0 ? nok(totalEstimatedMediaValue) : '—'],
+                        ['ROI estimate', roiMultiple ? `${roiMultiple}×` : '—'],
                         ['Contract value', contractValue > 0 ? nok(contractValue) : '—'],
                         ['Proposed renewal', renewalValue > 0 ? nok(renewalValue) : '—'],
                       ].map(([label, value]) => (
@@ -507,9 +549,7 @@ export default function ProofPackPage() {
                         <div className="bg-sporr-dark rounded-xl p-4 mt-2">
                           <p className="text-sporr-cream text-sm font-medium mb-1">You've used your free Proof Pack</p>
                           <p className="text-sporr-sage text-xs mb-3">Upgrade to Club to send and download unlimited Proof Packs without a watermark — Kr 490/mnd.</p>
-                          <Link href="/dashboard/club" className="inline-block bg-sporr-cream text-sporr-dark text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors">
-                            Upgrade now →
-                          </Link>
+                          <Link href="/dashboard/club" className="inline-block bg-sporr-cream text-sporr-dark text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors">Upgrade now →</Link>
                         </div>
                       )}
                     </div>
@@ -519,28 +559,14 @@ export default function ProofPackPage() {
                         <div className="bg-sporr-dark rounded-2xl p-6">
                           <p className="text-sporr-sage text-xs uppercase tracking-widest mb-1">Free plan limit reached</p>
                           <p className="text-sporr-cream font-medium mb-1">You've used your 1 free Proof Pack</p>
-                          <p className="text-sporr-sage text-sm leading-relaxed mb-4">
-                            Upgrade to Club to send and download unlimited Proof Packs — without a watermark.
-                          </p>
-                          <Link href="/dashboard/club" className="inline-block bg-sporr-cream text-sporr-dark text-sm font-medium px-4 py-3 rounded-lg hover:bg-sporr-sage-lt transition-colors">
-                            Upgrade to Club — Kr 490/mnd →
-                          </Link>
+                          <p className="text-sporr-sage text-sm leading-relaxed mb-4">Upgrade to Club to send and download unlimited Proof Packs — without a watermark.</p>
+                          <Link href="/dashboard/club" className="inline-block bg-sporr-cream text-sporr-dark text-sm font-medium px-4 py-3 rounded-lg hover:bg-sporr-sage-lt transition-colors">Upgrade to Club — Kr 490/mnd →</Link>
                         </div>
                       )}
                       <div className="flex gap-3">
                         <button onClick={() => setStep(2)} className="btn-secondary flex-1">← Back</button>
-                        <button
-                          onClick={handleDownloadPDF}
-                          disabled={atLimit}
-                          className="btn-secondary flex-1 disabled:opacity-50"
-                        >
-                          {atLimit ? 'Upgrade to download' : 'Download PDF'}
-                        </button>
-                        <button
-                          onClick={handleSendEmail}
-                          disabled={sending || !selectedContract.sponsors?.contact_email || atLimit}
-                          className="btn-primary flex-1 disabled:opacity-50"
-                        >
+                        <button onClick={handleDownloadPDF} disabled={atLimit} className="btn-secondary flex-1 disabled:opacity-50">{atLimit ? 'Upgrade to download' : 'Download PDF'}</button>
+                        <button onClick={handleSendEmail} disabled={sending || !selectedContract.sponsors?.contact_email || atLimit} className="btn-primary flex-1 disabled:opacity-50">
                           {sending ? 'Sending...' : atLimit ? 'Upgrade to send' : 'Send to sponsor'}
                         </button>
                       </div>
@@ -557,7 +583,7 @@ export default function ProofPackPage() {
       {selectedContract && (
         <div className="print-only" style={{ fontFamily: 'Helvetica, Arial, sans-serif', color: '#111814', background: 'white', width: '210mm', margin: '0 auto' }}>
 
-          {/* COVER PAGE */}
+          {/* COVER */}
           <div style={{ background: '#13322A', width: '210mm', minHeight: '297mm', padding: '48px', pageBreakAfter: 'always', boxSizing: 'border-box', position: 'relative' }}>
             {isFree && <FreePlanWatermark />}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1D4A38', paddingBottom: '24px', marginBottom: '48px' }}>
@@ -575,7 +601,7 @@ export default function ProofPackPage() {
               <p style={{ color: 'white', fontSize: '56px', fontWeight: '700', margin: '0 0 6px', lineHeight: 1 }}>{deliveryScore}%</p>
               <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', textTransform: 'uppercase', margin: 0 }}>Delivery score</p>
             </div>
-            <div style={{ marginBottom: '48px' }}>
+            <div style={{ marginBottom: '32px' }}>
               <div style={{ borderBottom: '1px solid #1D4A38', paddingBottom: '12px', marginBottom: '12px' }}>
                 <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 4px' }}>Obligations delivered</p>
                 <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{delivered.length} of {obligations.length}</p>
@@ -586,10 +612,16 @@ export default function ProofPackPage() {
                   <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{totalAttendance.toLocaleString('nb-NO')}</p>
                 </div>
               )}
-              {totalReach > 0 && (
+              {totalEstimatedMediaValue > 0 && (
                 <div style={{ borderBottom: '1px solid #1D4A38', paddingBottom: '12px', marginBottom: '12px' }}>
-                  <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 4px' }}>Total estimated reach</p>
-                  <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{totalReach.toLocaleString('nb-NO')}</p>
+                  <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 4px' }}>Total estimated media value</p>
+                  <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{nok(totalEstimatedMediaValue)}</p>
+                </div>
+              )}
+              {roiMultiple && (
+                <div style={{ borderBottom: '1px solid #1D4A38', paddingBottom: '12px', marginBottom: '12px' }}>
+                  <p style={{ color: '#808C70', fontSize: '11px', textTransform: 'uppercase', margin: '0 0 4px' }}>Estimated ROI</p>
+                  <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{roiMultiple}×</p>
                 </div>
               )}
             </div>
@@ -605,7 +637,7 @@ export default function ProofPackPage() {
             </div>
           </div>
 
-          {/* PAGE 2 */}
+          {/* PAGE 2: THANK YOU + SEASON */}
           <div style={{ padding: '48px', pageBreakAfter: 'always', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
             {isFree && <FreePlanWatermark />}
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
@@ -648,74 +680,109 @@ export default function ProofPackPage() {
             </div>
           </div>
 
-          {/* PAGE 3: AUDIENCE & ROI */}
-          {(totalAttendance > 0 || totalImpressions > 0 || metrics.media_coverage) && (
-            <div style={{ padding: '48px', pageBreakAfter: 'always', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
-              {isFree && <FreePlanWatermark />}
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
-                <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
-                <span style={{ color: '#808C70', fontSize: '10px' }}>{isFree ? 'SPORR FREE PLAN' : 'Sporr — proof of performance made easy'}</span>
-                <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
-              </div>
-              <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Audience & exposure</h2>
-              <p style={{ color: '#5C6B63', fontSize: '12px', margin: '0 0 28px' }}>Your brand reached real people across {selectedContract.season}</p>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
-                {totalAttendance > 0 && (
-                  <div style={{ flex: 1, border: '2px solid #EEF0E8', borderRadius: '8px', padding: '20px', textAlign: 'center' }}>
-                    <p style={{ color: '#13322A', fontSize: '36px', fontWeight: '700', margin: 0, lineHeight: 1 }}>{totalAttendance.toLocaleString('nb-NO')}</p>
-                    <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '8px 0 0' }}>Live attendance</p>
-                    {metrics.total_fixtures && <p style={{ color: '#808C70', fontSize: '10px', margin: '4px 0 0' }}>across {metrics.total_fixtures} fixtures</p>}
-                  </div>
-                )}
-                {totalImpressions > 0 && (
-                  <div style={{ flex: 1, border: '2px solid #EEF0E8', borderRadius: '8px', padding: '20px', textAlign: 'center' }}>
-                    <p style={{ color: '#13322A', fontSize: '36px', fontWeight: '700', margin: 0, lineHeight: 1 }}>{totalImpressions.toLocaleString('nb-NO')}</p>
-                    <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '8px 0 0' }}>Social impressions</p>
-                    {metrics.social_posts && <p style={{ color: '#808C70', fontSize: '10px', margin: '4px 0 0' }}>from {metrics.social_posts} posts</p>}
-                  </div>
-                )}
-                {totalReach > 0 && (
-                  <div style={{ flex: 1, background: '#13322A', borderRadius: '8px', padding: '20px', textAlign: 'center' }}>
-                    <p style={{ color: '#F5F1E6', fontSize: '36px', fontWeight: '700', margin: 0, lineHeight: 1 }}>{totalReach.toLocaleString('nb-NO')}</p>
-                    <p style={{ color: '#808C70', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '8px 0 0' }}>Total estimated reach</p>
-                  </div>
-                )}
-              </div>
-              <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>ROI & performance metrics</h2>
-              <p style={{ color: '#5C6B63', fontSize: '12px', margin: '0 0 24px' }}>The commercial value your investment generated</p>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
-                {contractValue > 0 && (
-                  <div style={{ flex: 1, background: '#F7F5EF', borderRadius: '8px', padding: '20px' }}>
-                    <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px' }}>Investment</p>
-                    <p style={{ color: '#13322A', fontSize: '24px', fontWeight: '700', margin: 0 }}>{nok(contractValue)}</p>
-                  </div>
-                )}
-                {costPerPerson && (
-                  <div style={{ flex: 1, background: '#F7F5EF', borderRadius: '8px', padding: '20px' }}>
-                    <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px' }}>Cost per audience member</p>
-                    <p style={{ color: '#13322A', fontSize: '24px', fontWeight: '700', margin: 0 }}>Kr {parseInt(costPerPerson).toLocaleString('nb-NO')}</p>
-                  </div>
-                )}
-                {estimatedMediaValue > 0 && (
-                  <div style={{ flex: 1, background: '#13322A', borderRadius: '8px', padding: '20px' }}>
-                    <p style={{ color: '#808C70', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 8px' }}>Estimated media value</p>
-                    <p style={{ color: '#F5F1E6', fontSize: '24px', fontWeight: '700', margin: 0 }}>{nok(estimatedMediaValue)}</p>
-                    {roiMultiple && <p style={{ color: '#808C70', fontSize: '10px', margin: '4px 0 0' }}>{roiMultiple}× return on investment</p>}
-                  </div>
-                )}
-              </div>
-              {metrics.media_coverage && (
-                <div style={{ background: '#EEF0E8', borderRadius: '8px', padding: '20px' }}>
-                  <p style={{ color: '#13322A', fontSize: '10px', letterSpacing: '1px', textTransform: 'uppercase', fontWeight: '700', margin: '0 0 8px' }}>Media coverage</p>
-                  <p style={{ color: '#2D3830', fontSize: '13px', margin: 0, lineHeight: 1.5 }}>{metrics.media_coverage}</p>
+          {/* PAGE 3: AUDIENCE & ROI — now includes all media channels */}
+          <div style={{ padding: '48px', pageBreakAfter: 'always', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
+            {isFree && <FreePlanWatermark />}
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #13322A', paddingBottom: '14px', marginBottom: '40px' }}>
+              <span style={{ color: '#13322A', fontSize: '10px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: '700' }}>{orgName}</span>
+              <span style={{ color: '#808C70', fontSize: '10px' }}>{isFree ? 'SPORR FREE PLAN' : 'Sporr — proof of performance made easy'}</span>
+              <span style={{ color: '#5C6B63', fontSize: '10px' }}>{selectedContract.sponsors?.company_name}</span>
+            </div>
+            <h2 style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: '0 0 8px' }}>Audience & exposure</h2>
+            <p style={{ color: '#5C6B63', fontSize: '12px', margin: '0 0 24px' }}>Your brand reached real people across {selectedContract.season}</p>
+
+            {/* Attendance + social */}
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '24px' }}>
+              {totalAttendance > 0 && (
+                <div style={{ flex: 1, border: '2px solid #EEF0E8', borderRadius: '8px', padding: '20px', textAlign: 'center' }}>
+                  <p style={{ color: '#13322A', fontSize: '36px', fontWeight: '700', margin: 0, lineHeight: 1 }}>{totalAttendance.toLocaleString('nb-NO')}</p>
+                  <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '8px 0 0' }}>Live attendance</p>
+                  {metrics.total_fixtures && <p style={{ color: '#808C70', fontSize: '10px', margin: '4px 0 0' }}>across {metrics.total_fixtures} fixtures</p>}
                 </div>
               )}
-              <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
-                <span style={{ color: '#5C6B63', fontSize: '9px' }}>{FooterText}</span>
-                <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 3</span>
-              </div>
+              {totalSocialImpressions > 0 && (
+                <div style={{ flex: 1, border: '2px solid #EEF0E8', borderRadius: '8px', padding: '20px', textAlign: 'center' }}>
+                  <p style={{ color: '#13322A', fontSize: '36px', fontWeight: '700', margin: 0, lineHeight: 1 }}>{totalSocialImpressions.toLocaleString('nb-NO')}</p>
+                  <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '8px 0 0' }}>Social impressions</p>
+                  {metrics.social_posts && <p style={{ color: '#808C70', fontSize: '10px', margin: '4px 0 0' }}>from {metrics.social_posts} posts</p>}
+                </div>
+              )}
+              {totalReach > 0 && (
+                <div style={{ flex: 1, background: '#13322A', borderRadius: '8px', padding: '20px', textAlign: 'center' }}>
+                  <p style={{ color: '#F5F1E6', fontSize: '36px', fontWeight: '700', margin: 0, lineHeight: 1 }}>{totalReach.toLocaleString('nb-NO')}</p>
+                  <p style={{ color: '#808C70', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '8px 0 0' }}>Total estimated reach</p>
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Legacy media hits table */}
+            {mediaHits.length > 0 && (
+              <div style={{ marginBottom: '24px' }}>
+                <p style={{ color: '#13322A', fontSize: '13px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 12px' }}>Legacy & earned media</p>
+                <div style={{ border: '1px solid #EEF0E8', borderRadius: '8px', overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', background: '#EEF0E8', padding: '8px 16px' }}>
+                    <span style={{ color: '#5C6B63', fontSize: '9px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', flex: 1 }}>Outlet</span>
+                    <span style={{ color: '#5C6B63', fontSize: '9px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', width: '100px' }}>Type</span>
+                    <span style={{ color: '#5C6B63', fontSize: '9px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', width: '80px', textAlign: 'right' }}>Reach</span>
+                    <span style={{ color: '#5C6B63', fontSize: '9px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', width: '80px', textAlign: 'right' }}>Est. value</span>
+                  </div>
+                  {mediaHits.map((hit, i) => (
+                    <div key={hit.id} style={{ display: 'flex', alignItems: 'center', padding: '10px 16px', background: i % 2 === 0 ? 'white' : '#F7F5EF', borderTop: '1px solid #EEF0E8' }}>
+                      <span style={{ color: '#13322A', fontSize: '11px', fontWeight: '600', flex: 1 }}>{hit.outlet_name}{hit.notes ? <span style={{ color: '#808C70', fontWeight: '400' }}> — {hit.notes}</span> : ''}</span>
+                      <span style={{ color: '#808C70', fontSize: '10px', width: '100px' }}>{mediaTypeLabel(hit.media_type)}</span>
+                      <span style={{ color: '#13322A', fontSize: '11px', width: '80px', textAlign: 'right' }}>{hit.reach.toLocaleString('nb-NO')}</span>
+                      <span style={{ color: '#13322A', fontSize: '11px', fontWeight: '600', width: '80px', textAlign: 'right' }}>{nok(mediaHitValue(hit))}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: 'flex', padding: '10px 16px', background: '#13322A', borderTop: '1px solid #1D4A38' }}>
+                    <span style={{ color: '#808C70', fontSize: '10px', flex: 1 }}>Legacy media total</span>
+                    <span style={{ color: '#F5F1E6', fontSize: '11px', fontWeight: '700' }}>{nok(legacyMediaValue)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ROI metrics */}
+            <h2 style={{ color: '#13322A', fontSize: '16px', fontWeight: '700', margin: '0 0 16px' }}>ROI & performance metrics</h2>
+            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+              {contractValue > 0 && (
+                <div style={{ flex: 1, background: '#F7F5EF', borderRadius: '8px', padding: '16px' }}>
+                  <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 6px' }}>Investment</p>
+                  <p style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: 0 }}>{nok(contractValue)}</p>
+                </div>
+              )}
+              {socialMediaValue > 0 && (
+                <div style={{ flex: 1, background: '#F7F5EF', borderRadius: '8px', padding: '16px' }}>
+                  <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 6px' }}>Social media value</p>
+                  <p style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: 0 }}>{nok(socialMediaValue)}</p>
+                </div>
+              )}
+              {legacyMediaValue > 0 && (
+                <div style={{ flex: 1, background: '#F7F5EF', borderRadius: '8px', padding: '16px' }}>
+                  <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 6px' }}>Legacy media value</p>
+                  <p style={{ color: '#13322A', fontSize: '20px', fontWeight: '700', margin: 0 }}>{nok(legacyMediaValue)}</p>
+                </div>
+              )}
+              {totalEstimatedMediaValue > 0 && (
+                <div style={{ flex: 1, background: '#13322A', borderRadius: '8px', padding: '16px' }}>
+                  <p style={{ color: '#808C70', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '0 0 6px' }}>Total media value</p>
+                  <p style={{ color: '#F5F1E6', fontSize: '20px', fontWeight: '700', margin: 0 }}>{nok(totalEstimatedMediaValue)}</p>
+                  {roiMultiple && <p style={{ color: '#808C70', fontSize: '10px', margin: '4px 0 0' }}>{roiMultiple}× ROI</p>}
+                </div>
+              )}
+            </div>
+            {costPerPerson && (
+              <div style={{ background: '#EEF0E8', borderRadius: '8px', padding: '14px 16px', marginBottom: '16px' }}>
+                <p style={{ color: '#5C6B63', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 4px' }}>Cost per audience member (live attendance)</p>
+                <p style={{ color: '#13322A', fontSize: '18px', fontWeight: '700', margin: 0 }}>Kr {parseInt(costPerPerson).toLocaleString('nb-NO')}</p>
+              </div>
+            )}
+            <p style={{ color: '#808C70', fontSize: '9px', margin: 0, fontStyle: 'italic' }}>Media values are indicative estimates based on international CPM benchmarks. Actual value may vary by market and outlet.</p>
+            <div style={{ position: 'absolute', bottom: '24px', left: '48px', right: '48px', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #EEF0E8', paddingTop: '12px' }}>
+              <span style={{ color: '#5C6B63', fontSize: '9px' }}>{FooterText}</span>
+              <span style={{ color: '#808C70', fontSize: '9px', fontWeight: '700' }}>Page 3</span>
+            </div>
+          </div>
 
           {/* PAGE 4: DELIVERABLES */}
           <div style={{ padding: '48px', pageBreakAfter: photoProofs.length > 0 ? 'always' : 'avoid', position: 'relative', boxSizing: 'border-box', minHeight: '297mm' }}>
@@ -836,7 +903,7 @@ export default function ProofPackPage() {
                     <p style={{ color: '#5C6B63', fontSize: '9px', letterSpacing: '1px', textTransform: 'uppercase', margin: '4px 0 0' }}>ROI</p>
                   </div>
                   <p style={{ color: '#2D3830', fontSize: '13px', lineHeight: '1.6', margin: 0, flex: 1 }}>
-                    Based on an estimated media value of {nok(estimatedMediaValue)} against an investment of {nok(contractValue)}, your sponsorship of {orgName} delivered an estimated {roiMultiple}× return on investment this season.
+                    Based on a total estimated media value of {nok(totalEstimatedMediaValue)} — comprising social media, legacy media, and earned coverage — against an investment of {nok(contractValue)}, your sponsorship of {orgName} delivered an estimated {roiMultiple}× return this season.
                   </p>
                 </div>
               )}
