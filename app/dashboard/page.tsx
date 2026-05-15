@@ -8,6 +8,18 @@ import Link from 'next/link'
 type Organisation = { id: string; name: string; tier: string; sport?: string }
 type Stats = { sponsors: number; sessions: number; obligations_pending: number }
 
+const STORAGE_LIMITS: Record<string, number> = {
+  free: 100,        // MB
+  club: 10240,      // 10GB
+  pro: 51200,       // 50GB
+  agency: 102400,   // 100GB
+}
+
+function formatStorage(mb: number): string {
+  if (mb < 1024) return `${mb} MB`
+  return `${(mb / 1024).toFixed(1)} GB`
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
@@ -16,7 +28,7 @@ export default function DashboardPage() {
   const [activeSession, setActiveSession] = useState<{ id: string; token: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [nextDueDate, setNextDueDate] = useState<{ date: string; sponsor: string } | null>(null)
-  const [proofPacksSent, setProofPacksSent] = useState(0)
+  const [photoCount, setPhotoCount] = useState(0)
   const currentSeason = '2025/26'
 
   useEffect(() => {
@@ -30,12 +42,13 @@ export default function DashboardPage() {
       const { data: orgData } = await supabase.from('organisations').select('id, name, tier').eq('id', userData.org_id).single()
       setOrg(orgData)
 
-      const [sponsorsRes, sessionsRes, obligationsRes, activeSessionRes, contractsRes] = await Promise.all([
+      const [sponsorsRes, sessionsRes, obligationsRes, activeSessionRes, contractsRes, photosRes] = await Promise.all([
         supabase.from('sponsors').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
         supabase.from('audit_sessions').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
         supabase.from('obligations').select('id', { count: 'exact' }).eq('org_id', userData.org_id).eq('status', 'pending'),
         supabase.from('audit_sessions').select('id, session_token').eq('org_id', userData.org_id).eq('status', 'active').order('created_at', { ascending: false }).limit(1),
         supabase.from('contracts').select('end_date, sponsors(company_name)').eq('org_id', userData.org_id).eq('status', 'active').not('end_date', 'is', null).order('end_date', { ascending: true }).limit(1),
+        supabase.from('proofs').select('id', { count: 'exact' }).eq('org_id', userData.org_id).not('photo_url', 'is', null),
       ])
 
       setStats({
@@ -43,6 +56,7 @@ export default function DashboardPage() {
         sessions: sessionsRes.count || 0,
         obligations_pending: obligationsRes.count || 0,
       })
+      setPhotoCount(photosRes.count || 0)
 
       if (activeSessionRes.data && activeSessionRes.data.length > 0) {
         setActiveSession({ id: activeSessionRes.data[0].id, token: activeSessionRes.data[0].session_token })
@@ -70,6 +84,12 @@ export default function DashboardPage() {
   const isFree = org?.tier === 'free'
   const showUpgradeBanner = isFree && stats.sponsors >= 1
 
+  // Storage estimate: assume avg 1MB per photo (conservative, limit is 2MB)
+  const estimatedUsageMB = photoCount * 1
+  const tierLimit = STORAGE_LIMITS[org?.tier || 'free'] || 100
+  const usagePct = Math.min(Math.round((estimatedUsageMB / tierLimit) * 100), 100)
+  const nearLimit = usagePct >= 80
+
   if (loading) {
     return (
       <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
@@ -90,7 +110,7 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      {/* Approaching limit banner — free tier with 1+ sponsor */}
+      {/* Approaching limit banner */}
       {showUpgradeBanner && (
         <div className="bg-sporr-mid px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
           <p className="text-sporr-cream text-sm">
@@ -100,6 +120,22 @@ export default function DashboardPage() {
           <Link
             href="/dashboard/club"
             className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0"
+          >
+            Upgrade plan →
+          </Link>
+        </div>
+      )}
+
+      {/* Storage warning banner — only when near limit */}
+      {nearLimit && (
+        <div className={`px-6 py-3 flex items-center justify-between gap-4 flex-wrap ${usagePct >= 100 ? 'bg-red-700' : 'bg-amber-600'}`}>
+          <p className="text-white text-sm">
+            <strong>Storage {usagePct >= 100 ? 'full' : 'nearly full'}:</strong> {formatStorage(estimatedUsageMB)} of {formatStorage(tierLimit)} used.
+            {usagePct >= 100 ? ' Photo uploads are disabled until you upgrade.' : ' Upgrade to avoid disruption.'}
+          </p>
+          <Link
+            href="/dashboard/club"
+            className="bg-white text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-cream transition-colors whitespace-nowrap flex-shrink-0"
           >
             Upgrade plan →
           </Link>
@@ -117,6 +153,10 @@ export default function DashboardPage() {
             <span><strong className="text-sporr-dark">{stats.sessions}</strong> session{stats.sessions !== 1 ? 's' : ''} logged</span>
             <span className="text-sporr-sage-lt">·</span>
             <span><strong className="text-sporr-dark">{stats.sponsors}</strong> active sponsor{stats.sponsors !== 1 ? 's' : ''}</span>
+            <span className="text-sporr-sage-lt">·</span>
+            <span className={nearLimit ? 'text-amber-600 font-medium' : ''}>
+              {formatStorage(estimatedUsageMB)} of {formatStorage(tierLimit)} storage
+            </span>
           </div>
         </div>
 
