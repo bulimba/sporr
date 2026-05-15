@@ -336,7 +336,26 @@ export default function ClubPage() {
             ))}
           </div>
         </div>
-
+{/* Upgrade plan */}
+        {org?.tier === 'free' && (
+          <div className="card mb-6 bg-sporr-dark border-0">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sporr-sage text-xs uppercase tracking-widest mb-1">You're on the free plan</p>
+                <h2 className="text-sporr-cream text-lg font-medium mb-2">Upgrade to Club</h2>
+                <p className="text-sporr-sage text-sm leading-relaxed">
+                  Get 10GB storage, unlimited sessions, and priority support — for Kr 490/month.
+                </p>
+              </div>
+            </div>
+            
+              href="mailto:hello@sporr.io?subject=Upgrade to Club plan"
+              className="mt-6 inline-block bg-sporr-cream text-sporr-dark text-sm font-medium px-5 py-2.5 rounded-lg hover:bg-sporr-sage-lt transition-colors"
+            >
+              Request upgrade →
+            </a>
+          </div>
+        )}
         {/* Account actions */}
         <div className="card">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Account actions</h2>
