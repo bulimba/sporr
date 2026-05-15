@@ -228,7 +228,7 @@ export default function Home() {
           >
             <span className="text-sporr-cream text-sm uppercase tracking-widest font-medium">For sponsors</span>
             <span className="text-sporr-mid">·</span>
-            <span className="text-sporr-sage text-lg font-medium group-hover:text-sporr-mid transition-colors">
+            <span className="text-sporr-cream text-lg font-medium group-hover:text-sporr-mid transition-colors">
               Discover your next sports partnership →
             </span>
           </Link>
