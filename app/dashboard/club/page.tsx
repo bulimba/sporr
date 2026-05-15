@@ -21,7 +21,7 @@ const PLANS = [
   {
     tier: 'club',
     label: 'Club',
-    price: '490kr/month',
+    price: '490NOK/mo',
     description: 'Up to 5 sponsors · All tiers · 10GB storage · Unlimited Proof Packs',
     selfServe: true,
     upgradableFrom: ['free'],
@@ -29,7 +29,7 @@ const PLANS = [
   {
     tier: 'pro',
     label: 'Pro',
-    price: '1 490kr/month',
+    price: '1490NOK/mo',
     description: 'Up to 20 sponsors · 50GB storage · Priority support',
     selfServe: true,
     upgradableFrom: ['free', 'club'],
@@ -37,7 +37,7 @@ const PLANS = [
   {
     tier: 'agency',
     label: 'Agency',
-    price: '4 900kr/month',
+    price: '4900NOK/mo',
     description: '5–50 clubs · 100GB storage · Dedicated account manager',
     selfServe: false,
     upgradableFrom: ['free', 'club', 'pro'],
@@ -478,7 +478,7 @@ export default function ClubPage() {
               ))}
               <div className="border border-sporr-sage-lt rounded-xl px-4 py-4">
                 <p className="text-sporr-dark font-medium mb-0.5">Federation, Enterprise & CSR</p>
-                <p className="text-sporr-muted text-xs leading-relaxed mb-3">9 900–500 000kr/year · Custom setup · Dedicated support</p>
+                <p className="text-sporr-muted text-xs leading-relaxed mb-3">9900–500000NOK/yr · Custom setup · Dedicated support</p>
                 <a href={`mailto:hello@sporr.io?subject=Enterprise enquiry&body=Hi Sporr team,%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0AI'm interested in a Federation, Enterprise, or CSR plan. Please get in touch.`}
                   className="text-sporr-dark text-sm underline hover:text-sporr-mid transition-colors">
                   Contact Sporr to discuss →
