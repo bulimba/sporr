@@ -210,11 +210,17 @@ export default function SignupPage() {
           )}
         </div>
         <p className="text-center text-sporr-muted text-sm mt-6">
-          Already have an account?{' '}
-          <Link href="/login" className="text-sporr-sage hover:text-sporr-cream transition-colors">
-            Sign in
-          </Link>
-        </p>
+  Already have an account?{' '}
+  <Link href="/" className="text-sporr-sage hover:text-sporr-cream transition-colors">
+    Sign in
+  </Link>
+</p>
+<p className="text-center text-sporr-muted text-xs mt-3">
+  By creating an account you agree to our{' '}
+  <Link href="/terms" className="text-sporr-sage hover:text-sporr-cream transition-colors">Terms of Service</Link>
+  {' '}and{' '}
+  <Link href="/privacy" className="text-sporr-sage hover:text-sporr-cream transition-colors">Privacy Policy</Link>
+</p>
       </div>
     </main>
   )
