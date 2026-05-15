@@ -21,7 +21,7 @@ const PLANS = [
   {
     tier: 'club',
     label: 'Club',
-    price: 'Kr 490/mo',
+    price: '490kr /mo',
     description: 'Unlimited sponsors at any tier · 10GB storage · Unlimited Proof Packs',
     selfServe: true,
     upgradableFrom: ['free'],
@@ -29,7 +29,7 @@ const PLANS = [
   {
     tier: 'pro',
     label: 'Pro',
-    price: 'Kr 1,490/mo',
+    price: '1,490kr /mo',
     description: 'Multiple contracts · 50GB storage · Priority support',
     selfServe: true,
     upgradableFrom: ['free', 'club'],
@@ -37,7 +37,7 @@ const PLANS = [
   {
     tier: 'agency',
     label: 'Agency',
-    price: 'Kr 4,900/mo',
+    price: '4,900kr /mo',
     description: 'Multi-club management · 100GB storage · Dedicated account manager',
     selfServe: false,
     upgradableFrom: ['free', 'club', 'pro'],
@@ -45,7 +45,7 @@ const PLANS = [
   {
     tier: 'federation_a',
     label: 'Federation A',
-    price: 'Kr 9,900/mo',
+    price: '9 900kr/mo',
     description: 'Small federations · Negotiated storage · Federation dashboard',
     selfServe: false,
     upgradableFrom: [],
@@ -53,7 +53,7 @@ const PLANS = [
   {
     tier: 'enterprise',
     label: 'Enterprise',
-    price: 'Kr 50,000–250,000/yr',
+    price: '50,000–250,000kr /yr',
     description: 'Corporate sponsors · Brand dashboards · Custom SLA',
     selfServe: false,
     upgradableFrom: [],
@@ -486,7 +486,7 @@ export default function ClubPage() {
               {/* Higher tiers — contact only */}
               <div className="border border-sporr-sage-lt rounded-xl px-4 py-4">
                 <p className="text-sporr-dark font-medium mb-0.5">Federation, Enterprise & CSR</p>
-                <p className="text-sporr-muted text-xs leading-relaxed mb-3">Kr 9,900–500,000/yr · Custom setup · Dedicated support</p>
+                <p className="text-sporr-muted text-xs leading-relaxed mb-3">9,900—500,000kr /yr · Custom setup · Dedicated support</p>
                 <a
                   href={`mailto:hello@sporr.io?subject=Enterprise enquiry&body=Hi Sporr team,%0A%0AClub: ${org?.name || ''}%0AContact: ${user?.email || ''}%0A%0AI'm interested in a Federation, Enterprise, or CSR plan. Please get in touch.`}
                   className="text-sporr-dark text-sm underline hover:text-sporr-mid transition-colors"
