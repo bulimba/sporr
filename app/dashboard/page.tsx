@@ -126,21 +126,9 @@ Manage obligations →
               Capture proof of today's event.
             </p>
             <div className="border-t border-sporr-sage-lt mt-6 pt-4 flex items-center justify-between gap-3">
-              {activeSession ? (
-                <>
-                  <span className="text-sporr-sage text-sm">Session active</span>
-                  <a href={`/audit/${activeSession.token}`} className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-mid transition-colors whitespace-nowrap">
-                    Open session →
-                  </a>
-                </>
-              ) : (
-                <>
-                  <span className="text-sporr-muted text-sm">No active session</span>
-                  <Link href="/dashboard/audit" className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-mid transition-colors whitespace-nowrap">
-                    Start session →
-                  </Link>
-                </>
-              )}
+              <Link href="/dashboard/audit" className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-mid transition-colors whitespace-nowrap">
+  {activeSession ? 'Manage session →' : 'Start session →'}
+</Link>
             </div>
           </div>
 
