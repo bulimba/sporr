@@ -20,6 +20,7 @@ export default function SponsorsPage() {
 
   const [sponsors, setSponsors] = useState<Sponsor[]>([])
   const [orgId, setOrgId] = useState<string | null>(null)
+  const [orgTier, setOrgTier] = useState<string>('free')
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -37,13 +38,10 @@ export default function SponsorsPage() {
   const update = (field: string, value: string) =>
     setForm(prev => ({ ...prev, [field]: value }))
 
-useEffect(() => {
-  const { data: { subscription } } = supabase.auth.onAuthStateChange(
-    async (event, session) => {
-      if (!session) {
-        router.push('/login')
-        return
-      }
+  useEffect(() => {
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/'); return }
 
       const { data: userData } = await supabase
         .from('users')
@@ -51,12 +49,17 @@ useEffect(() => {
         .eq('id', session.user.id)
         .single()
 
-      if (!userData) {
-        setLoading(false)
-        return
-      }
+      if (!userData) { setLoading(false); return }
 
       setOrgId(userData.org_id)
+
+      const { data: orgData } = await supabase
+        .from('organisations')
+        .select('tier')
+        .eq('id', userData.org_id)
+        .single()
+
+      setOrgTier(orgData?.tier || 'free')
 
       const { data: sponsorsData } = await supabase
         .from('sponsors')
@@ -67,15 +70,19 @@ useEffect(() => {
       setSponsors(sponsorsData || [])
       setLoading(false)
     }
-  )
+    load()
+  }, [])
 
-  return () => subscription.unsubscribe()
-}, [])
+  const isFree = orgTier === 'free'
+  const atSponsorLimit = isFree && sponsors.length >= 1
 
   async function handleAddSponsor() {
     if (!form.company_name) { setError('Company name is required'); return }
-    console.log('orgId at save time:', orgId)
     if (!orgId) return
+    if (atSponsorLimit) {
+      setError('Free plan is limited to 1 sponsor. Upgrade to add more.')
+      return
+    }
 
     setSaving(true)
     setError(null)
@@ -94,12 +101,11 @@ useEffect(() => {
       .select()
       .single()
 
-  if (saveError) {
-  setError(saveError.message)
-  console.log('Save error:', saveError)
-  setSaving(false)
-  return
-}
+    if (saveError) {
+      setError(saveError.message)
+      setSaving(false)
+      return
+    }
 
     setSponsors(prev => [...prev, data])
     setForm({ company_name: '', contact_name: '', contact_email: '', contact_phone: '', industry: '', notes: '' })
@@ -117,14 +123,9 @@ useEffect(() => {
 
   return (
     <main className="min-h-screen bg-sporr-light">
-
       <nav className="bg-sporr-dark px-6 py-4 flex items-center justify-between">
         <Link href="/dashboard">
-          <img
-  src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
-  alt="Sporr"
-  className="h-20"
-/>
+          <img src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg" alt="Sporr" className="h-20" />
         </Link>
         <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">
           ← Dashboard
@@ -138,16 +139,32 @@ useEffect(() => {
             <h1 className="text-sporr-ink text-2xl font-medium mb-1">Sponsors</h1>
             <p className="text-sporr-muted text-sm">{sponsors.length} sponsor{sponsors.length !== 1 ? 's' : ''}</p>
           </div>
-          <button
-            onClick={() => setShowForm(true)}
-            className="btn-primary"
-          >
-            Add sponsor
-          </button>
+          {atSponsorLimit ? (
+            <Link href="/dashboard/club" className="btn-primary">
+              Upgrade to add more →
+            </Link>
+          ) : (
+            <button onClick={() => setShowForm(true)} className="btn-primary">
+              Add sponsor
+            </button>
+          )}
         </div>
 
+        {/* Free tier limit banner */}
+        {atSponsorLimit && (
+          <div className="bg-sporr-dark rounded-2xl px-6 py-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-sporr-cream text-sm font-medium mb-0.5">Free plan — 1 sponsor limit reached</p>
+              <p className="text-sporr-sage text-xs">Upgrade to Club (Kr 490/mnd) to add unlimited sponsors at any tier.</p>
+            </div>
+            <Link href="/dashboard/club" className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0">
+              Upgrade plan →
+            </Link>
+          </div>
+        )}
+
         {/* Add sponsor form */}
-        {showForm && (
+        {showForm && !atSponsorLimit && (
           <div className="card mb-8 border-sporr-sage">
             <h2 className="text-sporr-ink text-lg font-medium mb-6">New sponsor</h2>
 
