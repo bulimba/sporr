@@ -8,13 +8,13 @@ import Link from 'next/link'
 const ALL_SPORTS = [
  'Football', 'Handball', 'Gymnastics', 'Golf', 'Cross country skiing',
  'Cycling', 'Swimming', 'Athletics', 'Ice hockey', 'Basketball', 'Volleyball',
- 'Badminton', 'Beach volleyball', 'Biathlon', 'Boxing', 'Chess', 'Cricket',
+ 'Badminton', 'Biathlon', 'Boxing', 'Chess', 'Cricket',
  'Curling', 'Dance', 'Darts', 'Esports', 'Fencing', 'Field Hockey', 'Futsal',
  'Gaelic Football', 'Hurling', 'Kayaking', 'Kickboxing', 'Marathons',
  'Martial arts', 'MMA', 'Motorsport', 'Netball', 'Padel', 'Pickleball',
  'Rowing', 'Rugby league', 'Rugby Union', 'Running', 'Sailing / Regatta',
- 'Shooting', 'Skateboarding', 'Skiing', 'Ski jumping', 'Snowboarding',
- 'Squash', 'Table tennis', 'Tennis', 'Triathlon', 'Water polo', 'Other'
+ 'Shooting', 'Skiing', 'Ski jumping', 'Snowboarding',
+ 'Tennis', 'Triathlon', 'Water polo', 'Other'
 ]
 
 const PLANS = [
@@ -38,7 +38,7 @@ const PLANS = [
     tier: 'agency',
     label: 'Agency',
     price: '4900NOK/mo',
-    description: '5–50 clubs · 100GB storage · Dedicated account manager',
+    description: '5–50 clubs · 100GB storage · Dedicated support',
     selfServe: false,
     upgradableFrom: ['free', 'club', 'pro'],
   },
