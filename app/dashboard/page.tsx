@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const [activeSession, setActiveSession] = useState<{ id: string; token: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [nextDueDate, setNextDueDate] = useState<{ date: string; sponsor: string } | null>(null)
+  const [proofPacksSent, setProofPacksSent] = useState(0)
   const currentSeason = '2025/26'
 
   useEffect(() => {
@@ -66,6 +67,9 @@ export default function DashboardPage() {
     router.push('/')
   }
 
+  const isFree = org?.tier === 'free'
+  const showUpgradeBanner = isFree && stats.sponsors >= 1
+
   if (loading) {
     return (
       <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
@@ -85,6 +89,22 @@ export default function DashboardPage() {
           <button onClick={handleSignOut} className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">Sign out</button>
         </div>
       </nav>
+
+      {/* Approaching limit banner — free tier with 1+ sponsor */}
+      {showUpgradeBanner && (
+        <div className="bg-sporr-mid px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-sporr-cream text-sm">
+            <strong>Free plan:</strong> Bronze tier sponsors only · 1 Proof Pack per season.
+            {stats.sponsors >= 1 && ' Ready to grow? Upgrade for unlimited sponsors and Proof Packs.'}
+          </p>
+          <Link
+            href="/dashboard/club"
+            className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0"
+          >
+            Upgrade plan →
+          </Link>
+        </div>
+      )}
 
       <div className="max-w-5xl mx-auto px-6 py-10 flex-1 w-full flex flex-col">
 
@@ -127,7 +147,7 @@ export default function DashboardPage() {
             </p>
             <div className="border-t border-sporr-sage-lt mt-6 pt-4">
               <Link href="/dashboard/audit" className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-mid transition-colors whitespace-nowrap">
-                {activeSession ? 'Start session →' : 'Start session →'}
+                {activeSession ? 'Manage session →' : 'Start session →'}
               </Link>
             </div>
           </div>
@@ -138,6 +158,11 @@ export default function DashboardPage() {
             <p className="text-sporr-muted text-base leading-relaxed flex-1">
               Manage your club profile and administrator access.
             </p>
+            {isFree && (
+              <div className="border-t border-sporr-sage-lt mt-6 pt-4">
+                <span className="text-sporr-muted text-xs">Free plan · <Link href="/dashboard/club" className="text-sporr-dark underline">Upgrade</Link></span>
+              </div>
+            )}
           </Link>
 
         </div>
