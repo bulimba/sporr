@@ -121,13 +121,13 @@ export default function DashboardPage() {
 
           {/* Today's event — featured */}
           <div className="bg-white rounded-2xl border-2 border-sporr-dark p-6 flex flex-col">
-            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Today's session</h2>
+            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Today's event</h2>
             <p className="text-sporr-muted text-base leading-relaxed flex-1">
-              Capture proof of match days and events.
+              Capture and store proof of match days and events.
             </p>
             <div className="border-t border-sporr-sage-lt mt-6 pt-4">
               <Link href="/dashboard/audit" className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-mid transition-colors whitespace-nowrap">
-                {activeSession ? 'Manage session →' : 'Start session →'}
+                {activeSession ? 'Start session →' : 'Start session →'}
               </Link>
             </div>
           </div>
