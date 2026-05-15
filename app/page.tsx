@@ -226,9 +226,9 @@ export default function Home() {
             href="/sponsors"
             className="inline-flex items-center gap-3 border border-red-500 rounded-2xl px-6 py-4 hover:border-red-700 transition-colors group"
           >
-            <span className="text-sporr-cream text-sm uppercase tracking-widest font-medium">For sponsors</span>
+            <span className="text-sporr-sage text-sm uppercase tracking-widest font-medium">For sponsors</span>
             <span className="text-sporr-mid">·</span>
-            <span className="text-sporr-cream text-lg font-medium group-hover:text-sporr-mid transition-colors">
+            <span className="text-sporr-cream text-lg font-medium group-hover:text-sporr-sage transition-colors">
               Discover your next sports partnership →
             </span>
           </Link>
