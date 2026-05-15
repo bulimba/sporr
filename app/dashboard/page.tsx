@@ -127,7 +127,7 @@ Manage obligations →
             </p>
             <div className="border-t border-sporr-sage-lt mt-6 pt-4 flex items-center justify-between gap-3">
               <Link href="/dashboard/audit" className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-mid transition-colors whitespace-nowrap">
-  {activeSession ? 'Start session →' : 'Start session →'}
+  {activeSession ? 'Manage session →' : 'Start session →'}
 </Link>
             </div>
           </div>
