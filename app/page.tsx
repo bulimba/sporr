@@ -8,12 +8,12 @@ const steps = [
   {
     number: '01',
     title: 'Add your sponsors and contracts',
-    description: 'Enter the companies supporting your club and define exactly what you have agreed to deliver — LED boards, kit logos, social posts, PA announcements. Every obligation is logged against the sponsor it belongs to.',
+    description: 'Enter the sponsors supporting your club and define exactly what you have agreed to deliver — signage, kit logos, social posts, PA announcements. Every obligation is logged against the sponsor it belongs to.',
   },
   {
     number: '02',
     title: 'Launch a match day session',
-    description: 'On match day, open Sporr on your phone and start a session. A QR code appears — any volunteer can scan it and start capturing proof immediately. No login required for volunteers.',
+    description: 'On match day, open Sporr on your phone and start a session. A QR code appears — any volunteer can scan it and start capturing proof immediately. No login required.',
   },
   {
     number: '03',
