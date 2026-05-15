@@ -224,7 +224,7 @@ export default function Home() {
         <div className="mb-16">
           <Link
             href="/sponsors"
-            className="inline-flex items-center gap-3 border border-sporr-mid rounded-2xl px-6 py-4 hover:border-sporr-sage transition-colors group"
+            className="inline-flex items-center gap-3 border border-red-700 rounded-2xl px-6 py-4 hover:border-red-500 transition-colors group"
           >
             <span className="text-sporr-muted text-sm uppercase tracking-widest font-medium">For sponsors</span>
             <span className="text-sporr-mid">·</span>
