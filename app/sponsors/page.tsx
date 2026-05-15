@@ -11,11 +11,11 @@ const SPORTS_INTERESTS = [
 ]
 
 const BUDGET_RANGES = [
-  { value: '1500-5000', label: '1 500 – 5 000kr' },
-  { value: '5000-15000', label: '5 000 – 15 000kr' },
-  { value: '15000-50000', label: '15 000 – 50 000kr' },
-  { value: '50000-150000', label: '50 000 – 150 000kr' },
-  { value: '150000+', label: '150 000kr +' },
+  { value: '1500-5000', label: '1500 – 5000NOK' },
+  { value: '5000-15000', label: '5000 – 15000NOK' },
+  { value: '15000-50000', label: '15000 – 50000NOK' },
+  { value: '50000-150000', label: '50000 – 150000NOK' },
+  { value: '150000+', label: '150000NOK +' },
   { value: 'unsure', label: 'Not sure yet' },
 ]
 
