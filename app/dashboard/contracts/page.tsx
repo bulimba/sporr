@@ -31,36 +31,11 @@ const DELIVERY_CONTEXTS = [
   { value: 'season_long', label: 'Season-long — ongoing throughout season' },
   { value: 'event', label: 'Event — specific club event or function' },
 ]
-
 const SPONSORSHIP_TIERS = [
-  {
-    value: 'community',
-    label: 'Bronze',
-    sublabel: 'Community sponsor',
-    description: 'Local businesses, community partners',
-    free: true,
-  },
-  {
-    value: 'official',
-    label: 'Silver',
-    sublabel: 'Official sponsor',
-    description: 'Named asset sponsors, mid-tier partners',
-    free: false,
-  },
-  {
-    value: 'principal',
-    label: 'Gold',
-    sublabel: 'Principal sponsor',
-    description: 'Major sponsors, prominent branding',
-    free: false,
-  },
-  {
-    value: 'title',
-    label: 'Platinum',
-    sublabel: 'Title sponsor',
-    description: 'Primary, exclusive, highest value',
-    free: false,
-  },
+  { value: 'community', label: 'Bronze', sublabel: 'Community sponsor', free: true },
+  { value: 'official', label: 'Silver', sublabel: 'Official sponsor', free: false },
+  { value: 'principal', label: 'Gold', sublabel: 'Principal sponsor', free: false },
+  { value: 'title', label: 'Platinum', sublabel: 'Title sponsor', free: false },
 ]
 
 export default function ContractsPage() {
@@ -80,24 +55,17 @@ export default function ContractsPage() {
   const [savingObligation, setSavingObligation] = useState(false)
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
   const [form, setForm] = useState({
-    title: '',
-    sponsor_id: '',
-    value_nok: '',
-    season: '2025-2026',
-    start_date: '',
-    end_date: '',
-    sponsorship_tier: 'community',
+    title: '', sponsor_id: '', value_nok: '', season: '2025-2026',
+    start_date: '', end_date: '', sponsorship_tier: 'community',
   })
   const [obligationForm, setObligationForm] = useState({
-    description: '',
-    asset_type: 'Banner / signage',
-    proof_type: 'photo',
-    delivery_context: 'match_day',
+    description: '', asset_type: 'Banner / signage', proof_type: 'photo', delivery_context: 'match_day',
   })
   const update = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
   const updateOb = (f: string, v: string) => setObligationForm(p => ({ ...p, [f]: v }))
 
   const isFree = orgTier === 'free'
+  const atContractLimit = isFree && contracts.length >= 1
 
   useEffect(() => {
     async function load() {
@@ -132,21 +100,18 @@ export default function ContractsPage() {
   async function handleSave() {
     if (!form.title) { setError('Contract title is required'); return }
     if (!form.sponsor_id) { setError('Please select a sponsor'); return }
+    if (atContractLimit) { setError('Free plan is limited to 1 contract. Upgrade to add more.'); return }
     if (isFree && form.sponsorship_tier !== 'community') {
-      setError('Free plan is limited to Bronze (Community) tier sponsors. Upgrade to add higher-tier sponsors.')
+      setError('Free plan is limited to Bronze (Community) tier. Upgrade to add higher-tier sponsors.')
       return
     }
     if (!orgId) return
     setSaving(true); setError(null)
     const { data, error: saveError } = await supabase.from('contracts').insert({
-      org_id: orgId,
-      sponsor_id: form.sponsor_id,
-      title: form.title,
+      org_id: orgId, sponsor_id: form.sponsor_id, title: form.title,
       value_nok: form.value_nok ? parseFloat(form.value_nok) : 0,
-      season: form.season,
-      start_date: form.start_date || null,
-      end_date: form.end_date || null,
-      status: 'active',
+      season: form.season, start_date: form.start_date || null,
+      end_date: form.end_date || null, status: 'active',
       sponsorship_tier: form.sponsorship_tier,
     }).select('id, title, value_nok, season, status, start_date, end_date, sponsorship_tier, sponsors(company_name)').single()
     if (saveError) { setError(saveError.message); setSaving(false); return }
@@ -195,11 +160,11 @@ export default function ContractsPage() {
             <p className="text-sporr-sage text-xs uppercase tracking-widest mb-1">Free plan limit</p>
             <h2 className="text-sporr-dark text-xl font-medium mb-3">Upgrade to add higher-tier sponsors</h2>
             <p className="text-sporr-muted text-sm leading-relaxed mb-6">
-              The free plan supports Bronze (Community) tier sponsors only. To add Silver, Gold, or Platinum tier sponsors, upgrade to the Club plan.
+              The free plan supports Bronze (Community) tier only. Upgrade to Club to add Silver, Gold, or Platinum tier sponsors.
             </p>
             <div className="bg-sporr-light rounded-xl p-4 mb-6">
-              <p className="text-sporr-dark font-medium mb-1">Club plan — Kr 490/month</p>
-              <p className="text-sporr-muted text-sm">Unlimited sponsors at any tier · 10GB storage · Unlimited Proof Packs</p>
+              <p className="text-sporr-dark font-medium mb-1">Club — Kr 490/mnd</p>
+              <p className="text-sporr-muted text-sm">Unlimited sponsors · All tiers · 10GB storage · Unlimited Proof Packs</p>
             </div>
             <div className="flex gap-3">
               <Link href="/dashboard/club" className="flex-1 bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-3 rounded-lg text-center hover:bg-sporr-mid transition-colors">
@@ -219,10 +184,27 @@ export default function ContractsPage() {
             <h1 className="text-sporr-dark text-2xl font-medium mb-1">Contracts</h1>
             <p className="text-sporr-muted text-sm">{contracts.length} contract{contracts.length !== 1 ? 's' : ''}</p>
           </div>
-          <button onClick={() => setShowForm(true)} className="btn-primary">New contract</button>
+          {atContractLimit ? (
+            <Link href="/dashboard/club" className="btn-primary">Upgrade to add more →</Link>
+          ) : (
+            <button onClick={() => setShowForm(true)} className="btn-primary">New contract</button>
+          )}
         </div>
 
-        {showForm && (
+        {/* Free tier limit banner */}
+        {atContractLimit && (
+          <div className="bg-sporr-dark rounded-2xl px-6 py-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
+            <div>
+              <p className="text-sporr-cream text-sm font-medium mb-0.5">Free plan — 1 contract limit reached</p>
+              <p className="text-sporr-sage text-xs">Upgrade to Club (Kr 490/mnd) to add unlimited contracts at any sponsorship tier.</p>
+            </div>
+            <Link href="/dashboard/club" className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0">
+              Upgrade plan →
+            </Link>
+          </div>
+        )}
+
+        {showForm && !atContractLimit && (
           <div className="card mb-8">
             <h2 className="text-sporr-dark text-lg font-medium mb-6">New contract</h2>
             {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>}
@@ -256,7 +238,7 @@ export default function ContractsPage() {
                       }`}
                     >
                       {locked && (
-                        <span className="absolute top-2 right-2 text-xs bg-sporr-sage-lt text-sporr-muted px-1.5 py-0.5 rounded-full">Pro</span>
+                        <span className="absolute top-2 right-2 text-xs bg-sporr-sage-lt text-sporr-muted px-1.5 py-0.5 rounded-full">Club</span>
                       )}
                       <p className={`font-medium text-sm mb-0.5 ${selected ? 'text-sporr-cream' : 'text-sporr-dark'}`}>{tier.label}</p>
                       <p className={`text-xs ${selected ? 'text-sporr-sage' : 'text-sporr-muted'}`}>{tier.sublabel}</p>
@@ -286,7 +268,7 @@ export default function ContractsPage() {
               </div>
               <div>
                 <label className="label">Total value (NOK)</label>
-                <input type="number" className="input" placeholder="50000" value={form.value_nok} onChange={e => update('value_nok', e.target.value)} />
+                <input type="number" className="input" placeholder="50 000" value={form.value_nok} onChange={e => update('value_nok', e.target.value)} />
               </div>
               <div>
                 <label className="label">Season</label>
@@ -333,12 +315,10 @@ export default function ContractsPage() {
                     </div>
                     <div className="flex items-center gap-3 flex-wrap justify-end">
                       {tier && (
-                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-sporr-sage-lt text-sporr-dark">
-                          {tier.label}
-                        </span>
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-sporr-sage-lt text-sporr-dark">{tier.label}</span>
                       )}
                       {contract.value_nok > 0 && (
-                        <p className="text-sporr-dark font-medium text-sm">Kr {contract.value_nok.toLocaleString()}</p>
+                        <p className="text-sporr-dark font-medium text-sm">Kr {contract.value_nok.toLocaleString('nb-NO')}</p>
                       )}
                       <span className={`text-xs font-medium px-2 py-1 rounded-full ${contract.status === 'active' ? 'bg-sporr-sage-lt text-sporr-dark' : 'bg-sporr-light text-sporr-muted'}`}>
                         {contract.status}
@@ -357,33 +337,13 @@ export default function ContractsPage() {
                       {showObligationForm === contract.id && (
                         <div className="bg-sporr-light rounded-xl p-4 mb-4">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                            <div>
-                              <label className="label">Asset type</label>
-                              <select className="input" value={obligationForm.asset_type} onChange={e => updateOb('asset_type', e.target.value)}>
-                                {ASSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="label">When is it delivered?</label>
-                              <select className="input" value={obligationForm.delivery_context} onChange={e => updateOb('delivery_context', e.target.value)}>
-                                {DELIVERY_CONTEXTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="label">Proof required</label>
-                              <select className="input" value={obligationForm.proof_type} onChange={e => updateOb('proof_type', e.target.value)}>
-                                {PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="label">Description (optional)</label>
-                              <input className="input" placeholder="e.g. North stand banner, visible throughout match" value={obligationForm.description} onChange={e => updateOb('description', e.target.value)} />
-                            </div>
+                            <div><label className="label">Asset type</label><select className="input" value={obligationForm.asset_type} onChange={e => updateOb('asset_type', e.target.value)}>{ASSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                            <div><label className="label">When is it delivered?</label><select className="input" value={obligationForm.delivery_context} onChange={e => updateOb('delivery_context', e.target.value)}>{DELIVERY_CONTEXTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
+                            <div><label className="label">Proof required</label><select className="input" value={obligationForm.proof_type} onChange={e => updateOb('proof_type', e.target.value)}>{PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
+                            <div><label className="label">Description (optional)</label><input className="input" placeholder="e.g. North stand banner, visible throughout match" value={obligationForm.description} onChange={e => updateOb('description', e.target.value)} /></div>
                           </div>
                           <div className="flex gap-2">
-                            <button onClick={() => handleAddObligation(contract.id)} disabled={savingObligation} className="btn-primary text-sm py-2 px-4 disabled:opacity-50">
-                              {savingObligation ? 'Saving...' : 'Add obligation'}
-                            </button>
+                            <button onClick={() => handleAddObligation(contract.id)} disabled={savingObligation} className="btn-primary text-sm py-2 px-4 disabled:opacity-50">{savingObligation ? 'Saving...' : 'Add obligation'}</button>
                             <button onClick={() => setShowObligationForm(null)} className="btn-secondary text-sm py-2 px-4">Cancel</button>
                           </div>
                         </div>
