@@ -53,24 +53,33 @@ export default function AuditPage() {
     setForm(prev => ({ ...prev, [field]: value }))
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!session) { router.push('/'); return }
-        if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN') return
-        const { data: userData } = await supabase
-          .from('users').select('org_id').eq('id', session.user.id).single()
-        if (!userData) { setLoading(false); return }
-        setOrgId(userData.org_id)
-        const [eventsRes, sessionsRes] = await Promise.all([
-          supabase.from('events').select('id, title, venue, starts_at').eq('org_id', userData.org_id).order('starts_at', { ascending: false }),
-          supabase.from('audit_sessions').select('id, session_token, status, created_at, attendance, delivery_context, events(title)').eq('org_id', userData.org_id).order('created_at', { ascending: false }).limit(20),
-        ])
-        setEvents(eventsRes.data || [])
-        setSessions((sessionsRes.data as unknown as Session[]) || [])
-        setLoading(false)
-      }
-    )
-    return () => subscription.unsubscribe()
+    async function load() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/'); return }
+
+      const { data: userData } = await supabase
+        .from('users').select('org_id').eq('id', session.user.id).single()
+      if (!userData) { setLoading(false); return }
+
+      setOrgId(userData.org_id)
+
+      const [eventsRes, sessionsRes] = await Promise.all([
+        supabase.from('events')
+          .select('id, title, venue, starts_at')
+          .eq('org_id', userData.org_id)
+          .order('starts_at', { ascending: false }),
+        supabase.from('audit_sessions')
+          .select('id, session_token, status, created_at, attendance, delivery_context, events(title)')
+          .eq('org_id', userData.org_id)
+          .order('created_at', { ascending: false })
+          .limit(20),
+      ])
+
+      setEvents(eventsRes.data || [])
+      setSessions((sessionsRes.data as unknown as Session[]) || [])
+      setLoading(false)
+    }
+    load()
   }, [])
 
   async function handleLaunch() {
@@ -78,15 +87,22 @@ export default function AuditPage() {
     setLaunching(true)
     setError(null)
     let eventId = form.event_id
+
     if (!eventId && form.new_event_title) {
       const { data: newEvent, error: eventError } = await supabase
         .from('events')
-        .insert({ org_id: orgId, title: form.new_event_title, venue: form.new_event_venue || null, starts_at: form.new_event_date || null })
+        .insert({
+          org_id: orgId,
+          title: form.new_event_title,
+          venue: form.new_event_venue || null,
+          starts_at: form.new_event_date || null,
+        })
         .select().single()
       if (eventError) { setError(eventError.message); setLaunching(false); return }
       eventId = newEvent.id
       setEvents(prev => [newEvent, ...prev])
     }
+
     const { data: sessionData, error: sessionError } = await supabase
       .from('audit_sessions')
       .insert({
@@ -97,7 +113,9 @@ export default function AuditPage() {
         delivery_context: form.delivery_context,
       })
       .select().single()
+
     if (sessionError) { setError(sessionError.message); setLaunching(false); return }
+
     const token = sessionData.session_token
     const auditUrl = `${window.location.origin}/audit/${token}`
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(auditUrl)}`
@@ -105,6 +123,14 @@ export default function AuditPage() {
     setSessions(prev => [sessionData as unknown as Session, ...prev])
     setShowForm(false)
     setLaunching(false)
+  }
+
+  async function markComplete(sessionId: string) {
+    await supabase
+      .from('audit_sessions')
+      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .eq('id', sessionId)
+    setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'completed' } : s))
   }
 
   async function updateAttendance(sessionId: string, attendance: number) {
@@ -130,11 +156,12 @@ export default function AuditPage() {
         </Link>
         <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">← Dashboard</Link>
       </nav>
+
       <div className="max-w-4xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-sporr-dark text-2xl font-medium mb-1">Today's session</h1>
-<p className="text-sporr-muted text-sm">Capture proof of match days, events, and other obligations</p>
+            <p className="text-sporr-muted text-sm">Capture proof of match days, events, and other obligations</p>
           </div>
           <button onClick={() => { setShowForm(true); setActiveSession(null) }} className="btn-primary">
             Launch session
@@ -180,13 +207,13 @@ export default function AuditPage() {
                   <option key={ctx.value} value={ctx.value}>{ctx.label}</option>
                 ))}
               </select>
-              <p className="text-sporr-muted text-xs mt-1">Obligations with this delivery context will be auto-delivered when proof is captured</p>
+              <p className="text-sporr-muted text-xs mt-1">Only obligations with this delivery context will be delivered in this session</p>
             </div>
 
             <div className="mb-6">
-              <label className="label">Link to an existing event (optional)</label>
+              <label className="label">Link to an event (optional)</label>
               <select className="input" value={form.event_id} onChange={e => update('event_id', e.target.value)}>
-                <option value="">No event — or create one below</option>
+                <option value="">No event linked</option>
                 {events.map(e => <option key={e.id} value={e.id}>{e.title}{e.venue ? ` — ${e.venue}` : ''}</option>)}
               </select>
             </div>
@@ -260,6 +287,14 @@ export default function AuditPage() {
                         session.status === 'completed' ? 'bg-sporr-light text-sporr-muted' :
                         'bg-red-50 text-red-600'
                       }`}>{session.status}</span>
+                      {session.status === 'active' && (
+                        <button
+                          onClick={() => markComplete(session.id)}
+                          className="text-sporr-muted hover:text-sporr-dark text-xs transition-colors"
+                        >
+                          Close
+                        </button>
+                      )}
                       <a href={`/audit/${session.session_token}`} className="text-sporr-sage hover:text-sporr-dark text-sm transition-colors">Open →</a>
                     </div>
                   </div>
