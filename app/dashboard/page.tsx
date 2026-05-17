@@ -55,10 +55,10 @@ const SPORT_KIT_MAP: Record<string, string> = {
 const SUPABASE_STORAGE = 'https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public'
 
 function getKitUrl(sports: string[] | null): string {
-  if (!sports || sports.length === 0) return `${SUPABASE_STORAGE}/sporr-kits/generic.png`
+  if (!sports || sports.length === 0) return `${SUPABASE_STORAGE}/sporr-kits/generic.svg`
   const sport = sports[0]
   const key = SPORT_KIT_MAP[sport] || 'generic'
-  return `${SUPABASE_STORAGE}/sporr-kits/${key}.png`
+  return `${SUPABASE_STORAGE}/sporr-kits/${key}.svg`
 }
 
 // Nav items
