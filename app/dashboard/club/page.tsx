@@ -21,7 +21,7 @@ const PLANS = [
   {
     tier: 'club',
     label: 'Club',
-    price: '490NOK/mo',
+    price: '490NOK/mnd',
     description: 'Up to 5 sponsors · All tiers · 10GB storage · Unlimited Proof Packs',
     selfServe: true,
     upgradableFrom: ['free'],
@@ -29,7 +29,7 @@ const PLANS = [
   {
     tier: 'pro',
     label: 'Pro',
-    price: '1490NOK/mo',
+    price: '1490NOK/mnd',
     description: 'Up to 20 sponsors · 50GB storage · Priority support',
     selfServe: true,
     upgradableFrom: ['free', 'club'],
@@ -37,7 +37,7 @@ const PLANS = [
   {
     tier: 'agency',
     label: 'Agency',
-    price: '4900NOK/mo',
+    price: '4900NOK/mnd',
     description: '5–50 clubs · 100GB storage · Dedicated support',
     selfServe: false,
     upgradableFrom: ['free', 'club', 'pro'],
@@ -64,6 +64,8 @@ type OrgData = {
   sponsorship_contact_phone: string | null
   governing_body_name: string | null
   governing_body_website: string | null
+  logo_url: string | null
+  show_logo_on_dashboard: boolean | null
 }
 
 type UserData = {
@@ -74,6 +76,7 @@ export default function ClubPage() {
   const router = useRouter()
   const supabase = createClient()
   const sportSearchRef = useRef<HTMLInputElement>(null)
+  const logoInputRef = useRef<HTMLInputElement>(null)
 
   const [org, setOrg] = useState<OrgData | null>(null)
   const [user, setUser] = useState<UserData | null>(null)
@@ -89,6 +92,10 @@ export default function ClubPage() {
   const [upgradeTarget, setUpgradeTarget] = useState<typeof PLANS[0] | null>(null)
   const [upgradeMethod, setUpgradeMethod] = useState<'vipps' | 'card' | 'invoice' | null>(null)
   const [photoCount, setPhotoCount] = useState(0)
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [showLogoOnDashboard, setShowLogoOnDashboard] = useState(false)
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [logoError, setLogoError] = useState<string | null>(null)
 
   const [form, setForm] = useState({
     name: '',
@@ -147,20 +154,23 @@ export default function ClubPage() {
       setUser(userData as UserData)
       setOrgId(userData.org_id)
       const [orgRes, photosRes] = await Promise.all([
-        supabase.from('organisations').select('id, name, tier, sports, country, sponsorship_contact_name, sponsorship_contact_email, sponsorship_contact_phone, governing_body_name, governing_body_website').eq('id', userData.org_id).single(),
+        supabase.from('organisations').select('id, name, tier, sports, country, sponsorship_contact_name, sponsorship_contact_email, sponsorship_contact_phone, governing_body_name, governing_body_website, logo_url, show_logo_on_dashboard').eq('id', userData.org_id).single(),
         supabase.from('proofs').select('id', { count: 'exact' }).eq('org_id', userData.org_id).not('photo_url', 'is', null),
       ])
       if (orgRes.data) {
-        setOrg(orgRes.data as OrgData)
+        const o = orgRes.data as OrgData
+        setOrg(o)
+        setLogoUrl(o.logo_url)
+        setShowLogoOnDashboard(o.show_logo_on_dashboard || false)
         setForm({
-          name: orgRes.data.name || '',
-          sports: orgRes.data.sports || [],
-          country: orgRes.data.country || 'NO',
-          sponsorship_contact_name: orgRes.data.sponsorship_contact_name || '',
-          sponsorship_contact_email: orgRes.data.sponsorship_contact_email || '',
-          sponsorship_contact_phone: orgRes.data.sponsorship_contact_phone || '',
-          governing_body_name: orgRes.data.governing_body_name || '',
-          governing_body_website: orgRes.data.governing_body_website || '',
+          name: o.name || '',
+          sports: o.sports || [],
+          country: o.country || 'NO',
+          sponsorship_contact_name: o.sponsorship_contact_name || '',
+          sponsorship_contact_email: o.sponsorship_contact_email || '',
+          sponsorship_contact_phone: o.sponsorship_contact_phone || '',
+          governing_body_name: o.governing_body_name || '',
+          governing_body_website: o.governing_body_website || '',
         })
       }
       setPhotoCount(photosRes.count || 0)
@@ -181,10 +191,59 @@ export default function ClubPage() {
       sponsorship_contact_phone: form.sponsorship_contact_phone || null,
       governing_body_name: form.governing_body_name || null,
       governing_body_website: form.governing_body_website || null,
+      logo_url: logoUrl,
+      show_logo_on_dashboard: showLogoOnDashboard,
     }).eq('id', orgId)
     if (saveError) { setError(saveError.message); setSaving(false); return }
     setSaved(true); setSaving(false)
     setTimeout(() => setSaved(false), 3000)
+  }
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !orgId) return
+    setLogoError(null)
+
+    // Validate file type
+    const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
+    if (!allowed.includes(file.type)) {
+      setLogoError('Please upload a PNG, JPG, SVG or WebP file.')
+      return
+    }
+
+    // Validate file size — 2MB max
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('File too large — maximum 2MB.')
+      return
+    }
+
+    setUploadingLogo(true)
+    const ext = file.name.split('.').pop()
+    const path = `club-logos/${orgId}.${ext}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('club-assets')
+      .upload(path, file, { upsert: true, contentType: file.type })
+
+    if (uploadError) {
+      setLogoError(uploadError.message)
+      setUploadingLogo(false)
+      return
+    }
+
+    const { data: urlData } = supabase.storage.from('club-assets').getPublicUrl(path)
+    setLogoUrl(urlData.publicUrl)
+    setUploadingLogo(false)
+  }
+
+  async function handleRemoveLogo() {
+    setLogoUrl(null)
+    setShowLogoOnDashboard(false)
+    if (!orgId) return
+    await supabase.from('organisations').update({
+      logo_url: null,
+      show_logo_on_dashboard: false,
+    }).eq('id', orgId)
   }
 
   async function handleSignOut() {
@@ -358,6 +417,97 @@ export default function ClubPage() {
           </div>
         </div>
 
+        {/* Club crest */}
+        <div className="card mb-6">
+          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Club crest</h2>
+          <p className="text-sporr-muted text-sm mb-6">
+            Upload your club crest to personalise your dashboard. Supports PNG, JPG, SVG and WebP up to 2MB.
+            All crest shapes are supported — shields, pennants, flags, and irregular historic badges.
+          </p>
+
+          {logoError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-4">{logoError}</div>
+          )}
+
+          {logoUrl ? (
+            <div className="flex items-start gap-6">
+              {/* Preview on cream card */}
+              <div className="w-24 h-24 rounded-xl bg-sporr-cream border border-sporr-sage-lt flex items-center justify-center flex-shrink-0 overflow-hidden p-2">
+                <img
+                  src={logoUrl}
+                  alt="Club crest"
+                  className="max-w-full max-h-full object-contain"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-sporr-dark text-sm font-medium mb-1">Crest uploaded</p>
+                <p className="text-sporr-muted text-xs mb-4 leading-relaxed">
+                  Your crest is displayed on a cream background to ensure it looks great regardless of its original background colour.
+                </p>
+
+                {/* Show on dashboard toggle */}
+                <label className="flex items-center gap-3 cursor-pointer mb-4">
+                  <div
+                    onClick={() => setShowLogoOnDashboard(prev => !prev)}
+                    className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${showLogoOnDashboard ? 'bg-sporr-dark' : 'bg-sporr-sage-lt'}`}
+                  >
+                    <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${showLogoOnDashboard ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </div>
+                  <div>
+                    <p className="text-sporr-dark text-sm font-medium">Show crest on dashboard</p>
+                    <p className="text-sporr-muted text-xs">Replaces the sport kit illustration on your dashboard</p>
+                  </div>
+                </label>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => logoInputRef.current?.click()}
+                    className="btn-secondary text-sm py-2 px-4"
+                    disabled={uploadingLogo}
+                  >
+                    Replace crest
+                  </button>
+                  <button
+                    onClick={handleRemoveLogo}
+                    className="text-sporr-muted hover:text-red-600 text-sm transition-colors px-2"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <button
+                onClick={() => logoInputRef.current?.click()}
+                disabled={uploadingLogo}
+                className="w-full border-2 border-dashed border-sporr-sage-lt rounded-xl px-6 py-8 hover:border-sporr-dark transition-colors text-center group disabled:opacity-50"
+              >
+                <div className="w-12 h-12 rounded-full bg-sporr-sage-lt group-hover:bg-sporr-dark/10 flex items-center justify-center mx-auto mb-3 transition-colors">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-sporr-muted group-hover:text-sporr-dark transition-colors">
+                    <path d="M12 16V8M12 8L9 11M12 8L15 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M3 16.5V18.75C3 19.993 4.007 21 5.25 21H18.75C19.993 21 21 19.993 21 18.75V16.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <p className="text-sporr-dark text-sm font-medium mb-1">
+                  {uploadingLogo ? 'Uploading...' : 'Upload your club crest'}
+                </p>
+                <p className="text-sporr-muted text-xs">PNG, JPG, SVG or WebP · max 2MB</p>
+                <p className="text-sporr-muted text-xs mt-1">All crest shapes supported — shields, pennants, flags</p>
+              </button>
+            </div>
+          )}
+
+          {/* Hidden file input */}
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+            className="hidden"
+            onChange={handleLogoUpload}
+          />
+        </div>
+
         {/* Sponsorship contact */}
         <div className="card mb-6">
           <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Sponsorship contact</h2>
@@ -432,19 +582,13 @@ export default function ClubPage() {
             />
           </div>
           <div className="flex items-center justify-between">
-            <p className="text-sporr-muted text-xs">
-              {photoCount} proof photo{photoCount !== 1 ? 's' : ''} · estimated usage
-            </p>
-            <p className={`text-xs font-medium ${usagePct >= 100 ? 'text-red-600' : usagePct >= 80 ? 'text-amber-600' : 'text-sporr-muted'}`}>
-              {usagePct}% used
-            </p>
+            <p className="text-sporr-muted text-xs">{photoCount} proof photo{photoCount !== 1 ? 's' : ''} · estimated usage</p>
+            <p className={`text-xs font-medium ${usagePct >= 100 ? 'text-red-600' : usagePct >= 80 ? 'text-amber-600' : 'text-sporr-muted'}`}>{usagePct}% used</p>
           </div>
           {nearLimit && (
             <div className={`mt-3 rounded-lg px-4 py-3 ${usagePct >= 100 ? 'bg-red-50 border border-red-200' : 'bg-amber-50 border border-amber-200'}`}>
               <p className={`text-sm ${usagePct >= 100 ? 'text-red-700' : 'text-amber-700'}`}>
-                {usagePct >= 100
-                  ? 'Storage full — upgrade your plan to continue capturing proof photos.'
-                  : 'Storage nearly full — consider upgrading before your next match day.'}
+                {usagePct >= 100 ? 'Storage full — upgrade your plan to continue capturing proof photos.' : 'Storage nearly full — consider upgrading before your next match day.'}
               </p>
             </div>
           )}
