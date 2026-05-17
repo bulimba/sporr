@@ -58,7 +58,7 @@ function getKitUrl(sports: string[] | null): string {
   if (!sports || sports.length === 0) return `${SUPABASE_STORAGE}/sporr-kits/generic.svg`
   const sport = sports[0]
   const key = SPORT_KIT_MAP[sport] || 'generic'
-  return `${SUPABASE_STORAGE}/sporr-kits/${key}.svg`
+  return `${SUPABASE_STORAGE}/sporr-kits/${key}.svg?v=${Date.now()}`
 }
 
 // Nav items
