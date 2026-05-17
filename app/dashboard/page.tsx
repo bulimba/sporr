@@ -387,8 +387,8 @@ export default function DashboardPage() {
             }`}>
 
               {/* Kit / crest illustration */}
-              <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-52 opacity-60 pointer-events-none">
-                  <img src={showCrest && org?.logo_url ? org.logo_url : kitUrl} alt="" className="w-full h-full object-contain object-right-bottom p-4" style={{ filter: 'drop-shadow(0 0 12px rgba(245,241,230,0.4))' }} />
+              <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-52 opacity-75 pointer-events-none">
+                  <img src={showCrest && org?.logo_url ? org.logo_url : kitUrl} alt="" className="w-full h-full object-contain object-right-bottom p-4" style={{ filter: 'drop-shadow(0 0 12px rgba(245,241,230,0.5))' }} />
               </div>
 
               <div className="relative px-6 py-6 sm:py-8">
