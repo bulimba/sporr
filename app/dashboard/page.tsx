@@ -4,15 +4,23 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
-type Organisation = { id: string; name: string; tier: string; sport?: string }
+type Organisation = {
+  id: string
+  name: string
+  tier: string
+  sports: string[] | null
+  logo_url: string | null
+  show_logo_on_dashboard: boolean | null
+}
 type Stats = { sponsors: number; sessions: number; obligations_pending: number }
 
 const STORAGE_LIMITS: Record<string, number> = {
-  free: 100,        // MB
-  club: 10240,      // 10GB
-  pro: 51200,       // 50GB
-  agency: 102400,   // 100GB
+  free: 100,
+  club: 10240,
+  pro: 51200,
+  agency: 102400,
 }
 
 function formatStorage(mb: number): string {
@@ -20,8 +28,109 @@ function formatStorage(mb: number): string {
   return `${(mb / 1024).toFixed(1)} GB`
 }
 
+// Sport → kit image URL mapping
+// These map to the sport kit renders stored in Supabase storage
+const SPORT_KIT_MAP: Record<string, string> = {
+  'Football': 'football',
+  'Rugby': 'rugby',
+  'Rugby league': 'rugby',
+  'Rugby Union': 'rugby',
+  'Basketball': 'basketball',
+  'Volleyball': 'volleyball',
+  'Handball': 'handball',
+  'Ice hockey': 'ice-hockey',
+  'Cycling': 'cycling',
+  'Golf': 'golf',
+  'Swimming': 'swimming',
+  'Athletics': 'athletics',
+  'Running': 'running',
+  'Martial arts': 'martial-arts',
+  'MMA': 'martial-arts',
+  'Cross country skiing': 'snow-sports',
+  'Skiing': 'snow-sports',
+  'Biathlon': 'snow-sports',
+  'Snowboarding': 'snow-sports',
+}
+
+const SUPABASE_STORAGE = 'https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public'
+
+function getKitUrl(sports: string[] | null): string {
+  if (!sports || sports.length === 0) return `${SUPABASE_STORAGE}/sporr-kits/generic.png`
+  const sport = sports[0]
+  const key = SPORT_KIT_MAP[sport] || 'generic'
+  return `${SUPABASE_STORAGE}/sporr-kits/${key}.png`
+}
+
+// Nav items
+const NAV_ITEMS = [
+  {
+    href: '/dashboard',
+    label: 'Dashboard',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="2" width="7" height="7" rx="1.5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5"/>
+        <rect x="11" y="2" width="7" height="7" rx="1.5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5"/>
+        <rect x="2" y="11" width="7" height="7" rx="1.5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5"/>
+        <rect x="11" y="11" width="7" height="7" rx="1.5" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/dashboard/audit',
+    label: "Today's session",
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5"/>
+        <circle cx="10" cy="10" r="3" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5"/>
+        {active && <circle cx="10" cy="10" r="1" fill="currentColor"/>}
+      </svg>
+    ),
+  },
+  {
+    href: '/dashboard/sponsors',
+    label: 'Sponsors',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M10 2L12.39 7.26L18 8.18L14 12.08L14.95 17.66L10 15L5.05 17.66L6 12.08L2 8.18L7.61 7.26L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill={active ? 'currentColor' : 'none'}/>
+      </svg>
+    ),
+  },
+  {
+    href: '/dashboard/contracts',
+    label: 'Contracts',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="4" y="2" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0}/>
+        <path d="M7 7h6M7 10h6M7 13h4" stroke={active ? 'currentColor' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/proof-pack',
+    label: 'Proof Packs',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M3 10L10 3L17 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M5 8.5V17H15V8.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0}/>
+        <path d="M8 17V12h4v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+  {
+    href: '/dashboard/club',
+    label: 'Club settings',
+    icon: (active: boolean) => (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.2 : 0}/>
+        <path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
+]
+
 export default function DashboardPage() {
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
   const [org, setOrg] = useState<Organisation | null>(null)
   const [stats, setStats] = useState<Stats>({ sponsors: 0, sessions: 0, obligations_pending: 0 })
@@ -29,6 +138,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [nextDueDate, setNextDueDate] = useState<{ date: string; sponsor: string } | null>(null)
   const [photoCount, setPhotoCount] = useState(0)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const currentSeason = '2025/26'
 
   useEffect(() => {
@@ -39,7 +149,10 @@ export default function DashboardPage() {
       const { data: userData } = await supabase.from('users').select('org_id').eq('id', session.user.id).single()
       if (!userData) { setLoading(false); return }
 
-      const { data: orgData } = await supabase.from('organisations').select('id, name, tier').eq('id', userData.org_id).single()
+      const { data: orgData } = await supabase
+        .from('organisations')
+        .select('id, name, tier, sports, logo_url, show_logo_on_dashboard')
+        .eq('id', userData.org_id).single()
       setOrg(orgData)
 
       const [sponsorsRes, sessionsRes, obligationsRes, activeSessionRes, contractsRes, photosRes] = await Promise.all([
@@ -82,149 +195,299 @@ export default function DashboardPage() {
   }
 
   const isFree = org?.tier === 'free'
-  const showUpgradeBanner = isFree && stats.sponsors >= 1
-
-  // Storage estimate: assume avg 1MB per photo (conservative, limit is 2MB)
   const estimatedUsageMB = photoCount * 1
   const tierLimit = STORAGE_LIMITS[org?.tier || 'free'] || 100
   const usagePct = Math.min(Math.round((estimatedUsageMB / tierLimit) * 100), 100)
   const nearLimit = usagePct >= 80
 
+  // Kit or crest logic
+  const showCrest = org?.show_logo_on_dashboard && org?.logo_url
+  const kitUrl = getKitUrl(org?.sports || null)
+
   if (loading) {
     return (
-      <main className="min-h-screen bg-sporr-cream flex items-center justify-center">
-        <div className="text-sporr-muted text-sm">Loading...</div>
-      </main>
+      <div className="min-h-screen bg-sporr-dark flex items-center justify-center">
+        <div className="text-sporr-sage text-sm">Loading...</div>
+      </div>
     )
   }
 
-  return (
-    <main className="min-h-screen bg-sporr-cream flex flex-col">
+  const Sidebar = () => (
+    <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-sporr-dark fixed left-0 top-0 bottom-0 z-40">
+      {/* Logo */}
+      <div className="px-6 py-6 border-b border-white/10">
+        <img
+          src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+          alt="Sporr"
+          className="h-14"
+        />
+      </div>
+
+      {/* Club identity */}
+      <div className="px-6 py-5 border-b border-white/10">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-sporr-cream flex items-center justify-center overflow-hidden flex-shrink-0">
+            {showCrest ? (
+              <img src={org!.logo_url!} alt={org?.name} className="w-full h-full object-contain p-1" />
+            ) : (
+              <img src={kitUrl} alt="Kit" className="w-full h-full object-contain" />
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sporr-cream text-sm font-medium truncate">{org?.name || 'Your club'}</p>
+            <p className="text-sporr-sage text-xs capitalize">{org?.tier} plan · {currentSeason}</p>
+          </div>
+        </div>
+      </div>
 
       {/* Nav */}
-      <nav className="bg-sporr-dark px-6 py-4 flex items-center justify-between">
-        <img src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg" alt="Sporr" className="h-20" />
-        <div className="flex items-center gap-6">
-          <span className="text-sporr-cream text-sm capitalize">{org?.tier} plan</span>
-          <button onClick={handleSignOut} className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">Sign out</button>
-        </div>
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        {NAV_ITEMS.map(item => {
+          const active = pathname === item.href
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                active
+                  ? 'bg-white/10 text-sporr-cream'
+                  : 'text-sporr-sage hover:bg-white/5 hover:text-sporr-cream'
+              }`}
+            >
+              <span className={active ? 'text-sporr-cream' : 'text-sporr-sage'}>
+                {item.icon(active)}
+              </span>
+              {item.label}
+            </Link>
+          )
+        })}
       </nav>
 
-      {/* Approaching limit banner */}
-      {showUpgradeBanner && (
-        <div className="bg-sporr-mid px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
-          <p className="text-sporr-cream text-sm">
-            <strong>Free plan:</strong> Bronze tier sponsors only · 1 Proof Pack per season.
-            {stats.sponsors >= 1 && ' Ready to grow? Upgrade for unlimited sponsors and Proof Packs.'}
-          </p>
-          <Link
-            href="/dashboard/club"
-            className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0"
-          >
-            Upgrade plan →
-          </Link>
+      {/* Storage indicator */}
+      <div className="px-6 py-4 border-t border-white/10">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-sporr-sage text-xs">Storage</span>
+          <span className={`text-xs font-medium ${nearLimit ? 'text-amber-400' : 'text-sporr-sage'}`}>
+            {formatStorage(estimatedUsageMB)} / {formatStorage(tierLimit)}
+          </span>
         </div>
-      )}
-
-      {/* Storage warning banner — only when near limit */}
-      {nearLimit && (
-        <div className={`px-6 py-3 flex items-center justify-between gap-4 flex-wrap ${usagePct >= 100 ? 'bg-red-700' : 'bg-amber-600'}`}>
-          <p className="text-white text-sm">
-            <strong>Storage {usagePct >= 100 ? 'full' : 'nearly full'}:</strong> {formatStorage(estimatedUsageMB)} of {formatStorage(tierLimit)} used.
-            {usagePct >= 100 ? ' Photo uploads are disabled until you upgrade.' : ' Upgrade to avoid disruption.'}
-          </p>
-          <Link
-            href="/dashboard/club"
-            className="bg-white text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-cream transition-colors whitespace-nowrap flex-shrink-0"
-          >
-            Upgrade plan →
-          </Link>
+        <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all ${nearLimit ? 'bg-amber-400' : 'bg-sporr-mid'}`}
+            style={{ width: `${Math.max(usagePct, 2)}%` }}
+          />
         </div>
-      )}
-
-      <div className="max-w-5xl mx-auto px-6 py-10 flex-1 w-full flex flex-col">
-
-        {/* Header strip */}
-        <div className="mb-10">
-          <h1 className="text-sporr-dark text-3xl font-medium mb-2">{org?.name || 'Your club'}</h1>
-          <div className="flex items-center gap-2 text-sporr-muted text-sm flex-wrap">
-            <span>Season <strong className="text-sporr-dark">{currentSeason}</strong></span>
-            <span className="text-sporr-sage-lt">·</span>
-            <span><strong className="text-sporr-dark">{stats.sessions}</strong> session{stats.sessions !== 1 ? 's' : ''} logged</span>
-            <span className="text-sporr-sage-lt">·</span>
-            <span><strong className="text-sporr-dark">{stats.sponsors}</strong> active sponsor{stats.sponsors !== 1 ? 's' : ''}</span>
-            <span className="text-sporr-sage-lt">·</span>
-            <span className={nearLimit ? 'text-amber-600 font-medium' : ''}>
-              {formatStorage(estimatedUsageMB)} of {formatStorage(tierLimit)} storage
-            </span>
-          </div>
-        </div>
-
-        {/* Quick actions label */}
-        <p className="text-sporr-muted text-xs font-medium uppercase tracking-widest mb-4">Quick actions</p>
-
-        {/* Three action cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 flex-1">
-
-          {/* Your sponsors */}
-          <Link href="/dashboard/sponsors" className="bg-white rounded-2xl border border-sporr-sage-lt p-6 hover:border-sporr-dark transition-colors flex flex-col">
-            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Your sponsors</h2>
-            <p className="text-sporr-muted text-base leading-relaxed flex-1">
-              Add and manage the sponsors supporting your club.
-            </p>
-            <div className="border-t border-sporr-sage-lt mt-6 pt-4">
-              <Link href="/dashboard/obligations" className="flex items-center gap-2 text-sporr-muted text-sm hover:text-sporr-dark transition-colors">
-                Manage obligations →
-              </Link>
-            </div>
-          </Link>
-
-          {/* Today's event — featured */}
-          <div className="bg-white rounded-2xl border-2 border-sporr-dark p-6 flex flex-col">
-            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Today's event</h2>
-            <p className="text-sporr-muted text-base leading-relaxed flex-1">
-              Capture and store proof of match days and events.
-            </p>
-            <div className="border-t border-sporr-sage-lt mt-6 pt-4">
-              <Link href="/dashboard/audit" className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-mid transition-colors whitespace-nowrap">
-                {activeSession ? 'Manage session →' : 'Start session →'}
-              </Link>
-            </div>
-          </div>
-
-          {/* Your club */}
-          <Link href="/dashboard/club" className="bg-white rounded-2xl border border-sporr-sage-lt p-6 hover:border-sporr-dark transition-colors flex flex-col">
-            <h2 className="text-sporr-dark text-2xl font-medium mb-3">Your club</h2>
-            <p className="text-sporr-muted text-base leading-relaxed flex-1">
-              Manage your club profile and administrator access.
-            </p>
-            {isFree && (
-              <div className="border-t border-sporr-sage-lt mt-6 pt-4">
-                <span className="text-sporr-muted text-xs">Free plan · <Link href="/dashboard/club" className="text-sporr-dark underline">Upgrade</Link></span>
-              </div>
-            )}
-          </Link>
-
-        </div>
-
-        {/* Proof Pack banner */}
-        <Link href="/proof-pack" className="bg-sporr-dark rounded-2xl px-6 py-5 flex items-center justify-between hover:bg-sporr-mid transition-colors mt-auto">
-          <div className="flex items-center gap-4">
-            <div>
-              <p className="text-sporr-cream text-xs uppercase tracking-widest mb-0.5">Proof Pack</p>
-              <p className="text-sporr-cream font-medium">
-                {nextDueDate
-                  ? `Next Proof of Performance Report · due ${nextDueDate.date}`
-                  : stats.sessions > 0
-                  ? "Send your sponsor's Proof Pack"
-                  : 'Generate your first Proof Pack when ready'}
-              </p>
-            </div>
-          </div>
-          <span className="text-sporr-cream font-medium whitespace-nowrap ml-6">Send Proof Pack →</span>
-        </Link>
-
       </div>
-    </main>
+
+      {/* Sign out */}
+      <div className="px-6 py-4 border-t border-white/10">
+        <button
+          onClick={handleSignOut}
+          className="text-sporr-sage hover:text-sporr-cream text-sm transition-colors flex items-center gap-2"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Sign out
+        </button>
+      </div>
+    </aside>
+  )
+
+  const BottomNav = () => (
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-sporr-dark border-t border-white/10 z-40">
+      <div className="flex items-center justify-around px-2 py-2 safe-area-pb">
+        {NAV_ITEMS.slice(0, 5).map(item => {
+          const active = pathname === item.href
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-colors min-w-0 ${
+                active ? 'text-sporr-cream' : 'text-sporr-sage'
+              }`}
+            >
+              {item.icon(active)}
+              <span className="text-xs font-medium truncate max-w-[56px] text-center leading-tight">
+                {item.label === "Today's session" ? 'Session' : item.label === 'Club settings' ? 'Club' : item.label === 'Proof Packs' ? 'Proofs' : item.label}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
+
+  return (
+    <div className="min-h-screen bg-sporr-cream">
+      <Sidebar />
+      <BottomNav />
+
+      {/* Main content — offset for sidebar on desktop */}
+      <main className="lg:pl-64 pb-24 lg:pb-0">
+
+        {/* Mobile header */}
+        <div className="lg:hidden bg-sporr-dark px-4 py-3 flex items-center justify-between">
+          <img
+            src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
+            alt="Sporr"
+            className="h-12"
+          />
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center overflow-hidden">
+              {showCrest ? (
+                <img src={org!.logo_url!} alt={org?.name} className="w-full h-full object-contain p-0.5" />
+              ) : (
+                <img src={kitUrl} alt="Kit" className="w-full h-full object-contain" />
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Upgrade / storage banners */}
+        {isFree && stats.sponsors >= 1 && (
+          <div className="bg-sporr-mid px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sporr-cream text-sm">
+              <strong>Free plan:</strong> Bronze tier sponsors only · 1 Proof Pack per season.
+            </p>
+            <Link href="/dashboard/club" className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0">
+              Upgrade plan →
+            </Link>
+          </div>
+        )}
+
+        {nearLimit && (
+          <div className={`px-6 py-3 flex items-center justify-between gap-4 flex-wrap ${usagePct >= 100 ? 'bg-red-700' : 'bg-amber-600'}`}>
+            <p className="text-white text-sm">
+              <strong>Storage {usagePct >= 100 ? 'full' : 'nearly full'}:</strong> {formatStorage(estimatedUsageMB)} of {formatStorage(tierLimit)} used.
+            </p>
+            <Link href="/dashboard/club" className="bg-white text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-cream transition-colors whitespace-nowrap flex-shrink-0">
+              Upgrade plan →
+            </Link>
+          </div>
+        )}
+
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+
+          {/* Greeting */}
+          <div className="mb-6">
+            <h1 className="text-sporr-dark text-2xl sm:text-3xl font-medium">{org?.name || 'Your club'}</h1>
+            <p className="text-sporr-muted text-sm mt-1">Season {currentSeason} · {stats.sessions} session{stats.sessions !== 1 ? 's' : ''} logged</p>
+          </div>
+
+          {/* PRIMARY: Today's session — dominant card */}
+          <Link
+            href="/dashboard/audit"
+            className="block mb-4 group"
+          >
+            <div className={`relative rounded-2xl overflow-hidden transition-all duration-200 ${
+              activeSession
+                ? 'bg-sporr-dark ring-2 ring-sporr-mid'
+                : 'bg-sporr-dark hover:ring-2 hover:ring-sporr-mid'
+            }`}>
+
+              {/* Kit / crest illustration */}
+              <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-52 opacity-20 pointer-events-none">
+                <img
+                  src={showCrest && org?.logo_url ? org.logo_url : kitUrl}
+                  alt=""
+                  className="w-full h-full object-contain object-right-bottom p-4"
+                />
+              </div>
+
+              <div className="relative px-6 py-6 sm:py-8">
+                {activeSession && (
+                  <div className="inline-flex items-center gap-1.5 bg-sporr-mid/30 border border-sporr-mid/50 rounded-full px-3 py-1 mb-4">
+                    <span className="w-2 h-2 rounded-full bg-sporr-sage animate-pulse" />
+                    <span className="text-sporr-sage text-xs font-medium uppercase tracking-wider">Live session</span>
+                  </div>
+                )}
+
+                <h2 className="text-sporr-cream text-2xl sm:text-3xl font-medium mb-2">
+                  {activeSession ? 'Session in progress' : "Today's session"}
+                </h2>
+
+                <p className="text-sporr-sage text-sm mb-6 max-w-xs leading-relaxed">
+                  {activeSession
+                    ? 'A session is active. Tap to manage or capture proof.'
+                    : 'Start a capture session to document sponsor obligations on match day.'}
+                </p>
+
+                <div className={`inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors ${
+                  activeSession
+                    ? 'bg-sporr-mid text-sporr-cream group-hover:bg-sporr-sage group-hover:text-sporr-dark'
+                    : 'bg-sporr-cream text-sporr-dark group-hover:bg-sporr-sage-lt'
+                }`}>
+                  {activeSession ? 'Manage session →' : 'Start session →'}
+                </div>
+
+                {stats.obligations_pending > 0 && (
+                  <p className="text-sporr-sage text-xs mt-4">
+                    {stats.obligations_pending} obligation{stats.obligations_pending !== 1 ? 's' : ''} pending this season
+                  </p>
+                )}
+              </div>
+            </div>
+          </Link>
+
+          {/* SECONDARY: Stats row */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            {[
+              { label: 'Sponsors', value: stats.sponsors, href: '/dashboard/sponsors' },
+              { label: 'Sessions', value: stats.sessions, href: '/dashboard/audit' },
+              { label: 'Pending', value: stats.obligations_pending, href: '/dashboard/obligations' },
+            ].map(stat => (
+              <Link
+                key={stat.label}
+                href={stat.href}
+                className="bg-white rounded-xl border border-sporr-sage-lt px-4 py-4 hover:border-sporr-dark transition-colors text-center"
+              >
+                <p className="text-sporr-dark text-2xl font-medium">{stat.value}</p>
+                <p className="text-sporr-muted text-xs mt-0.5 uppercase tracking-wider">{stat.label}</p>
+              </Link>
+            ))}
+          </div>
+
+          {/* TERTIARY: Proof Pack banner */}
+          <Link
+            href="/proof-pack"
+            className="block bg-white rounded-2xl border border-sporr-sage-lt px-6 py-5 hover:border-sporr-dark transition-colors mb-4"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sporr-muted text-xs uppercase tracking-widest mb-1">Proof Pack</p>
+                <p className="text-sporr-dark font-medium text-sm">
+                  {nextDueDate
+                    ? `Next report due ${nextDueDate.date}`
+                    : stats.sessions > 0
+                    ? "Send your sponsor's Proof Pack"
+                    : 'Generate your first Proof Pack when ready'}
+                </p>
+              </div>
+              <span className="text-sporr-dark text-sm font-medium whitespace-nowrap">Send →</span>
+            </div>
+          </Link>
+
+          {/* Quick links row */}
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              href="/dashboard/contracts"
+              className="bg-white rounded-xl border border-sporr-sage-lt px-4 py-4 hover:border-sporr-dark transition-colors flex items-center justify-between"
+            >
+              <span className="text-sporr-dark text-sm font-medium">Contracts</span>
+              <span className="text-sporr-muted text-sm">→</span>
+            </Link>
+            <Link
+              href="/dashboard/club"
+              className="bg-white rounded-xl border border-sporr-sage-lt px-4 py-4 hover:border-sporr-dark transition-colors flex items-center justify-between"
+            >
+              <span className="text-sporr-dark text-sm font-medium">Club settings</span>
+              <span className="text-sporr-muted text-sm">→</span>
+            </Link>
+          </div>
+
+        </div>
+      </main>
+    </div>
   )
 }
