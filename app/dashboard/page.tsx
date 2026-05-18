@@ -221,7 +221,7 @@ export default function DashboardPage() {
   const showCrest = org?.show_logo_on_dashboard && org?.logo_url
   const kitUrl = getKitUrl(org?.sports || null)
 
-  // Derived session card content (Task 1 fix)
+  // Session card content
   function getSessionCardContent() {
     if (activeSession) {
       return {
@@ -229,29 +229,29 @@ export default function DashboardPage() {
         badgeLabel: 'Live session',
         heading: nextEvent ? nextEvent.title : 'Session in progress',
         body: firstPendingObligation
-          ? `Next: ${firstPendingObligation}`
+          ? firstPendingObligation
           : 'A session is active. Tap to manage or capture proof.',
         cta: 'Manage session →',
       }
     }
     if (nextEvent) {
       const dateStr = nextEvent.starts_at
-        ? new Date(nextEvent.starts_at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+        ? new Date(nextEvent.starts_at).toLocaleDateString('nb-NO', { weekday: 'short', day: 'numeric', month: 'long' })
         : null
       return {
-        badge: false,
+        badge: true,
+        badgeLabel: 'Next event',
         heading: nextEvent.title,
-        body: dateStr
-          ? `${dateStr}${firstPendingObligation ? ` · ${firstPendingObligation}` : ''}`
-          : firstPendingObligation || 'Start a session to document sponsor obligations.',
+        body: firstPendingObligation || (dateStr ? dateStr : 'No obligations logged yet.'),
         cta: 'Start session →',
       }
     }
+    // No event and no active session
     return {
       badge: false,
-      heading: "Today's session",
-      body: 'Start a capture session to document sponsor obligations on match day.',
-      cta: 'Start session →',
+      heading: 'No upcoming events',
+      body: firstPendingObligation || 'Add events and obligations in Contracts to get started.',
+      cta: 'Go to sessions →',
     }
   }
 
@@ -332,8 +332,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Notification bell + sign out */}
-      <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between">
+      {/* Sign out */}
+      <div className="px-6 py-4 border-t border-white/10">
         <button
           onClick={handleSignOut}
           className="text-sporr-sage hover:text-sporr-cream text-sm transition-colors flex items-center gap-2"
@@ -342,10 +342,6 @@ export default function DashboardPage() {
             <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           Sign out
-        </button>
-        {/* Notification bell — UI only, no functionality yet */}
-        <button className="relative text-sporr-sage hover:text-sporr-cream transition-colors p-1" aria-label="Notifications">
-          <BellIcon />
         </button>
       </div>
     </aside>
@@ -389,12 +385,17 @@ export default function DashboardPage() {
             alt="Sporr"
             className="h-12"
           />
-          <div className="flex items-center gap-3">
-            {/* Notification bell — mobile, UI only */}
-            <button className="relative text-sporr-sage hover:text-sporr-cream transition-colors p-1" aria-label="Notifications">
+          <div className="flex items-center gap-2">
+            {/* Bell — top bar, next to upgrade */}
+            <button className="text-sporr-sage hover:text-sporr-cream transition-colors p-2" aria-label="Notifications">
               <BellIcon />
             </button>
-            <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center overflow-hidden">
+            {isFree && (
+              <Link href="/dashboard/club" className="bg-sporr-mid text-sporr-cream text-xs font-medium px-3 py-2 rounded-lg hover:bg-sporr-surface transition-colors whitespace-nowrap">
+                Upgrade →
+              </Link>
+            )}
+            <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center overflow-hidden ml-1">
               {showCrest ? (
                 <img src={org!.logo_url!} alt={org?.name} className="w-full h-full object-contain p-0.5" />
               ) : (
@@ -435,7 +436,7 @@ export default function DashboardPage() {
             <p className="text-[#6B7D72] text-sm mt-1">Season {currentSeason} · {stats.sessions} session{stats.sessions !== 1 ? 's' : ''} logged</p>
           </div>
 
-          {/* PRIMARY: Session card — Task 2 colour refresh: sporr-sage-lt gradient */}
+          {/* PRIMARY: Session card */}
           <Link href="/dashboard/audit" className="block mb-4 group">
             <div
               className={`relative rounded-2xl overflow-hidden transition-all duration-200 ${
@@ -443,29 +444,45 @@ export default function DashboardPage() {
               }`}
               style={{
                 background: activeSession
-                  ? 'linear-gradient(135deg, #13322A 0%, #1e4a38 100%)'
-                  : 'linear-gradient(to right, #D4EAD9 0%, #D4EAD9 30%, #E8F2EA 55%, #F5F1E6 100%)',
+                  ? '#13322A'
+                  : '#D4EAD9',
               }}
             >
-              {/* Kit / crest illustration */}
-              <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-52 opacity-60 pointer-events-none">
+              {/* Kit / crest — fades in from the right against cream */}
+              <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-52 pointer-events-none">
+                {/* Gradient overlay so kit emerges from cream */}
+                <div
+                  className="absolute inset-0 z-10"
+                  style={{
+                    background: activeSession
+                      ? 'linear-gradient(to right, #13322A 0%, transparent 50%)'
+                      : 'linear-gradient(to right, #D4EAD9 0%, rgba(212,234,217,0.3) 40%, rgba(245,241,230,0) 100%)',
+                  }}
+                />
                 <img
                   src={showCrest && org?.logo_url ? org.logo_url : kitUrl}
                   alt=""
-                  className="w-full h-full object-contain object-right-bottom p-4"
+                  className="w-full h-full object-contain object-right-bottom p-4 relative z-0"
                   style={{
+                    opacity: activeSession ? 0.6 : 0.85,
                     filter: activeSession
                       ? 'drop-shadow(0 0 12px rgba(245,241,230,0.5))'
-                      : 'drop-shadow(0 0 8px rgba(19,50,42,0.15))',
+                      : 'none',
                   }}
                 />
               </div>
 
               <div className="relative px-6 py-6 sm:py-8">
                 {sessionCard.badge && (
-                  <div className="inline-flex items-center gap-1.5 bg-sporr-mid/30 border border-sporr-mid/50 rounded-full px-3 py-1 mb-4">
-                    <span className="w-2 h-2 rounded-full bg-sporr-sage animate-pulse" />
-                    <span className="text-sporr-sage text-xs font-medium uppercase tracking-wider">{sessionCard.badgeLabel}</span>
+                  <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-4 ${
+                    activeSession
+                      ? 'bg-sporr-mid/30 border border-sporr-mid/50'
+                      : 'bg-sporr-dark/10 border border-sporr-dark/20'
+                  }`}>
+                    {activeSession && <span className="w-2 h-2 rounded-full bg-sporr-sage animate-pulse" />}
+                    <span className={`text-xs font-medium uppercase tracking-wider ${activeSession ? 'text-sporr-sage' : 'text-sporr-dark'}`}>
+                      {sessionCard.badgeLabel}
+                    </span>
                   </div>
                 )}
 
@@ -473,7 +490,7 @@ export default function DashboardPage() {
                   {sessionCard.heading}
                 </h2>
 
-                <p className={`text-sm mb-6 max-w-xs leading-relaxed ${activeSession ? 'text-sporr-sage' : 'text-[#4a6657]'}`}>
+                <p className={`text-sm mb-6 max-w-xs leading-relaxed ${activeSession ? 'text-sporr-sage' : 'text-[#3d5c48]'}`}>
                   {sessionCard.body}
                 </p>
 
@@ -486,7 +503,7 @@ export default function DashboardPage() {
                 </div>
 
                 {stats.obligations_pending > 0 && (
-                  <p className={`text-xs mt-4 ${activeSession ? 'text-sporr-sage' : 'text-[#4a6657]'}`}>
+                  <p className={`text-xs mt-4 ${activeSession ? 'text-sporr-sage' : 'text-[#3d5c48]'}`}>
                     {stats.obligations_pending} obligation{stats.obligations_pending !== 1 ? 's' : ''} pending this season
                   </p>
                 )}
