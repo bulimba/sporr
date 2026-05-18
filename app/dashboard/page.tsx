@@ -28,8 +28,6 @@ function formatStorage(mb: number): string {
   return `${(mb / 1024).toFixed(1)} GB`
 }
 
-// Sport → kit image URL mapping
-// These map to the sport kit renders stored in Supabase storage
 const SPORT_KIT_MAP: Record<string, string> = {
   'Football': 'football',
   'Rugby': 'rugby',
@@ -58,10 +56,9 @@ function getKitUrl(sports: string[] | null): string {
   if (!sports || sports.length === 0) return `${SUPABASE_STORAGE}/sporr-kits/generic.svg`
   const sport = sports[0]
   const key = SPORT_KIT_MAP[sport] || 'generic'
-  return `${SUPABASE_STORAGE}/sporr-kits/${key}.svg?v=${Date.now()}`
+  return `${SUPABASE_STORAGE}/sporr-kits/${key}.svg`
 }
 
-// Nav items
 const NAV_ITEMS = [
   {
     href: '/dashboard',
@@ -101,7 +98,7 @@ const NAV_ITEMS = [
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <rect x="4" y="2" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0}/>
-        <path d="M7 7h6M7 10h6M7 13h4" stroke={active ? 'currentColor' : 'currentColor'} strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
       </svg>
     ),
   },
@@ -128,6 +125,13 @@ const NAV_ITEMS = [
   },
 ]
 
+const BellIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+    <path d="M10 2.5A5.5 5.5 0 004.5 8v3.5L3 13h14l-1.5-1.5V8A5.5 5.5 0 0010 2.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
+    <path d="M8.5 13v.5a1.5 1.5 0 003 0V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+  </svg>
+)
+
 export default function DashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -138,7 +142,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [nextDueDate, setNextDueDate] = useState<{ date: string; sponsor: string } | null>(null)
   const [photoCount, setPhotoCount] = useState(0)
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  // Task 1 fix: next upcoming event + first pending obligation
+  const [nextEvent, setNextEvent] = useState<{ title: string; starts_at: string | null } | null>(null)
+  const [firstPendingObligation, setFirstPendingObligation] = useState<string | null>(null)
   const currentSeason = '2025/26'
 
   useEffect(() => {
@@ -155,13 +161,17 @@ export default function DashboardPage() {
         .eq('id', userData.org_id).single()
       setOrg(orgData)
 
-      const [sponsorsRes, sessionsRes, obligationsRes, activeSessionRes, contractsRes, photosRes] = await Promise.all([
+      const [sponsorsRes, sessionsRes, obligationsRes, activeSessionRes, contractsRes, photosRes, nextEventRes, firstObRes] = await Promise.all([
         supabase.from('sponsors').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
         supabase.from('audit_sessions').select('id', { count: 'exact' }).eq('org_id', userData.org_id),
         supabase.from('obligations').select('id', { count: 'exact' }).eq('org_id', userData.org_id).eq('status', 'pending'),
         supabase.from('audit_sessions').select('id, session_token').eq('org_id', userData.org_id).eq('status', 'active').order('created_at', { ascending: false }).limit(1),
         supabase.from('contracts').select('end_date, sponsors(company_name)').eq('org_id', userData.org_id).eq('status', 'active').not('end_date', 'is', null).order('end_date', { ascending: true }).limit(1),
         supabase.from('proofs').select('id', { count: 'exact' }).eq('org_id', userData.org_id).not('photo_url', 'is', null),
+        // New query: next upcoming event (future or today)
+        supabase.from('events').select('id, title, starts_at').eq('org_id', userData.org_id).gte('starts_at', new Date().toISOString().split('T')[0]).order('starts_at', { ascending: true }).limit(1),
+        // New query: first pending obligation description
+        supabase.from('obligations').select('id, description').eq('org_id', userData.org_id).eq('status', 'pending').not('description', 'is', null).limit(1),
       ])
 
       setStats({
@@ -184,6 +194,14 @@ export default function DashboardPage() {
         }
       }
 
+      if (nextEventRes.data && nextEventRes.data.length > 0) {
+        setNextEvent(nextEventRes.data[0])
+      }
+
+      if (firstObRes.data && firstObRes.data.length > 0) {
+        setFirstPendingObligation(firstObRes.data[0].description)
+      }
+
       setLoading(false)
     }
     load()
@@ -200,9 +218,44 @@ export default function DashboardPage() {
   const usagePct = Math.min(Math.round((estimatedUsageMB / tierLimit) * 100), 100)
   const nearLimit = usagePct >= 80
 
-  // Kit or crest logic
   const showCrest = org?.show_logo_on_dashboard && org?.logo_url
   const kitUrl = getKitUrl(org?.sports || null)
+
+  // Derived session card content (Task 1 fix)
+  function getSessionCardContent() {
+    if (activeSession) {
+      return {
+        badge: true,
+        badgeLabel: 'Live session',
+        heading: nextEvent ? nextEvent.title : 'Session in progress',
+        body: firstPendingObligation
+          ? `Next: ${firstPendingObligation}`
+          : 'A session is active. Tap to manage or capture proof.',
+        cta: 'Manage session →',
+      }
+    }
+    if (nextEvent) {
+      const dateStr = nextEvent.starts_at
+        ? new Date(nextEvent.starts_at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+        : null
+      return {
+        badge: false,
+        heading: nextEvent.title,
+        body: dateStr
+          ? `${dateStr}${firstPendingObligation ? ` · ${firstPendingObligation}` : ''}`
+          : firstPendingObligation || 'Start a session to document sponsor obligations.',
+        cta: 'Start session →',
+      }
+    }
+    return {
+      badge: false,
+      heading: "Today's session",
+      body: 'Start a capture session to document sponsor obligations on match day.',
+      cta: 'Start session →',
+    }
+  }
+
+  const sessionCard = getSessionCardContent()
 
   if (loading) {
     return (
@@ -213,7 +266,7 @@ export default function DashboardPage() {
   }
 
   const Sidebar = () => (
-    <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-sporr-dark fixed left-0 top-0 bottom-0 z-40">
+    <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-sporr-deep fixed left-0 top-0 bottom-0 z-40">
       {/* Logo */}
       <div className="px-6 py-6 border-b border-white/10">
         <img
@@ -250,7 +303,7 @@ export default function DashboardPage() {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-white/10 text-sporr-cream'
+                  ? 'bg-sporr-surface text-sporr-cream'
                   : 'text-sporr-sage hover:bg-white/5 hover:text-sporr-cream'
               }`}
             >
@@ -279,8 +332,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Sign out */}
-      <div className="px-6 py-4 border-t border-white/10">
+      {/* Notification bell + sign out */}
+      <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between">
         <button
           onClick={handleSignOut}
           className="text-sporr-sage hover:text-sporr-cream text-sm transition-colors flex items-center gap-2"
@@ -289,6 +342,10 @@ export default function DashboardPage() {
             <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           Sign out
+        </button>
+        {/* Notification bell — UI only, no functionality yet */}
+        <button className="relative text-sporr-sage hover:text-sporr-cream transition-colors p-1" aria-label="Notifications">
+          <BellIcon />
         </button>
       </div>
     </aside>
@@ -323,7 +380,6 @@ export default function DashboardPage() {
       <Sidebar />
       <BottomNav />
 
-      {/* Main content — offset for sidebar on desktop */}
       <main className="lg:pl-64 pb-24 lg:pb-0">
 
         {/* Mobile header */}
@@ -333,7 +389,11 @@ export default function DashboardPage() {
             alt="Sporr"
             className="h-12"
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Notification bell — mobile, UI only */}
+            <button className="relative text-sporr-sage hover:text-sporr-cream transition-colors p-1" aria-label="Notifications">
+              <BellIcon />
+            </button>
             <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center overflow-hidden">
               {showCrest ? (
                 <img src={org!.logo_url!} alt={org?.name} className="w-full h-full object-contain p-0.5" />
@@ -344,7 +404,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Upgrade / storage banners */}
+        {/* Banners */}
         {isFree && stats.sponsors >= 1 && (
           <div className="bg-sporr-mid px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
             <p className="text-sporr-cream text-sm">
@@ -372,53 +432,61 @@ export default function DashboardPage() {
           {/* Greeting */}
           <div className="mb-6">
             <h1 className="text-sporr-dark text-2xl sm:text-3xl font-medium">{org?.name || 'Your club'}</h1>
-            <p className="text-sporr-muted text-sm mt-1">Season {currentSeason} · {stats.sessions} session{stats.sessions !== 1 ? 's' : ''} logged</p>
+            <p className="text-[#6B7D72] text-sm mt-1">Season {currentSeason} · {stats.sessions} session{stats.sessions !== 1 ? 's' : ''} logged</p>
           </div>
 
-          {/* PRIMARY: Today's session — dominant card */}
-          <Link
-            href="/dashboard/audit"
-            className="block mb-4 group"
-          >
-            <div className={`relative rounded-2xl overflow-hidden transition-all duration-200 ${
-              activeSession
-                ? 'bg-sporr-dark ring-2 ring-sporr-mid'
-                : 'bg-sporr-dark hover:ring-2 hover:ring-sporr-mid'
-            }`}>
-
+          {/* PRIMARY: Session card — Task 2 colour refresh: sporr-sage-lt gradient */}
+          <Link href="/dashboard/audit" className="block mb-4 group">
+            <div
+              className={`relative rounded-2xl overflow-hidden transition-all duration-200 ${
+                activeSession ? 'ring-2 ring-sporr-mid' : 'hover:ring-2 hover:ring-sporr-mid'
+              }`}
+              style={{
+                background: activeSession
+                  ? 'linear-gradient(135deg, #13322A 0%, #1e4a38 100%)'
+                  : 'linear-gradient(135deg, #D4EAD9 0%, #EDF5EE 60%, #F5F1E6 100%)',
+              }}
+            >
               {/* Kit / crest illustration */}
-              <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-52 opacity-75 pointer-events-none">
-                  <img src={showCrest && org?.logo_url ? org.logo_url : kitUrl} alt="" className="w-full h-full object-contain object-right-bottom p-4" style={{ filter: 'drop-shadow(0 0 12px rgba(245,241,230,0.5))' }} />
+              <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-52 opacity-60 pointer-events-none">
+                <img
+                  src={showCrest && org?.logo_url ? org.logo_url : kitUrl}
+                  alt=""
+                  className="w-full h-full object-contain object-right-bottom p-4"
+                  style={{
+                    filter: activeSession
+                      ? 'drop-shadow(0 0 12px rgba(245,241,230,0.5))'
+                      : 'drop-shadow(0 0 8px rgba(19,50,42,0.15))',
+                  }}
+                />
               </div>
 
               <div className="relative px-6 py-6 sm:py-8">
-                {activeSession && (
+                {sessionCard.badge && (
                   <div className="inline-flex items-center gap-1.5 bg-sporr-mid/30 border border-sporr-mid/50 rounded-full px-3 py-1 mb-4">
                     <span className="w-2 h-2 rounded-full bg-sporr-sage animate-pulse" />
-                    <span className="text-sporr-sage text-xs font-medium uppercase tracking-wider">Live session</span>
+                    <span className="text-sporr-sage text-xs font-medium uppercase tracking-wider">{sessionCard.badgeLabel}</span>
                   </div>
                 )}
 
-                <h2 className="text-sporr-cream text-2xl sm:text-3xl font-medium mb-2">
-                  {activeSession ? 'Session in progress' : "Today's session"}
+                <h2 className={`text-2xl sm:text-3xl font-medium mb-2 ${activeSession ? 'text-sporr-cream' : 'text-sporr-dark'}`}>
+                  {sessionCard.heading}
                 </h2>
 
-                <p className="text-sporr-sage text-sm mb-6 max-w-xs leading-relaxed">
-                  {activeSession
-                    ? 'A session is active. Tap to manage or capture proof.'
-                    : 'Start a capture session to document sponsor obligations on match day.'}
+                <p className={`text-sm mb-6 max-w-xs leading-relaxed ${activeSession ? 'text-sporr-sage' : 'text-[#4a6657]'}`}>
+                  {sessionCard.body}
                 </p>
 
                 <div className={`inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors ${
                   activeSession
                     ? 'bg-sporr-mid text-sporr-cream group-hover:bg-sporr-sage group-hover:text-sporr-dark'
-                    : 'bg-sporr-cream text-sporr-dark group-hover:bg-sporr-sage-lt'
+                    : 'bg-sporr-dark text-sporr-cream group-hover:bg-sporr-surface'
                 }`}>
-                  {activeSession ? 'Manage session →' : 'Start session →'}
+                  {sessionCard.cta}
                 </div>
 
                 {stats.obligations_pending > 0 && (
-                  <p className="text-sporr-sage text-xs mt-4">
+                  <p className={`text-xs mt-4 ${activeSession ? 'text-sporr-sage' : 'text-[#4a6657]'}`}>
                     {stats.obligations_pending} obligation{stats.obligations_pending !== 1 ? 's' : ''} pending this season
                   </p>
                 )}
@@ -426,20 +494,21 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          {/* SECONDARY: Stats row */}
+          {/* SECONDARY: Stats row — Task 2: soft muted colour shades */}
           <div className="grid grid-cols-3 gap-3 mb-4">
             {[
-              { label: 'Sponsors', value: stats.sponsors, href: '/dashboard/sponsors' },
-              { label: 'Sessions', value: stats.sessions, href: '/dashboard/audit' },
-              { label: 'Pending', value: stats.obligations_pending, href: '/dashboard/obligations' },
+              { label: 'Sponsors', value: stats.sponsors, href: '/dashboard/sponsors', bg: '#EAF2EC', border: '#C5DFCA' },
+              { label: 'Sessions', value: stats.sessions, href: '/dashboard/audit', bg: '#EDF0E8', border: '#CDD4C5' },
+              { label: 'Pending', value: stats.obligations_pending, href: '/dashboard/obligations', bg: '#F0EDE5', border: '#D8D1C0' },
             ].map(stat => (
               <Link
                 key={stat.label}
                 href={stat.href}
-                className="bg-white rounded-xl border border-sporr-sage-lt px-4 py-4 hover:border-sporr-dark transition-colors text-center"
+                className="rounded-xl px-4 py-4 transition-all hover:brightness-95 text-center"
+                style={{ backgroundColor: stat.bg, border: `1px solid ${stat.border}` }}
               >
                 <p className="text-sporr-dark text-2xl font-medium">{stat.value}</p>
-                <p className="text-sporr-muted text-xs mt-0.5 uppercase tracking-wider">{stat.label}</p>
+                <p className="text-[#5a7060] text-xs mt-0.5 uppercase tracking-wider">{stat.label}</p>
               </Link>
             ))}
           </div>
@@ -451,7 +520,7 @@ export default function DashboardPage() {
           >
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sporr-muted text-xs uppercase tracking-widest mb-1">Proof Pack</p>
+                <p className="text-[#6B7D72] text-xs uppercase tracking-widest mb-1">Proof Pack</p>
                 <p className="text-sporr-dark font-medium text-sm">
                   {nextDueDate
                     ? `Next report due ${nextDueDate.date}`
@@ -471,14 +540,14 @@ export default function DashboardPage() {
               className="bg-white rounded-xl border border-sporr-sage-lt px-4 py-4 hover:border-sporr-dark transition-colors flex items-center justify-between"
             >
               <span className="text-sporr-dark text-sm font-medium">Contracts</span>
-              <span className="text-sporr-muted text-sm">→</span>
+              <span className="text-[#6B7D72] text-sm">→</span>
             </Link>
             <Link
               href="/dashboard/club"
               className="bg-white rounded-xl border border-sporr-sage-lt px-4 py-4 hover:border-sporr-dark transition-colors flex items-center justify-between"
             >
               <span className="text-sporr-dark text-sm font-medium">Club settings</span>
-              <span className="text-sporr-muted text-sm">→</span>
+              <span className="text-[#6B7D72] text-sm">→</span>
             </Link>
           </div>
 
