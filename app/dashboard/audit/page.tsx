@@ -38,8 +38,9 @@ export default function AuditPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [launching, setLaunching] = useState(false)
-  const [activeSession, setActiveSession] = useState<{ token: string, qrUrl: string } | null>(null)
+  const [activeSession, setActiveSession] = useState<{ token: string; qrUrl: string } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [closingId, setClosingId] = useState<string | null>(null)
   const [form, setForm] = useState({
     event_id: '',
     new_event_title: '',
@@ -126,11 +127,13 @@ export default function AuditPage() {
   }
 
   async function markComplete(sessionId: string) {
+    setClosingId(sessionId)
     await supabase
       .from('audit_sessions')
       .update({ status: 'completed', completed_at: new Date().toISOString() })
       .eq('id', sessionId)
     setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, status: 'completed' } : s))
+    setClosingId(null)
   }
 
   async function updateAttendance(sessionId: string, attendance: number) {
@@ -138,6 +141,7 @@ export default function AuditPage() {
     setSessions(prev => prev.map(s => s.id === sessionId ? { ...s, attendance } : s))
   }
 
+  const activeSessions = sessions.filter(s => s.status === 'active')
   const totalSeasonAttendance = sessions.reduce((sum, s) => sum + (s.attendance || 0), 0)
 
   if (loading) {
@@ -158,15 +162,80 @@ export default function AuditPage() {
       </nav>
 
       <div className="max-w-4xl mx-auto px-6 py-10">
+
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-sporr-dark text-2xl font-medium mb-1">Today's session</h1>
+            <h1 className="text-sporr-dark text-2xl font-medium mb-1">Sessions</h1>
             <p className="text-sporr-muted text-sm">Capture proof of match days, events, and other obligations</p>
           </div>
           <button onClick={() => { setShowForm(true); setActiveSession(null) }} className="btn-primary">
             Launch session
           </button>
         </div>
+
+        {/* PROMINENT: Active sessions — shown at top, impossible to miss */}
+        {activeSessions.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-3">
+              Active sessions
+            </h2>
+            <div className="space-y-3">
+              {activeSessions.map(session => (
+                <div
+                  key={session.id}
+                  className="rounded-2xl border-2 border-sporr-accent px-6 py-5"
+                  style={{ backgroundColor: '#FFF5F5' }}
+                >
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex items-start gap-3">
+                      <span className="w-2.5 h-2.5 rounded-full bg-sporr-accent mt-1.5 flex-shrink-0 animate-pulse" />
+                      <div>
+                        <p className="text-sporr-dark font-medium">
+                          {session.events?.title || 'No event linked'}
+                        </p>
+                        <p className="text-sporr-muted text-xs mt-0.5">
+                          {DELIVERY_CONTEXTS.find(c => c.value === session.delivery_context)?.label || 'Match day'}
+                          {' · '}
+                          {new Date(session.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <a
+                        href={`/audit/${session.session_token}`}
+                        className="bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-2 rounded-lg hover:bg-sporr-surface transition-colors"
+                      >
+                        Open field mode →
+                      </a>
+                      <button
+                        onClick={() => markComplete(session.id)}
+                        disabled={closingId === session.id}
+                        className="bg-white border border-sporr-sage-lt text-sporr-dark text-sm font-medium px-4 py-2 rounded-lg hover:border-sporr-dark transition-colors disabled:opacity-50"
+                      >
+                        {closingId === session.id ? 'Closing...' : 'Mark complete'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Attendance inline */}
+                  <div className="flex items-center gap-3 mt-4 pt-4 border-t border-red-100">
+                    <label className="text-sporr-muted text-xs whitespace-nowrap">Attendance</label>
+                    <input
+                      type="number"
+                      className="border border-sporr-sage-lt rounded-lg px-3 py-1.5 text-sm w-24 text-sporr-dark focus:outline-none focus:border-sporr-dark bg-white"
+                      placeholder="0"
+                      defaultValue={session.attendance || ''}
+                      onBlur={e => {
+                        const val = parseInt(e.target.value)
+                        if (!isNaN(val)) updateAttendance(session.id, val)
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {totalSeasonAttendance > 0 && (
           <div className="card mb-6 flex items-center justify-between">
@@ -197,7 +266,7 @@ export default function AuditPage() {
 
         {showForm && (
           <div className="card mb-8">
-            <h2 className="text-sporr-dark text-lg font-medium mb-6">Launch audit session</h2>
+            <h2 className="text-sporr-dark text-lg font-medium mb-6">Launch session</h2>
             {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>}
 
             <div className="mb-6">
@@ -253,11 +322,12 @@ export default function AuditPage() {
           </div>
         )}
 
-        {sessions.length > 0 && (
+        {/* Completed / other sessions */}
+        {sessions.filter(s => s.status !== 'active').length > 0 && (
           <div>
-            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Recent sessions</h2>
+            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-4">Session history</h2>
             <div className="space-y-3">
-              {sessions.map(session => (
+              {sessions.filter(s => s.status !== 'active').map(session => (
                 <div key={session.id} className="card">
                   <div className="flex items-center justify-between gap-4 flex-wrap">
                     <div>
@@ -282,19 +352,9 @@ export default function AuditPage() {
                           }}
                         />
                       </div>
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                        session.status === 'active' ? 'bg-sporr-sage-lt text-sporr-dark' :
-                        session.status === 'completed' ? 'bg-sporr-light text-sporr-muted' :
-                        'bg-red-50 text-red-600'
-                      }`}>{session.status}</span>
-                      {session.status === 'active' && (
-                        <button
-                          onClick={() => markComplete(session.id)}
-                          className="text-sporr-muted hover:text-sporr-dark text-xs transition-colors"
-                        >
-                          Close
-                        </button>
-                      )}
+                      <span className="text-xs font-medium px-2 py-1 rounded-full bg-sporr-light text-sporr-muted">
+                        {session.status}
+                      </span>
                       <a href={`/audit/${session.session_token}`} className="text-sporr-sage hover:text-sporr-dark text-sm transition-colors">Open →</a>
                     </div>
                   </div>
