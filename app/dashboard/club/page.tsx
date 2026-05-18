@@ -92,10 +92,13 @@ export default function ClubPage() {
   const [upgradeTarget, setUpgradeTarget] = useState<typeof PLANS[0] | null>(null)
   const [upgradeMethod, setUpgradeMethod] = useState<'vipps' | 'card' | 'invoice' | null>(null)
   const [photoCount, setPhotoCount] = useState(0)
+
+  // Crest state — managed independently, saves immediately
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [showLogoOnDashboard, setShowLogoOnDashboard] = useState(false)
   const [uploadingLogo, setUploadingLogo] = useState(false)
   const [logoError, setLogoError] = useState<string | null>(null)
+  const [crestSaved, setCrestSaved] = useState(false)
 
   const [form, setForm] = useState({
     name: '',
@@ -191,27 +194,24 @@ export default function ClubPage() {
       sponsorship_contact_phone: form.sponsorship_contact_phone || null,
       governing_body_name: form.governing_body_name || null,
       governing_body_website: form.governing_body_website || null,
-      logo_url: logoUrl,
-      show_logo_on_dashboard: showLogoOnDashboard,
+      // Note: logo_url and show_logo_on_dashboard are NOT saved here — they save immediately in the crest section
     }).eq('id', orgId)
     if (saveError) { setError(saveError.message); setSaving(false); return }
     setSaved(true); setSaving(false)
     setTimeout(() => setSaved(false), 3000)
   }
 
+  // Crest: save logo_url immediately after upload
   async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !orgId) return
     setLogoError(null)
 
-    // Validate file type
     const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/svg+xml', 'image/webp']
     if (!allowed.includes(file.type)) {
       setLogoError('Please upload a PNG, JPG, SVG or WebP file.')
       return
     }
-
-    // Validate file size — 2MB max
     if (file.size > 2 * 1024 * 1024) {
       setLogoError('File too large — maximum 2MB.')
       return
@@ -232,18 +232,32 @@ export default function ClubPage() {
     }
 
     const { data: urlData } = supabase.storage.from('club-assets').getPublicUrl(path)
-    setLogoUrl(urlData.publicUrl)
+    const newUrl = urlData.publicUrl
+    setLogoUrl(newUrl)
+
+    // Save immediately — independent of main Save Changes button
+    await supabase.from('organisations').update({ logo_url: newUrl }).eq('id', orgId)
     setUploadingLogo(false)
+    setCrestSaved(true)
+    setTimeout(() => setCrestSaved(false), 2500)
   }
 
+  // Crest: toggle saves immediately
+  async function handleToggleShowOnDashboard() {
+    if (!orgId) return
+    const newVal = !showLogoOnDashboard
+    setShowLogoOnDashboard(newVal)
+    await supabase.from('organisations').update({ show_logo_on_dashboard: newVal }).eq('id', orgId)
+    setCrestSaved(true)
+    setTimeout(() => setCrestSaved(false), 2500)
+  }
+
+  // Crest: remove saves immediately
   async function handleRemoveLogo() {
+    if (!orgId) return
     setLogoUrl(null)
     setShowLogoOnDashboard(false)
-    if (!orgId) return
-    await supabase.from('organisations').update({
-      logo_url: null,
-      show_logo_on_dashboard: false,
-    }).eq('id', orgId)
+    await supabase.from('organisations').update({ logo_url: null, show_logo_on_dashboard: false }).eq('id', orgId)
   }
 
   async function handleSignOut() {
@@ -417,9 +431,17 @@ export default function ClubPage() {
           </div>
         </div>
 
-        {/* Club crest */}
+        {/* Club crest — Fix 3: self-contained, all actions save immediately */}
         <div className="card mb-6">
-          <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest mb-2">Club crest</h2>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sporr-dark text-sm font-medium uppercase tracking-widest">Club crest</h2>
+            {crestSaved && (
+              <span className="text-sporr-mid text-xs font-medium flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                Saved
+              </span>
+            )}
+          </div>
           <p className="text-sporr-muted text-sm mb-6">
             Upload your club crest to personalise your dashboard. Supports PNG, JPG, SVG and WebP up to 2MB.
             All crest shapes are supported — shields, pennants, flags, and irregular historic badges.
@@ -431,13 +453,8 @@ export default function ClubPage() {
 
           {logoUrl ? (
             <div className="flex items-start gap-6">
-              {/* Preview on cream card */}
               <div className="w-24 h-24 rounded-xl bg-sporr-cream border border-sporr-sage-lt flex items-center justify-center flex-shrink-0 overflow-hidden p-2">
-                <img
-                  src={logoUrl}
-                  alt="Club crest"
-                  className="max-w-full max-h-full object-contain"
-                />
+                <img src={logoUrl} alt="Club crest" className="max-w-full max-h-full object-contain" />
               </div>
               <div className="flex-1">
                 <p className="text-sporr-dark text-sm font-medium mb-1">Crest uploaded</p>
@@ -445,10 +462,10 @@ export default function ClubPage() {
                   Your crest is displayed on a cream background to ensure it looks great regardless of its original background colour.
                 </p>
 
-                {/* Show on dashboard toggle */}
+                {/* Toggle — saves immediately on click */}
                 <label className="flex items-center gap-3 cursor-pointer mb-4">
                   <div
-                    onClick={() => setShowLogoOnDashboard(prev => !prev)}
+                    onClick={handleToggleShowOnDashboard}
                     className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer flex-shrink-0 ${showLogoOnDashboard ? 'bg-sporr-dark' : 'bg-sporr-sage-lt'}`}
                   >
                     <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${showLogoOnDashboard ? 'translate-x-5' : 'translate-x-1'}`} />
@@ -465,7 +482,7 @@ export default function ClubPage() {
                     className="btn-secondary text-sm py-2 px-4"
                     disabled={uploadingLogo}
                   >
-                    Replace crest
+                    {uploadingLogo ? 'Uploading...' : 'Replace crest'}
                   </button>
                   <button
                     onClick={handleRemoveLogo}
@@ -498,7 +515,6 @@ export default function ClubPage() {
             </div>
           )}
 
-          {/* Hidden file input */}
           <input
             ref={logoInputRef}
             type="file"
