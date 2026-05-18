@@ -266,7 +266,7 @@ export default function DashboardPage() {
   }
 
   const Sidebar = () => (
-    <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-sporr-deep fixed left-0 top-0 bottom-0 z-40">
+    <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-sporr-dark fixed left-0 top-0 bottom-0 z-40">
       {/* Logo */}
       <div className="px-6 py-6 border-b border-white/10">
         <img
@@ -303,7 +303,7 @@ export default function DashboardPage() {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-sporr-surface text-sporr-cream'
+                  ? 'bg-white/10 text-sporr-cream'
                   : 'text-sporr-sage hover:bg-white/5 hover:text-sporr-cream'
               }`}
             >
@@ -444,7 +444,7 @@ export default function DashboardPage() {
               style={{
                 background: activeSession
                   ? 'linear-gradient(135deg, #13322A 0%, #1e4a38 100%)'
-                  : 'linear-gradient(135deg, #D4EAD9 0%, #EDF5EE 60%, #F5F1E6 100%)',
+                  : 'linear-gradient(to right, #D4EAD9 0%, #D4EAD9 30%, #E8F2EA 55%, #F5F1E6 100%)',
               }}
             >
               {/* Kit / crest illustration */}
