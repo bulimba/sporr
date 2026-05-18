@@ -237,6 +237,21 @@ export default function SponsorsPage() {
               </button>
               <button onClick={() => { setShowForm(false); setError(null) }} className="btn-secondary">Cancel</button>
             </div>
+
+            {/* Flow prompt — next logical step */}
+            <div className="mt-6 pt-5 border-t border-sporr-sage-lt">
+              <p className="text-sporr-muted text-xs uppercase tracking-widest mb-2">Next step</p>
+              <p className="text-sporr-dark text-sm font-medium mb-1">Create a contract for this sponsor</p>
+              <p className="text-sporr-muted text-xs leading-relaxed mb-3">
+                A contract links your sponsor to a season, a package value, and the specific obligations they've paid for — like a banner, kit logo, or PA announcement.
+              </p>
+              <Link
+                href="/dashboard/contracts"
+                className="inline-flex items-center gap-2 text-sm font-medium text-sporr-dark underline underline-offset-2 hover:text-sporr-mid transition-colors"
+              >
+                Go to Contracts →
+              </Link>
+            </div>
           </div>
         )}
 
