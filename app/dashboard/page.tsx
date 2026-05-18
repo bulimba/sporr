@@ -237,33 +237,26 @@ export default function DashboardPage() {
 
   // Session card content
   function getSessionCardContent() {
-    if (activeSession) {
-      return {
-        badge: true,
-        badgeLabel: 'Live session',
-        heading: nextEvent ? nextEvent.title : 'Session in progress',
-        body: firstPendingObligation || 'Tap to manage or capture proof.',
-        cta: 'Manage session →',
-      }
-    }
+    const dateStr = nextEvent?.starts_at
+      ? new Date(nextEvent.starts_at).toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' })
+      : null
+
     if (nextEvent) {
-      const dateStr = nextEvent.starts_at
-        ? new Date(nextEvent.starts_at).toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' })
-        : null
-      const bodyParts = [dateStr, firstPendingObligation].filter(Boolean)
       return {
         badge: true,
         badgeLabel: 'Next event',
         heading: nextEvent.title,
-        body: bodyParts.length > 0 ? bodyParts.join(' · ') : 'No obligations logged yet.',
-        cta: 'Start session →',
+        body: [dateStr, firstPendingObligation].filter(Boolean).join(' · ') || 'No obligations logged yet.',
+        cta: activeSession ? 'Manage session →' : 'Start session →',
       }
     }
+
+    // No events logged at all
     return {
       badge: false,
       heading: 'No upcoming events',
       body: firstPendingObligation || 'Add events and obligations in Contracts to get started.',
-      cta: 'Go to sessions →',
+      cta: activeSession ? 'Manage session →' : 'Go to sessions →',
     }
   }
 
@@ -452,23 +445,16 @@ export default function DashboardPage() {
                 activeSession ? 'ring-2 ring-sporr-mid' : 'hover:ring-2 hover:ring-sporr-mid'
               }`}
               style={{
-                background: 'linear-gradient(to right, #D4EAD9 0%, #DFF0E3 45%, #F5F1E6 100%)',
+                background: 'linear-gradient(to right, #D4EAD9 0%, #E8F2E9 35%, #F5F1E6 58%, #F5F1E6 100%)',
                 border: activeSession ? '2px solid #C0392B' : '2px solid transparent',
               }}
             >
-              {/* Kit / crest — fades in from the right against cream */}
+              {/* Kit / crest — sits on cream, no overlay needed */}
               <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-52 pointer-events-none">
-                {/* Gradient overlay so kit emerges from cream */}
-                <div
-                  className="absolute inset-0 z-10"
-                  style={{
-                    background: 'linear-gradient(to right, #D4EAD9 0%, transparent 50%)',
-                  }}
-                />
                 <img
                   src={showCrest && org?.logo_url ? org.logo_url : kitUrl}
                   alt=""
-                  className="w-full h-full object-contain object-right-bottom p-4 relative z-0"
+                  className="w-full h-full object-contain object-right-bottom p-4"
                   style={{ opacity: 0.85 }}
                 />
               </div>
