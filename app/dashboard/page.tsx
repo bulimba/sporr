@@ -74,7 +74,7 @@ const NAV_ITEMS = [
   },
   {
     href: '/dashboard/audit',
-    label: "Today's session",
+    label: 'Obligations',
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -236,6 +236,19 @@ export default function DashboardPage() {
   const showCrest = org?.show_logo_on_dashboard && org?.logo_url
   const kitUrl = getKitUrl(org?.sports || null)
 
+  // Onboarding checklist — dismissable, stored in localStorage
+  const [showChecklist, setShowChecklist] = useState(false)
+
+  useEffect(() => {
+    const dismissed = localStorage.getItem('sporr_checklist_dismissed')
+    if (!dismissed) setShowChecklist(true)
+  }, [])
+
+  function dismissChecklist() {
+    localStorage.setItem('sporr_checklist_dismissed', '1')
+    setShowChecklist(false)
+  }
+
   // Session card content
   function getSessionCardContent() {
     const dateStr = nextEvent?.starts_at
@@ -246,18 +259,22 @@ export default function DashboardPage() {
       return {
         badge: true,
         badgeLabel: 'Next event',
-        heading: nextEvent.title,
-        body: [dateStr, firstPendingObligation].filter(Boolean).join(' · ') || 'No obligations logged yet.',
+        heading: "Today's obligations",
+        subheading: nextEvent.title + (dateStr ? ` · ${dateStr}` : ''),
+        body: firstPendingObligation || 'No obligations logged for this event yet.',
+        emptyState: false,
         cta: activeSession ? 'Manage session →' : 'Start session →',
       }
     }
 
-    // No events logged at all
+    // No upcoming events — empty state with guidance
     return {
       badge: false,
-      heading: 'No upcoming events',
-      body: firstPendingObligation || 'Add events and obligations in Contracts to get started.',
-      cta: activeSession ? 'Manage session →' : 'Go to sessions →',
+      heading: "Today's obligations",
+      subheading: null,
+      body: null,
+      emptyState: true,
+      cta: null,
     }
   }
 
@@ -369,7 +386,7 @@ export default function DashboardPage() {
             >
               {item.icon(active)}
               <span className="text-xs font-medium truncate max-w-[56px] text-center leading-tight">
-                {item.label === "Today's session" ? 'Session' : item.label === 'Club settings' ? 'Club' : item.label === 'Proof Packs' ? 'Proofs' : item.label}
+                {item.label === 'Club settings' ? 'Club' : item.label === 'Proof Packs' ? 'Proofs' : item.label}
               </span>
             </Link>
           )
@@ -440,30 +457,31 @@ export default function DashboardPage() {
             <p className="text-[#6B7D72] text-sm mt-1">Season {currentSeason} · {stats.sessions} session{stats.sessions !== 1 ? 's' : ''} logged</p>
           </div>
 
-          {/* PRIMARY: Session card */}
+          {/* PRIMARY: Obligations card */}
           <Link href="/dashboard/audit" className="block mb-4 group">
             <div
               className={`relative rounded-2xl overflow-hidden transition-all duration-200 ${
-                activeSession ? 'ring-2 ring-sporr-mid' : 'hover:ring-2 hover:ring-sporr-mid'
+                activeSession ? '' : 'hover:ring-2 hover:ring-sporr-mid'
               }`}
               style={{
                 background: 'linear-gradient(to right, #D4EAD9 0%, #E8F2E9 35%, #F5F1E6 58%, #F5F1E6 100%)',
                 border: activeSession ? '2px solid #C0392B' : '2px solid transparent',
               }}
             >
-              {/* Kit / crest — sits on cream, no overlay needed */}
+              {/* Kit / crest */}
               <div className="absolute right-0 top-0 bottom-0 w-40 sm:w-52 pointer-events-none">
                 <img
                   src={showCrest && org?.logo_url ? org.logo_url : kitUrl}
                   alt=""
                   className="w-full h-full object-contain object-right-bottom p-4"
-                  style={{ opacity: 0.85 }}
+                  style={{ opacity: sessionCard.emptyState ? 0.25 : 0.85 }}
                 />
               </div>
 
               <div className="relative px-6 py-6 sm:py-8">
+                {/* Badge */}
                 {sessionCard.badge && (
-                  <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-4 bg-sporr-dark/10 border border-sporr-dark/20">
+                  <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-3 bg-sporr-dark/10 border border-sporr-dark/20">
                     {activeSession && <span className="w-2 h-2 rounded-full bg-sporr-accent animate-pulse" />}
                     <span className="text-xs font-medium uppercase tracking-wider text-sporr-dark">
                       {sessionCard.badgeLabel}
@@ -471,17 +489,47 @@ export default function DashboardPage() {
                   </div>
                 )}
 
-                <h2 className="text-2xl sm:text-3xl font-medium mb-2 text-sporr-dark">
+                {/* Heading — always "Today's obligations" */}
+                <h2 className="text-2xl sm:text-3xl font-medium mb-1 text-sporr-dark">
                   {sessionCard.heading}
                 </h2>
 
-                <p className="text-sm mb-6 max-w-xs leading-relaxed text-[#3d5c48]">
-                  {sessionCard.body}
-                </p>
+                {/* Event name + date subheading */}
+                {sessionCard.subheading && (
+                  <p className="text-sm font-medium text-sporr-dark mb-2 opacity-70">
+                    {sessionCard.subheading}
+                  </p>
+                )}
 
-                <div className="inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors bg-sporr-dark text-sporr-cream group-hover:bg-sporr-surface">
-                  {sessionCard.cta}
-                </div>
+                {/* Obligation description or empty state */}
+                {sessionCard.emptyState ? (
+                  <div className="mt-3 mb-4">
+                    <p className="text-sm text-[#3d5c48] mb-3 leading-relaxed">
+                      No upcoming obligations logged yet.
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-xs text-[#3d5c48]">
+                        → Add a sponsor in{' '}
+                        <span className="font-semibold underline underline-offset-2">Sponsors</span>
+                      </span>
+                      <span className="text-xs text-[#3d5c48]">
+                        → Add a contract and obligations in{' '}
+                        <span className="font-semibold underline underline-offset-2">Contracts</span>
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm mb-5 max-w-xs leading-relaxed text-[#3d5c48]">
+                    {sessionCard.body}
+                  </p>
+                )}
+
+                {/* CTA */}
+                {sessionCard.cta && (
+                  <div className="inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors bg-sporr-dark text-sporr-cream group-hover:bg-sporr-surface">
+                    {sessionCard.cta}
+                  </div>
+                )}
 
                 {stats.obligations_pending > 0 && (
                   <p className="text-xs mt-4 text-[#3d5c48]">
@@ -491,6 +539,93 @@ export default function DashboardPage() {
               </div>
             </div>
           </Link>
+
+          {/* ONBOARDING CHECKLIST — dismissable */}
+          {showChecklist && (
+            <div className="rounded-2xl border border-sporr-sage-lt bg-white mb-4 overflow-hidden">
+              <div className="px-6 py-4 flex items-center justify-between border-b border-sporr-sage-lt">
+                <div>
+                  <p className="text-sporr-dark text-sm font-medium">Getting started</p>
+                  <p className="text-[#6B7D72] text-xs mt-0.5">Complete these steps to get Sporr working for your club</p>
+                </div>
+                <button
+                  onClick={dismissChecklist}
+                  className="text-[#6B7D72] hover:text-sporr-dark text-xs transition-colors px-2 py-1"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <div className="divide-y divide-sporr-sage-lt">
+                {[
+                  {
+                    step: 1,
+                    done: stats.sponsors > 0,
+                    label: 'Add your first sponsor',
+                    description: 'The company or organisation supporting your club.',
+                    href: '/dashboard/sponsors',
+                    cta: 'Add sponsor →',
+                  },
+                  {
+                    step: 2,
+                    done: false, // contracts check would need a separate query — simplified for now
+                    label: 'Create a contract',
+                    description: 'Link your sponsor to a season and a package value.',
+                    href: '/dashboard/contracts',
+                    cta: 'Add contract →',
+                  },
+                  {
+                    step: 3,
+                    done: stats.obligations_pending > 0,
+                    label: 'Add sponsor obligations',
+                    description: 'The specific things your sponsor expects in return — banners, kit logos, PA announcements.',
+                    href: '/dashboard/contracts',
+                    cta: 'Add obligations →',
+                  },
+                  {
+                    step: 4,
+                    done: stats.sessions > 0,
+                    label: 'Run your first session',
+                    description: 'On match day, launch a session and capture photo proof of each obligation.',
+                    href: '/dashboard/audit',
+                    cta: 'Launch session →',
+                  },
+                  {
+                    step: 5,
+                    done: false,
+                    label: 'Send your first Proof Pack',
+                    description: 'At the end of the season, generate and send your sponsor a professional performance report.',
+                    href: '/proof-pack',
+                    cta: 'Go to Proof Packs →',
+                  },
+                ].map(item => (
+                  <div key={item.step} className="px-6 py-4 flex items-start gap-4">
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      item.done ? 'bg-sporr-mid' : 'border-2 border-sporr-sage-lt'
+                    }`}>
+                      {item.done ? (
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          <path d="M2 6l3 3 5-5" stroke="#F5F1E6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      ) : (
+                        <span className="text-[#6B7D72] text-xs font-medium">{item.step}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium mb-0.5 ${item.done ? 'text-sporr-mid line-through' : 'text-sporr-dark'}`}>
+                        {item.label}
+                      </p>
+                      <p className="text-xs text-[#6B7D72] leading-relaxed mb-2">{item.description}</p>
+                      {!item.done && (
+                        <Link href={item.href} className="text-xs font-medium text-sporr-dark underline underline-offset-2 hover:text-sporr-mid transition-colors">
+                          {item.cta}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* SECONDARY: Stats row — Task 2: soft muted colour shades */}
           <div className="grid grid-cols-3 gap-3 mb-4">
