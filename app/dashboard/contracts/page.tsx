@@ -48,7 +48,6 @@ const SPONSORSHIP_TIERS = [
   { value: 'title', label: 'Platinum', sublabel: 'Title sponsor', free: false },
 ]
 
-// Default CPM rates (NOK) — indicative, based on international benchmarks
 const MEDIA_TYPES = [
   { value: 'newspaper', label: 'Newspaper / print', defaultCpm: 50, unit: 'circulation' },
   { value: 'tv', label: 'Television', defaultCpm: 200, unit: 'viewership' },
@@ -59,6 +58,14 @@ const MEDIA_TYPES = [
   { value: 'event_signage', label: 'Event signage / outdoor', defaultCpm: 15, unit: 'footfall' },
   { value: 'other', label: 'Other', defaultCpm: 30, unit: 'reach' },
 ]
+
+// Tier contract limits (for accurate upgrade messaging)
+const CONTRACT_LIMITS: Record<string, number | null> = {
+  free: 1,
+  club: 5,   // 5 sponsors → up to 5 contracts per sponsor effectively; display as per sponsor count
+  pro: 20,
+  agency: null, // contact
+}
 
 export default function ContractsPage() {
   const router = useRouter()
@@ -241,8 +248,8 @@ export default function ContractsPage() {
               The free plan supports Bronze (Community) tier only. Upgrade to Club to add Silver, Gold, or Platinum tier sponsors.
             </p>
             <div className="bg-sporr-light rounded-xl p-4 mb-6">
-              <p className="text-sporr-dark font-medium mb-1">Club — Kr 490/mnd</p>
-              <p className="text-sporr-muted text-sm">Unlimited sponsors · All tiers · 10GB storage · Unlimited Proof Packs</p>
+              <p className="text-sporr-dark font-medium mb-1">Club — 490NOK/mnd</p>
+              <p className="text-sporr-muted text-sm">Up to 5 sponsors · All tiers · 10GB storage · Unlimited Proof Packs</p>
             </div>
             <div className="flex gap-3">
               <Link href="/dashboard/club" className="flex-1 bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-3 rounded-lg text-center hover:bg-sporr-mid transition-colors">
@@ -267,11 +274,12 @@ export default function ContractsPage() {
           )}
         </div>
 
+        {/* FIX: Accurate tier limit messaging — removed 'unlimited contracts' claim */}
         {atContractLimit && (
           <div className="bg-sporr-dark rounded-2xl px-6 py-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
             <div>
               <p className="text-sporr-cream text-sm font-medium mb-0.5">Free plan — 1 contract limit reached</p>
-              <p className="text-sporr-sage text-xs">Upgrade to Club (Kr 490/mnd) to add unlimited contracts at any sponsorship tier.</p>
+              <p className="text-sporr-sage text-xs">Upgrade to Club (490NOK/mnd) for up to 5 sponsors, or Pro (1490NOK/mnd) for up to 20.</p>
             </div>
             <Link href="/dashboard/club" className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0">
               Upgrade plan →
