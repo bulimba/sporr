@@ -210,16 +210,8 @@ export default function DashboardPage() {
 
       if (nextEventRes.data && nextEventRes.data.length > 0) {
         setNextEvent(nextEventRes.data[0])
-      } else {
-        // Fall back: any event regardless of date (handles events with no starts_at or past dates)
-        const { data: anyEvent } = await supabase
-          .from('events')
-          .select('id, title, starts_at')
-          .eq('org_id', userData.org_id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-        if (anyEvent && anyEvent.length > 0) setNextEvent(anyEvent[0])
       }
+      // No fallback to past events — if nothing upcoming, card shows no-event state
 
       if (firstObRes.data && firstObRes.data.length > 0) {
         setFirstPendingObligation(firstObRes.data[0].description)
