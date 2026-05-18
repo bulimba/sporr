@@ -165,8 +165,8 @@ export default function AuditPage() {
 
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-sporr-dark text-2xl font-medium mb-1">Sessions</h1>
-            <p className="text-sporr-muted text-sm">Capture proof of match days, events, and other obligations</p>
+            <h1 className="text-sporr-dark text-2xl font-medium mb-1">Obligations</h1>
+            <p className="text-sporr-muted text-sm">Launch a session to capture proof of sponsor obligations on match day</p>
           </div>
           <button onClick={() => { setShowForm(true); setActiveSession(null) }} className="btn-primary">
             Launch session
