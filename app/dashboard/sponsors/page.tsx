@@ -142,7 +142,15 @@ export default function SponsorsPage() {
 
   async function handleDelete(sponsorId: string) {
     setDeleting(true)
-    await supabase.from('sponsors').delete().eq('id', sponsorId)
+    // Delete linked contracts first (which cascade to obligations and proofs)
+    await supabase.from('contracts').delete().eq('sponsor_id', sponsorId)
+    // Then delete the sponsor
+    const { error } = await supabase.from('sponsors').delete().eq('id', sponsorId)
+    if (error) {
+      alert('Could not delete sponsor: ' + error.message)
+      setDeleting(false)
+      return
+    }
     setSponsors(prev => prev.filter(s => s.id !== sponsorId))
     setExpandedId(null); setConfirmDeleteId(null); setDeleting(false)
   }
@@ -283,7 +291,7 @@ export default function SponsorsPage() {
                       <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-4 mb-4">
                         <p className="text-red-700 text-sm font-medium mb-1">Delete {sponsor.company_name}?</p>
                         <p className="text-red-600 text-xs mb-4 leading-relaxed">
-                          This will permanently remove the sponsor. Contracts linked to this sponsor will also be affected. This cannot be undone.
+                          This will permanently remove the sponsor and all contracts linked to them, including obligations and any logged media hits. This cannot be undone.
                         </p>
                         <div className="flex gap-2">
                           <button
