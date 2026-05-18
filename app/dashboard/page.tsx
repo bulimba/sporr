@@ -132,6 +132,20 @@ const BellIcon = () => (
   </svg>
 )
 
+const NotificationBell = ({ className = '' }: { className?: string }) => (
+  <button
+    className={`relative text-sporr-sage hover:text-sporr-cream transition-colors p-2 ${className}`}
+    aria-label="Notifications"
+  >
+    <BellIcon />
+    {/* Red dot — always shown until notification system is wired up */}
+    <span
+      className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-sporr-accent"
+      aria-hidden="true"
+    />
+  </button>
+)
+
 export default function DashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
@@ -228,25 +242,23 @@ export default function DashboardPage() {
         badge: true,
         badgeLabel: 'Live session',
         heading: nextEvent ? nextEvent.title : 'Session in progress',
-        body: firstPendingObligation
-          ? firstPendingObligation
-          : 'A session is active. Tap to manage or capture proof.',
+        body: firstPendingObligation || 'Tap to manage or capture proof.',
         cta: 'Manage session →',
       }
     }
     if (nextEvent) {
       const dateStr = nextEvent.starts_at
-        ? new Date(nextEvent.starts_at).toLocaleDateString('nb-NO', { weekday: 'short', day: 'numeric', month: 'long' })
+        ? new Date(nextEvent.starts_at).toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' })
         : null
+      const bodyParts = [dateStr, firstPendingObligation].filter(Boolean)
       return {
         badge: true,
         badgeLabel: 'Next event',
         heading: nextEvent.title,
-        body: firstPendingObligation || (dateStr ? dateStr : 'No obligations logged yet.'),
+        body: bodyParts.length > 0 ? bodyParts.join(' · ') : 'No obligations logged yet.',
         cta: 'Start session →',
       }
     }
-    // No event and no active session
     return {
       badge: false,
       heading: 'No upcoming events',
@@ -386,16 +398,13 @@ export default function DashboardPage() {
             className="h-12"
           />
           <div className="flex items-center gap-2">
-            {/* Bell — top bar, next to upgrade */}
-            <button className="text-sporr-sage hover:text-sporr-cream transition-colors p-2" aria-label="Notifications">
-              <BellIcon />
-            </button>
             {isFree && (
               <Link href="/dashboard/club" className="bg-sporr-mid text-sporr-cream text-xs font-medium px-3 py-2 rounded-lg hover:bg-sporr-surface transition-colors whitespace-nowrap">
                 Upgrade →
               </Link>
             )}
-            <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center overflow-hidden ml-1">
+            <NotificationBell />
+            <div className="w-8 h-8 rounded-md bg-white/10 flex items-center justify-center overflow-hidden">
               {showCrest ? (
                 <img src={org!.logo_url!} alt={org?.name} className="w-full h-full object-contain p-0.5" />
               ) : (
@@ -443,9 +452,8 @@ export default function DashboardPage() {
                 activeSession ? 'ring-2 ring-sporr-mid' : 'hover:ring-2 hover:ring-sporr-mid'
               }`}
               style={{
-                background: activeSession
-                  ? '#13322A'
-                  : '#D4EAD9',
+                background: 'linear-gradient(to right, #D4EAD9 0%, #DFF0E3 45%, #F5F1E6 100%)',
+                border: activeSession ? '2px solid #C0392B' : '2px solid transparent',
               }}
             >
               {/* Kit / crest — fades in from the right against cream */}
@@ -454,56 +462,41 @@ export default function DashboardPage() {
                 <div
                   className="absolute inset-0 z-10"
                   style={{
-                    background: activeSession
-                      ? 'linear-gradient(to right, #13322A 0%, transparent 50%)'
-                      : 'linear-gradient(to right, #D4EAD9 0%, rgba(212,234,217,0.3) 40%, rgba(245,241,230,0) 100%)',
+                    background: 'linear-gradient(to right, #D4EAD9 0%, transparent 50%)',
                   }}
                 />
                 <img
                   src={showCrest && org?.logo_url ? org.logo_url : kitUrl}
                   alt=""
                   className="w-full h-full object-contain object-right-bottom p-4 relative z-0"
-                  style={{
-                    opacity: activeSession ? 0.6 : 0.85,
-                    filter: activeSession
-                      ? 'drop-shadow(0 0 12px rgba(245,241,230,0.5))'
-                      : 'none',
-                  }}
+                  style={{ opacity: 0.85 }}
                 />
               </div>
 
               <div className="relative px-6 py-6 sm:py-8">
                 {sessionCard.badge && (
-                  <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-4 ${
-                    activeSession
-                      ? 'bg-sporr-mid/30 border border-sporr-mid/50'
-                      : 'bg-sporr-dark/10 border border-sporr-dark/20'
-                  }`}>
-                    {activeSession && <span className="w-2 h-2 rounded-full bg-sporr-sage animate-pulse" />}
-                    <span className={`text-xs font-medium uppercase tracking-wider ${activeSession ? 'text-sporr-sage' : 'text-sporr-dark'}`}>
+                  <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-4 bg-sporr-dark/10 border border-sporr-dark/20">
+                    {activeSession && <span className="w-2 h-2 rounded-full bg-sporr-accent animate-pulse" />}
+                    <span className="text-xs font-medium uppercase tracking-wider text-sporr-dark">
                       {sessionCard.badgeLabel}
                     </span>
                   </div>
                 )}
 
-                <h2 className={`text-2xl sm:text-3xl font-medium mb-2 ${activeSession ? 'text-sporr-cream' : 'text-sporr-dark'}`}>
+                <h2 className="text-2xl sm:text-3xl font-medium mb-2 text-sporr-dark">
                   {sessionCard.heading}
                 </h2>
 
-                <p className={`text-sm mb-6 max-w-xs leading-relaxed ${activeSession ? 'text-sporr-sage' : 'text-[#3d5c48]'}`}>
+                <p className="text-sm mb-6 max-w-xs leading-relaxed text-[#3d5c48]">
                   {sessionCard.body}
                 </p>
 
-                <div className={`inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors ${
-                  activeSession
-                    ? 'bg-sporr-mid text-sporr-cream group-hover:bg-sporr-sage group-hover:text-sporr-dark'
-                    : 'bg-sporr-dark text-sporr-cream group-hover:bg-sporr-surface'
-                }`}>
+                <div className="inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors bg-sporr-dark text-sporr-cream group-hover:bg-sporr-surface">
                   {sessionCard.cta}
                 </div>
 
                 {stats.obligations_pending > 0 && (
-                  <p className={`text-xs mt-4 ${activeSession ? 'text-sporr-sage' : 'text-[#3d5c48]'}`}>
+                  <p className="text-xs mt-4 text-[#3d5c48]">
                     {stats.obligations_pending} obligation{stats.obligations_pending !== 1 ? 's' : ''} pending this season
                   </p>
                 )}
