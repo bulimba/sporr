@@ -158,7 +158,7 @@ export default function DashboardPage() {
   const [photoCount, setPhotoCount] = useState(0)
   // Task 1 fix: next upcoming event + first pending obligation
   const [nextEvent, setNextEvent] = useState<{ title: string; starts_at: string | null } | null>(null)
-  const [firstPendingObligation, setFirstPendingObligation] = useState<string | null>(null)
+  const [pendingObligations, setPendingObligations] = useState<{ id: string; description: string | null; proof_type: string }[]>([])
   const currentSeason = '2025/26'
 
   useEffect(() => {
@@ -184,8 +184,8 @@ export default function DashboardPage() {
         supabase.from('proofs').select('id', { count: 'exact' }).eq('org_id', userData.org_id).not('photo_url', 'is', null),
         // Next upcoming event: future-dated first, then fall back to any event with no date
         supabase.from('events').select('id, title, starts_at').eq('org_id', userData.org_id).gte('starts_at', new Date().toISOString().split('T')[0]).order('starts_at', { ascending: true }).limit(1),
-        // New query: first pending obligation description
-        supabase.from('obligations').select('id, description').eq('org_id', userData.org_id).eq('status', 'pending').not('description', 'is', null).limit(1),
+        // Pending obligations — up to 5, with proof type for display
+        supabase.from('obligations').select('id, description, proof_type').eq('org_id', userData.org_id).eq('status', 'pending').not('description', 'is', null).limit(5),
       ])
 
       setStats({
@@ -214,7 +214,7 @@ export default function DashboardPage() {
       // No fallback to past events — if nothing upcoming, card shows no-event state
 
       if (firstObRes.data && firstObRes.data.length > 0) {
-        setFirstPendingObligation(firstObRes.data[0].description)
+        setPendingObligations(firstObRes.data)
       }
 
       setLoading(false)
@@ -236,49 +236,45 @@ export default function DashboardPage() {
   const showCrest = org?.show_logo_on_dashboard && org?.logo_url
   const kitUrl = getKitUrl(org?.sports || null)
 
-  // Onboarding checklist — dismissable, stored in localStorage
-  const [showChecklist, setShowChecklist] = useState(false)
-
-  useEffect(() => {
-    const dismissed = localStorage.getItem('sporr_checklist_dismissed')
-    if (!dismissed) setShowChecklist(true)
-  }, [])
-
-  function dismissChecklist() {
-    localStorage.setItem('sporr_checklist_dismissed', '1')
-    setShowChecklist(false)
-  }
-
   // Session card content
   function getSessionCardContent() {
-    const dateStr = nextEvent?.starts_at
-      ? new Date(nextEvent.starts_at).toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' })
-      : null
-
     if (nextEvent) {
+      const eventDate = nextEvent.starts_at ? new Date(nextEvent.starts_at) : null
+      const isToday = eventDate
+        ? eventDate.toDateString() === new Date().toDateString()
+        : false
+      const dateStr = eventDate
+        ? eventDate.toLocaleDateString('nb-NO', { weekday: 'long', day: 'numeric', month: 'long' })
+        : null
       return {
-        badge: true,
-        badgeLabel: 'Next event',
-        heading: "Today's obligations",
-        subheading: nextEvent.title + (dateStr ? ` · ${dateStr}` : ''),
-        body: firstPendingObligation || 'No obligations logged for this event yet.',
+        badgeLabel: isToday ? "Today's event" : 'Next event',
+        heading: nextEvent.title,
+        date: dateStr,
         emptyState: false,
         cta: activeSession ? 'Manage session →' : 'Start session →',
       }
     }
-
-    // No upcoming events — empty state with guidance
     return {
-      badge: false,
-      heading: "Today's obligations",
-      subheading: null,
-      body: null,
+      badgeLabel: null,
+      heading: null,
+      date: null,
       emptyState: true,
       cta: null,
     }
   }
 
   const sessionCard = getSessionCardContent()
+
+  // Onboarding checklist — dismissable
+  const [showChecklist, setShowChecklist] = useState(false)
+  useEffect(() => {
+    const dismissed = localStorage.getItem('sporr_checklist_dismissed')
+    if (!dismissed) setShowChecklist(true)
+  }, [])
+  function dismissChecklist() {
+    localStorage.setItem('sporr_checklist_dismissed', '1')
+    setShowChecklist(false)
+  }
 
   if (loading) {
     return (
@@ -479,62 +475,61 @@ export default function DashboardPage() {
               </div>
 
               <div className="relative px-6 py-6 sm:py-8">
-                {/* Badge */}
-                {sessionCard.badge && (
-                  <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-3 bg-sporr-dark/10 border border-sporr-dark/20">
-                    {activeSession && <span className="w-2 h-2 rounded-full bg-sporr-accent animate-pulse" />}
-                    <span className="text-xs font-medium uppercase tracking-wider text-sporr-dark">
-                      {sessionCard.badgeLabel}
-                    </span>
-                  </div>
-                )}
 
-                {/* Heading — always "Today's obligations" */}
-                <h2 className="text-2xl sm:text-3xl font-medium mb-1 text-sporr-dark">
-                  {sessionCard.heading}
-                </h2>
-
-                {/* Event name + date subheading */}
-                {sessionCard.subheading && (
-                  <p className="text-sm font-medium text-sporr-dark mb-2 opacity-70">
-                    {sessionCard.subheading}
-                  </p>
-                )}
-
-                {/* Obligation description or empty state */}
                 {sessionCard.emptyState ? (
-                  <div className="mt-3 mb-4">
-                    <p className="text-sm text-[#3d5c48] mb-3 leading-relaxed">
-                      No upcoming obligations logged yet.
-                    </p>
-                    <div className="flex flex-col gap-1.5">
-                      <span className="text-xs text-[#3d5c48]">
-                        → Add a sponsor in{' '}
-                        <span className="font-semibold underline underline-offset-2">Sponsors</span>
-                      </span>
-                      <span className="text-xs text-[#3d5c48]">
-                        → Add a contract and obligations in{' '}
-                        <span className="font-semibold underline underline-offset-2">Contracts</span>
+                  /* Empty state */
+                  <>
+                    <h2 className="text-2xl font-medium mb-2 text-sporr-dark">Today's obligations</h2>
+                    <p className="text-sm text-[#3d5c48] mb-3 leading-relaxed">No upcoming obligations logged yet.</p>
+                    <div className="flex flex-col gap-1.5 mb-5">
+                      <span className="text-xs text-[#3d5c48]">→ Add a sponsor in <span className="font-semibold underline underline-offset-2">Sponsors</span></span>
+                      <span className="text-xs text-[#3d5c48]">→ Add a contract and obligations in <span className="font-semibold underline underline-offset-2">Contracts</span></span>
+                    </div>
+                  </>
+                ) : (
+                  /* Event + obligations */
+                  <>
+                    {/* Badge: Today's event / Next event */}
+                    <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-3 bg-sporr-dark/10 border border-sporr-dark/20">
+                      {activeSession && <span className="w-2 h-2 rounded-full bg-sporr-accent animate-pulse" />}
+                      <span className="text-xs font-medium uppercase tracking-wider text-sporr-dark">
+                        {sessionCard.badgeLabel}
                       </span>
                     </div>
-                  </div>
-                ) : (
-                  <p className="text-sm mb-5 max-w-xs leading-relaxed text-[#3d5c48]">
-                    {sessionCard.body}
-                  </p>
-                )}
 
-                {/* CTA */}
-                {sessionCard.cta && (
-                  <div className="inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors bg-sporr-dark text-sporr-cream group-hover:bg-sporr-surface">
-                    {sessionCard.cta}
-                  </div>
-                )}
+                    {/* Event name + date as heading */}
+                    <h2 className="text-xl sm:text-2xl font-medium mb-1 text-sporr-dark leading-snug">
+                      {sessionCard.heading}
+                      {sessionCard.date && (
+                        <span className="font-normal text-[#3d5c48]"> · {sessionCard.date}</span>
+                      )}
+                    </h2>
 
-                {stats.obligations_pending > 0 && (
-                  <p className="text-xs mt-4 text-[#3d5c48]">
-                    {stats.obligations_pending} obligation{stats.obligations_pending !== 1 ? 's' : ''} pending this season
-                  </p>
+                    {/* Obligations sub-label + list */}
+                    {pendingObligations.length > 0 && (
+                      <div className="mt-3 mb-5">
+                        <p className="text-xs font-medium uppercase tracking-widest text-[#6B7D72] mb-2">Obligations</p>
+                        <div className="flex flex-col gap-1">
+                          {pendingObligations.map(ob => (
+                            <p key={ob.id} className="text-sm text-[#3d5c48] leading-snug capitalize">
+                              {ob.proof_type === 'photo' ? 'Photo' : ob.proof_type === 'link' ? 'Link' : ob.proof_type === 'timestamp' ? 'Timestamp' : 'Note'} — {ob.description}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CTA */}
+                    <div className="inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors bg-sporr-dark text-sporr-cream group-hover:bg-sporr-surface">
+                      {sessionCard.cta}
+                    </div>
+
+                    {stats.obligations_pending > 0 && (
+                      <p className="text-xs mt-4 text-[#3d5c48]">
+                        {stats.obligations_pending} obligation{stats.obligations_pending !== 1 ? 's' : ''} pending this season
+                      </p>
+                    )}
+                  </>
                 )}
               </div>
             </div>
