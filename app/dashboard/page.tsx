@@ -182,7 +182,7 @@ export default function DashboardPage() {
         supabase.from('audit_sessions').select('id, session_token').eq('org_id', userData.org_id).eq('status', 'active').order('created_at', { ascending: false }).limit(1),
         supabase.from('contracts').select('end_date, sponsors(company_name)').eq('org_id', userData.org_id).eq('status', 'active').not('end_date', 'is', null).order('end_date', { ascending: true }).limit(1),
         supabase.from('proofs').select('id', { count: 'exact' }).eq('org_id', userData.org_id).not('photo_url', 'is', null),
-        // New query: next upcoming event (future or today)
+        // Next upcoming event: future-dated first, then fall back to any event with no date
         supabase.from('events').select('id, title, starts_at').eq('org_id', userData.org_id).gte('starts_at', new Date().toISOString().split('T')[0]).order('starts_at', { ascending: true }).limit(1),
         // New query: first pending obligation description
         supabase.from('obligations').select('id, description').eq('org_id', userData.org_id).eq('status', 'pending').not('description', 'is', null).limit(1),
@@ -210,6 +210,15 @@ export default function DashboardPage() {
 
       if (nextEventRes.data && nextEventRes.data.length > 0) {
         setNextEvent(nextEventRes.data[0])
+      } else {
+        // Fall back: any event regardless of date (handles events with no starts_at or past dates)
+        const { data: anyEvent } = await supabase
+          .from('events')
+          .select('id, title, starts_at')
+          .eq('org_id', userData.org_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+        if (anyEvent && anyEvent.length > 0) setNextEvent(anyEvent[0])
       }
 
       if (firstObRes.data && firstObRes.data.length > 0) {
@@ -272,13 +281,14 @@ export default function DashboardPage() {
 
   const Sidebar = () => (
     <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-sporr-dark fixed left-0 top-0 bottom-0 z-40">
-      {/* Logo */}
-      <div className="px-6 py-6 border-b border-white/10">
+      {/* Logo + bell row */}
+      <div className="px-6 py-6 border-b border-white/10 flex items-center justify-between">
         <img
           src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg"
           alt="Sporr"
           className="h-14"
         />
+        <NotificationBell />
       </div>
 
       {/* Club identity */}
