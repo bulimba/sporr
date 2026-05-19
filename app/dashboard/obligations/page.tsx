@@ -66,7 +66,7 @@ export default function ObligationsPage() {
   const [fulfilling, setFulfilling] = useState<string | null>(null) // contract_id being fulfilled
   const [showAdHocForm, setShowAdHocForm] = useState(false)
   const [sponsors, setSponsors] = useState<{ id: string; company_name: string }[]>([])
-  const [contracts, setContracts] = useState<{ id: string; title: string; sponsor_id: string }[]>([])
+  const [contracts, setContracts] = useState<{ id: string; title: string; sponsor_id: string; company_name: string }[]>([])
   const [adHocForm, setAdHocForm] = useState({
     contract_id: '',
     description: '',
@@ -91,6 +91,13 @@ export default function ObligationsPage() {
         .select('id, title, sponsorship_tier, sponsor_id, delivery_context, sponsors(id, company_name)')
         .eq('org_id', userData.org_id)
         .eq('status', 'active')
+
+      // Fetch sponsors independently so dropdown is always populated
+      const { data: sponsorsData } = await supabase
+        .from('sponsors')
+        .select('id, company_name')
+        .eq('org_id', userData.org_id)
+        .order('company_name')
 
       // Fetch all obligations
       const { data: obligationsData } = await supabase
@@ -140,14 +147,12 @@ export default function ObligationsPage() {
         })
 
         setSponsorGroups(groups)
-        setSponsors(contractsData.map((c: any) => ({
-          id: c.sponsor_id,
-          company_name: c.sponsors?.company_name || 'Unknown',
-        })))
+        setSponsors(sponsorsData || [])
         setContracts(contractsData.map((c: any) => ({
           id: c.id,
           title: c.title,
           sponsor_id: c.sponsor_id,
+          company_name: c.sponsors?.company_name || 'Unknown',
         })))
       }
 
@@ -272,7 +277,7 @@ export default function ObligationsPage() {
           <div className="card mb-6">
             <h2 className="text-sporr-dark text-sm font-medium mb-4">Add an obligation</h2>
             <p className="text-sporr-muted text-xs mb-4 leading-relaxed">
-              Add an obligation outside the original contract — an unexpected opportunity, a goodwill gesture, or an additional commitment agreed with your sponsor.
+              Log additional sponsor exposure or activity outside the original contract terms.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               <div>
@@ -285,7 +290,7 @@ export default function ObligationsPage() {
                   <option value="">Select a contract...</option>
                   {contracts.map(c => (
                     <option key={c.id} value={c.id}>
-                      {sponsors.find(s => s.id === c.sponsor_id)?.company_name} — {c.title}
+                      {c.company_name} — {c.title}
                     </option>
                   ))}
                 </select>
