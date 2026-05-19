@@ -104,7 +104,7 @@ const NAV_ITEMS = [
   },
   {
     href: '/proof-pack',
-    label: 'Proof Packs',
+    label: 'Sponsor Report',
     icon: (active: boolean) => (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <path d="M3 10L10 3L17 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -382,7 +382,7 @@ export default function DashboardPage() {
             >
               {item.icon(active)}
               <span className="text-xs font-medium truncate max-w-[56px] text-center leading-tight">
-                {item.label === 'Club settings' ? 'Club' : item.label === 'Proof Packs' ? 'Proofs' : item.label}
+                {item.label === 'Club settings' ? 'Club' : item.label === 'Sponsor Report' ? 'Report' : item.label}
               </span>
             </Link>
           )
@@ -453,12 +453,10 @@ export default function DashboardPage() {
             <p className="text-[#6B7D72] text-sm mt-1">Season {currentSeason} · {stats.sessions} session{stats.sessions !== 1 ? 's' : ''} logged</p>
           </div>
 
-          {/* PRIMARY: Obligations card */}
-          <Link href="/dashboard/audit" className="block mb-4 group">
+          {/* PRIMARY: Obligations card — div not Link, CTA is the only nav element */}
+          <div className="block mb-4">
             <div
-              className={`relative rounded-2xl overflow-hidden transition-all duration-200 ${
-                activeSession ? '' : 'hover:ring-2 hover:ring-sporr-mid'
-              }`}
+              className="relative rounded-2xl overflow-hidden"
               style={{
                 background: 'linear-gradient(to right, #D4EAD9 0%, #E8F2E9 35%, #F5F1E6 58%, #F5F1E6 100%)',
                 border: activeSession ? '2px solid #C0392B' : '2px solid transparent',
@@ -477,19 +475,20 @@ export default function DashboardPage() {
               <div className="relative px-6 py-6 sm:py-8">
 
                 {sessionCard.emptyState ? (
-                  /* Empty state */
                   <>
                     <h2 className="text-2xl font-medium mb-2 text-sporr-dark">Today's obligations</h2>
                     <p className="text-sm text-[#3d5c48] mb-3 leading-relaxed">No upcoming obligations logged yet.</p>
-                    <div className="flex flex-col gap-1.5 mb-5">
-                      <span className="text-xs text-[#3d5c48]">→ Add a sponsor in <span className="font-semibold underline underline-offset-2">Sponsors</span></span>
-                      <span className="text-xs text-[#3d5c48]">→ Add a contract and obligations in <span className="font-semibold underline underline-offset-2">Contracts</span></span>
+                    <div className="flex flex-col gap-2 mb-5">
+                      <Link href="/dashboard/sponsors" className="text-xs text-[#3d5c48] hover:text-sporr-dark transition-colors">
+                        → Add a sponsor in <span className="font-semibold underline underline-offset-2">Sponsors</span>
+                      </Link>
+                      <Link href="/dashboard/contracts" className="text-xs text-[#3d5c48] hover:text-sporr-dark transition-colors">
+                        → Add a contract and obligations in <span className="font-semibold underline underline-offset-2">Contracts</span>
+                      </Link>
                     </div>
                   </>
                 ) : (
-                  /* Event + obligations */
                   <>
-                    {/* Badge: Today's event / Next event */}
                     <div className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 mb-3 bg-sporr-dark/10 border border-sporr-dark/20">
                       {activeSession && <span className="w-2 h-2 rounded-full bg-sporr-accent animate-pulse" />}
                       <span className="text-xs font-medium uppercase tracking-wider text-sporr-dark">
@@ -497,7 +496,6 @@ export default function DashboardPage() {
                       </span>
                     </div>
 
-                    {/* Event name + date as heading */}
                     <h2 className="text-xl sm:text-2xl font-medium mb-1 text-sporr-dark leading-snug">
                       {sessionCard.heading}
                       {sessionCard.date && (
@@ -505,13 +503,12 @@ export default function DashboardPage() {
                       )}
                     </h2>
 
-                    {/* Obligations sub-label + list */}
                     {pendingObligations.length > 0 && (
                       <div className="mt-3 mb-5">
                         <p className="text-xs font-medium uppercase tracking-widest text-[#6B7D72] mb-2">Obligations</p>
                         <div className="flex flex-col gap-1">
                           {pendingObligations.map(ob => (
-                            <p key={ob.id} className="text-sm text-[#3d5c48] leading-snug capitalize">
+                            <p key={ob.id} className="text-sm text-[#3d5c48] leading-snug">
                               {ob.proof_type === 'photo' ? 'Photo' : ob.proof_type === 'link' ? 'Link' : ob.proof_type === 'timestamp' ? 'Timestamp' : 'Note'} — {ob.description}
                             </p>
                           ))}
@@ -519,10 +516,12 @@ export default function DashboardPage() {
                       </div>
                     )}
 
-                    {/* CTA */}
-                    <div className="inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors bg-sporr-dark text-sporr-cream group-hover:bg-sporr-surface">
-                      {sessionCard.cta}
-                    </div>
+                    <Link
+                      href="/dashboard/obligations"
+                      className="inline-flex items-center gap-2 font-medium px-5 py-3 rounded-xl text-sm transition-colors bg-sporr-dark text-sporr-cream hover:bg-sporr-surface"
+                    >
+                      Fulfill obligation →
+                    </Link>
 
                     {stats.obligations_pending > 0 && (
                       <p className="text-xs mt-4 text-[#3d5c48]">
@@ -533,7 +532,7 @@ export default function DashboardPage() {
                 )}
               </div>
             </div>
-          </Link>
+          </div>
 
           {/* ONBOARDING CHECKLIST — dismissable */}
           {showChecklist && (
@@ -587,10 +586,10 @@ export default function DashboardPage() {
                   {
                     step: 5,
                     done: false,
-                    label: 'Send your first Proof Pack',
-                    description: 'At the end of the season, generate and send your sponsor a professional performance report.',
+                    label: 'Send your first Sponsor Report',
+                    description: 'Generate a Proof of Performance Report and send it to your sponsor at the end of the season — or any time.',
                     href: '/proof-pack',
-                    cta: 'Go to Proof Packs →',
+                    cta: 'Go to Sponsor Reports →',
                   },
                 ].map(item => (
                   <div key={item.step} className="px-6 py-4 flex items-start gap-4">
@@ -622,11 +621,10 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* SECONDARY: Stats row — Task 2: soft muted colour shades */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          {/* SECONDARY: Stats row — Sponsors + Pending only */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
             {[
               { label: 'Sponsors', value: stats.sponsors, href: '/dashboard/sponsors', bg: '#EAF2EC', border: '#C5DFCA' },
-              { label: 'Sessions', value: stats.sessions, href: '/dashboard/audit', bg: '#EDF0E8', border: '#CDD4C5' },
               { label: 'Pending', value: stats.obligations_pending, href: '/dashboard/obligations', bg: '#F0EDE5', border: '#D8D1C0' },
             ].map(stat => (
               <Link
@@ -641,43 +639,25 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* TERTIARY: Proof Pack banner */}
+          {/* Sponsor Report banner — always available */}
           <Link
             href="/proof-pack"
-            className="block bg-white rounded-2xl border border-sporr-sage-lt px-6 py-5 hover:border-sporr-dark transition-colors mb-4"
+            className="block bg-white rounded-2xl border border-sporr-sage-lt px-6 py-5 hover:border-sporr-dark transition-colors"
           >
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-[#6B7D72] text-xs uppercase tracking-widest mb-1">Proof Pack</p>
+                <p className="text-[#6B7D72] text-xs uppercase tracking-widest mb-1">Sponsor Report</p>
                 <p className="text-sporr-dark font-medium text-sm">
                   {nextDueDate
                     ? `Next report due ${nextDueDate.date}`
                     : stats.sessions > 0
-                    ? "Send your sponsor's Proof Pack"
-                    : 'Generate your first Proof Pack when ready'}
+                    ? 'Generate your Proof of Performance Report'
+                    : 'Send your sponsor a season performance report'}
                 </p>
               </div>
-              <span className="text-sporr-dark text-sm font-medium whitespace-nowrap">Send →</span>
+              <span className="text-sporr-dark text-sm font-medium whitespace-nowrap">Generate →</span>
             </div>
           </Link>
-
-          {/* Quick links row */}
-          <div className="grid grid-cols-2 gap-3">
-            <Link
-              href="/dashboard/contracts"
-              className="bg-white rounded-xl border border-sporr-sage-lt px-4 py-4 hover:border-sporr-dark transition-colors flex items-center justify-between"
-            >
-              <span className="text-sporr-dark text-sm font-medium">Contracts</span>
-              <span className="text-[#6B7D72] text-sm">→</span>
-            </Link>
-            <Link
-              href="/dashboard/club"
-              className="bg-white rounded-xl border border-sporr-sage-lt px-4 py-4 hover:border-sporr-dark transition-colors flex items-center justify-between"
-            >
-              <span className="text-sporr-dark text-sm font-medium">Club settings</span>
-              <span className="text-[#6B7D72] text-sm">→</span>
-            </Link>
-          </div>
 
         </div>
       </main>
