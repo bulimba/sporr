@@ -229,7 +229,7 @@ export default function HomePage() {
                 color: '#081216',
               }}
             >
-              Partnership
+              Sponsorship
               <br />
               Accountability.
               <br />
@@ -247,7 +247,7 @@ export default function HomePage() {
               }}
             >
               The operational verification layer between
-              partnership terms, delivery evidence, and
+              sponsorship terms, delivery evidence, and
               renewal confidence.
             </p>
 
@@ -315,7 +315,7 @@ export default function HomePage() {
                   letterSpacing: '-0.02em',
                 }}
               >
-                Partnerships
+                Sponsorships
                 <br />
                 fail quietly.
               </h2>
@@ -593,16 +593,7 @@ export default function HomePage() {
               TRUSTED BY FORWARD-THINKING ORGANISATIONS
             </p>
             <div className="flex items-center gap-8 flex-wrap">
-              {[
-                'Nordic Wealth Partners',
-                'Arctic Hospitality',
-                'Pure Energy',
-                'Northern Bank',
-                'Community Youth Clinic',
-                'Aurora Logistics',
-              ].map(name => (
-                <TrustedLogo key={name} name={name} />
-              ))}
+        
             </div>
           </div>
 
