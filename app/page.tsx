@@ -176,9 +176,7 @@ export default function HomePage() {
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       {/*
-        Photography: /public/images/hero-stadium-track.jpg
-        Place the extracted hero-stadium-track.jpg in your /public/images/ folder.
-        The image bleeds through the layout — it is the atmosphere, not a panel.
+        Photography: /public/images/hero-stadium-track_1.jpg
       */}
       <section
         className="relative overflow-hidden"
@@ -187,10 +185,10 @@ export default function HomePage() {
         {/* Full-bleed photography — atmospheric, bleeds into layout */}
         <div
           className="absolute inset-0"
-          style={{ zIndex: 0 }}
+          style={{ zIndex: 0, backgroundColor: '#1a1a1a' }}
         >
           <img
-            src="/images/hero-stadium-track.jpg"
+            src="/images/hero-stadium-track_1.jpg"
             alt="Operational verification in real space"
             className="w-full h-full object-cover"
             style={{
@@ -201,7 +199,7 @@ export default function HomePage() {
           <div
             className="absolute inset-0"
             style={{
-              background: 'linear-gradient(105deg, rgba(250,250,247,0.97) 0%, rgba(250,250,247,0.88) 30%, rgba(250,250,247,0.45) 56%, rgba(250,250,247,0.0) 75%)',
+              background: 'linear-gradient(100deg, rgba(250,250,247,0.94) 0%, rgba(250,250,247,0.80) 25%, rgba(250,250,247,0.40) 50%, rgba(250,250,247,0.0) 68%)',
             }}
           />
           {/* Bottom fade — blends into next section */}
@@ -229,7 +227,7 @@ export default function HomePage() {
                 color: '#081216',
               }}
             >
-              Sponsorship
+              Partnership
               <br />
               Accountability.
               <br />
@@ -247,7 +245,7 @@ export default function HomePage() {
               }}
             >
               The operational verification layer between
-              sponsorship terms, delivery evidence, and
+              partnership terms, delivery evidence, and
               renewal confidence.
             </p>
 
@@ -315,7 +313,7 @@ export default function HomePage() {
                   letterSpacing: '-0.02em',
                 }}
               >
-                Sponsorships
+                Partnerships
                 <br />
                 fail quietly.
               </h2>
@@ -590,10 +588,19 @@ export default function HomePage() {
                 color: '#6E7F86',
               }}
             >
-BUILT ON A SCANDINAVIAN-DESIGNED PROOF-OF-PERFORMANCE INFRASTRUCTURE.
+              TRUSTED BY FORWARD-THINKING ORGANISATIONS
             </p>
             <div className="flex items-center gap-8 flex-wrap">
-        
+              {[
+                'Nordic Wealth Partners',
+                'Arctic Hospitality',
+                'Pure Energy',
+                'Northern Bank',
+                'Community Youth Clinic',
+                'Aurora Logistics',
+              ].map(name => (
+                <TrustedLogo key={name} name={name} />
+              ))}
             </div>
           </div>
 
@@ -684,7 +691,7 @@ BUILT ON A SCANDINAVIAN-DESIGNED PROOF-OF-PERFORMANCE INFRASTRUCTURE.
                 Ready to prove your partnerships?
               </p>
               <p style={{ fontSize: '13px', color: '#6E7F86', marginTop: '6px' }}>
-                sporr.no · Sponsorship Accountability. Proven.
+                sporr.no · Partnerships. Proven.
               </p>
             </div>
             <div className="flex items-center gap-3">
