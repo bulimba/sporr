@@ -590,7 +590,7 @@ export default function HomePage() {
                 color: '#6E7F86',
               }}
             >
-BUILT ON A SCANDINAVIAN-DESIGNED PROOF-OF-PERFORMANCE INFRASTRUCTURE THAT GUARANTEES SPONSORSHIP ACCOUNTABILITY WHILE REMOVING ADMINISTRATIVE BURDEN.
+BUILT ON A SCANDINAVIAN-DESIGNED PROOF-OF-PERFORMANCE INFRASTRUCTURE.
             </p>
             <div className="flex items-center gap-8 flex-wrap">
         
