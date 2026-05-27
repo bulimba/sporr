@@ -176,8 +176,8 @@ export default function HomePage() {
 
       {/* ── HERO ──────────────────────────────────────────────────────────── */}
       {/*
-        Photography: /public/hero-stadium-track.jpg
-        Place the extracted hero-stadium-track.jpg in your /public/ folder.
+        Photography: /public/images/hero-stadium-track.jpg
+        Place the extracted hero-stadium-track.jpg in your /public/images/ folder.
         The image bleeds through the layout — it is the atmosphere, not a panel.
       */}
       <section
