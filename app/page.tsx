@@ -227,7 +227,7 @@ export default function HomePage() {
                 color: '#081216',
               }}
             >
-              Partnership
+              Sponsorship
               <br />
               Accountability.
               <br />
@@ -245,7 +245,7 @@ export default function HomePage() {
               }}
             >
               The operational verification layer between
-              partnership terms, delivery evidence, and
+              sponsorship terms, delivery evidence, and
               renewal confidence.
             </p>
 
@@ -588,19 +588,10 @@ export default function HomePage() {
                 color: '#6E7F86',
               }}
             >
-              TRUSTED BY FORWARD-THINKING ORGANISATIONS
+SCANDINAVIAN-DESIGNED PROOF-OF-PERFORMANCE INFRASTRUCTURE.
             </p>
             <div className="flex items-center gap-8 flex-wrap">
-              {[
-                'Nordic Wealth Partners',
-                'Arctic Hospitality',
-                'Pure Energy',
-                'Northern Bank',
-                'Community Youth Clinic',
-                'Aurora Logistics',
-              ].map(name => (
-                <TrustedLogo key={name} name={name} />
-              ))}
+              
             </div>
           </div>
 
@@ -691,7 +682,7 @@ export default function HomePage() {
                 Ready to prove your partnerships?
               </p>
               <p style={{ fontSize: '13px', color: '#6E7F86', marginTop: '6px' }}>
-                sporr.no · Partnerships. Proven.
+                sporr.no · Sponsorship Accountability. Proven.
               </p>
             </div>
             <div className="flex items-center gap-3">
