@@ -590,7 +590,7 @@ export default function HomePage() {
                 color: '#6E7F86',
               }}
             >
-              TRUSTED BY FORWARD-THINKING ORGANISATIONS
+BUILT ON A SCANDINAVIAN-DESIGNED PROOF-OF-PERFORMANCE INFRASTRUCTURE THAT GUARANTEES SPONSORSHIP ACCOUNTABILITY WHILE REMOVING ADMINISTRATIVE BURDEN.
             </p>
             <div className="flex items-center gap-8 flex-wrap">
         
@@ -684,7 +684,7 @@ export default function HomePage() {
                 Ready to prove your partnerships?
               </p>
               <p style={{ fontSize: '13px', color: '#6E7F86', marginTop: '6px' }}>
-                sporr.no · Partnerships. Proven.
+                sporr.no · Sponsorship Accountability. Proven.
               </p>
             </div>
             <div className="flex items-center gap-3">
