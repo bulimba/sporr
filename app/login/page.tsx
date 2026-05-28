@@ -165,7 +165,7 @@ export default async function LoginPage({
     <ellipse cx="380" cy="280" rx="150" ry="120" stroke="#B8734A" strokeWidth="0.8" strokeOpacity="0.20" />
 
     {/* 4. FAINTER PARABOLIC ESCAPE ARC (Dynamic Accent) */}
-    <ellipse cx="380" cy="660" rx="460" ry="500" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.06" />
+    <ellipse cx="380" cy="660" rx="460" ry="500" stroke="#B8734A" strokeWidth="0.7" strokeOpacity="0.18" />
   </g>
 </svg>
 
