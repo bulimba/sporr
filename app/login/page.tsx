@@ -162,13 +162,13 @@ export default async function LoginPage({
   <circle cx="380" cy="310" r="180" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.18" />
 
   {/* 3. TIGHTER ELLIPTICAL TRAJECTORY (Renewal Confidence)
-      A compact copper ellipse tracing an inner loop path */}
-  <ellipse cx="380" cy="250" rx="150" ry="120" stroke="#B8734A" strokeWidth="0.8" strokeOpacity="0.20" />
+      A compact muted fog ellipse tracing an inner loop path */}
+  <ellipse cx="380" cy="250" rx="150" ry="120" stroke="#E7ECEF" strokeWidth="0.8" strokeOpacity="0.20" />
 
-  {/* 4. PARABOLIC ESCAPE ARC (Dynamic Accent)
-      An immense, highly elongated ellipse that acts exactly like a parabolic curve,
+  {/* 4. PARABOLIC ARC (Dynamic Accent)
+      An immense, highly elongated copper ellipse that acts exactly like a parabolic curve,
       sweeping widely off-screen to the bottom-left */}
-  <ellipse cx="380" cy="630" rx="460" ry="500" stroke="#36B37E" strokeWidth="0.6" strokeOpacity="0.18" />
+  <ellipse cx="380" cy="630" rx="460" ry="500" stroke="#B8734A" strokeWidth="0.6" strokeOpacity="0.18" />
 </svg>
 
         {/* ── Login card ───────────────────────────────────────────────────── */}
