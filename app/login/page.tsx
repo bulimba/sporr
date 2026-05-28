@@ -137,7 +137,7 @@ export default async function LoginPage({
         />
 
     {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
-{/* Features an on-screen convergence point where the blue and copper orbits meet */}
+{/* 3-Ring Convergence: Sponsorship Terms, Delivery Evidence, and Renewal Confidence */}
 <svg
   aria-hidden="true"
   style={{
@@ -153,21 +153,25 @@ export default async function LoginPage({
   viewBox="0 0 520 600"
   fill="none"
 >
-  {/* 1. Large base structural sweep — independent backdrop layer */}
-  <circle cx="280" cy="500" r="420" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.08" />
+  {/* 1. SPONSORSHIP TERMS — The Massive Horizon
+      Radius is so large (700) that it appears as a shallow, sweeping structural curve.
+      Intersects precisely at (320, 220) */}
+  <circle cx="1020" cy="220" r="700" stroke="#6E7F86" strokeWidth="0.6" strokeOpacity="0.12" />
 
-  {/* 2. Main slate arc — one single, clean break to let it breathe */}
-  <circle cx="450" cy="270" r="280" stroke="#6E7F86" strokeWidth="0.7" strokeOpacity="0.12" strokeDasharray="500 200" />
+  {/* 2. DELIVERY EVIDENCE — The Medium Dynamic Orbit
+      A sweeping blue intelligence arc tracking operational execution.
+      Intersects precisely at (320, 220) */}
+  <circle cx="580" cy="120" r="280" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.18" />
 
-  {/* 3. Blue intelligence curve — swoops down and meets the copper line at (300, 290) */}
-  <circle cx="560" cy="290" r="260" stroke="#147BFF" strokeWidth="0.7" strokeOpacity="0.16" />
+  {/* 3. RENEWAL CONFIDENCE — The Tight Precision Orbit
+      A warm copper trace looping up from below, locking the three elements together.
+      Intersects precisely at (320, 220) */}
+  <circle cx="470" cy="340" r="190" stroke="#B8734A" strokeWidth="0.8" strokeOpacity="0.18" />
 
-  {/* 4. Copper warmth trace — perfectly touches the blue line's left edge at (300, 290) */}
-  <circle cx="490" cy="290" r="190" stroke="#B8734A" strokeWidth="0.7" strokeOpacity="0.18" />
-
-  {/* 5. Fine precision orbit — continuous backdrop vector anchoring the lower section */}
-  <circle cx="390" cy="410" r="140" stroke="#147BFF" strokeWidth="0.5" strokeOpacity="0.10" />
+  {/* Optional Subtle Background Accent — A fine secondary line just to anchor the lower screen space */}
+  <circle cx="390" cy="520" r="120" stroke="#6E7F86" strokeWidth="0.4" strokeOpacity="0.06" />
 </svg>
+
 
         {/* ── Login card ───────────────────────────────────────────────────── */}
         <div
