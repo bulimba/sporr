@@ -244,7 +244,7 @@ export default function HomePage() {
                 lineHeight: '1.65',
               }}
             >
-              The operational verification layer between
+              The alignment between
               sponsorship terms, delivery evidence, and
               renewal confidence.
             </p>
