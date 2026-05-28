@@ -137,7 +137,7 @@ export default async function LoginPage({
         />
 
     {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
-{/* Intersecting, continuous orbital paths tracking clean, connective vectors */}
+{/* Features an on-screen convergence point where the blue and copper orbits meet */}
 <svg
   aria-hidden="true"
   style={{
@@ -153,22 +153,21 @@ export default async function LoginPage({
   viewBox="0 0 520 600"
   fill="none"
 >
-  {/* 1. Large base structural sweep — completely continuous, anchor curve */}
+  {/* 1. Large base structural sweep — independent backdrop layer */}
   <circle cx="280" cy="500" r="420" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.08" />
 
   {/* 2. Main slate arc — one single, clean break to let it breathe */}
   <circle cx="450" cy="270" r="280" stroke="#6E7F86" strokeWidth="0.7" strokeOpacity="0.12" strokeDasharray="500 200" />
 
-  {/* 3. Blue intelligence curve — sweeping wide from an elevated, offset center */}
-  <circle cx="340" cy="160" r="260" stroke="#147BFF" strokeWidth="0.7" strokeOpacity="0.16" />
+  {/* 3. Blue intelligence curve — swoops down and meets the copper line at (300, 290) */}
+  <circle cx="560" cy="290" r="260" stroke="#147BFF" strokeWidth="0.7" strokeOpacity="0.16" />
 
-  {/* 4. Copper warmth trace — continuous line slicing down across the blue and slate arcs */}
-  <circle cx="490" cy="290" r="190" stroke="#B8734A" strokeWidth="0.7" strokeOpacity="0.16" />
+  {/* 4. Copper warmth trace — perfectly touches the blue line's left edge at (300, 290) */}
+  <circle cx="490" cy="290" r="190" stroke="#B8734A" strokeWidth="0.7" strokeOpacity="0.18" />
 
-  {/* 5. Fine precision orbit — continuous, tight inner ring tracing a different axis */}
-  <circle cx="390" cy="380" r="140" stroke="#147BFF" strokeWidth="0.5" strokeOpacity="0.10" />
+  {/* 5. Fine precision orbit — continuous backdrop vector anchoring the lower section */}
+  <circle cx="390" cy="410" r="140" stroke="#147BFF" strokeWidth="0.5" strokeOpacity="0.10" />
 </svg>
-
 
         {/* ── Login card ───────────────────────────────────────────────────── */}
         <div
