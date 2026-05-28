@@ -136,33 +136,41 @@ export default async function LoginPage({
           }}
         />
 
-        {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
-        {/* Matches the moodboard reference — blue + copper arc pair, right-centred */}
-        <svg
-          aria-hidden="true"
-          style={{
-            position: 'absolute',
-            right: '-8%',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: '52%',
-            height: 'auto',
-            zIndex: 2,
-            pointerEvents: 'none',
-          }}
-          viewBox="0 0 520 600"
-          fill="none"
-        >
-          {/* Outer structural arc — slate */}
-          <circle cx="420" cy="300" r="280" stroke="#6E7F86" strokeWidth="0.7" strokeOpacity="0.18" />
-          <circle cx="420" cy="300" r="236" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.12" />
-          {/* Blue intelligence arc */}
-          <circle cx="420" cy="300" r="198" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.22" />
-          {/* Copper warmth trace */}
-          <circle cx="420" cy="300" r="158" stroke="#B8734A" strokeWidth="0.6" strokeOpacity="0.18" />
-          {/* Inner precision arc — blue */}
-          <circle cx="420" cy="300" r="118" stroke="#147BFF" strokeWidth="0.5" strokeOpacity="0.14" />
-        </svg>
+     {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
+{/* Matches the moodboard reference — blue + copper arc pair, right-centred */}
+<svg
+  aria-hidden="true"
+  style={{
+    position: 'absolute',
+    right: '-8%',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '52%',
+    height: 'auto',
+    zIndex: 2,
+    pointerEvents: 'none',
+  }}
+  viewBox="0 0 520 600"
+  fill="none"
+>
+  {/* 1. Ultra-wide horizon line — sweeping across the lower half */}
+  <circle cx="250" cy="450" r="380" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.10" />
+  
+  {/* 2. Main structural arc — broken into a long dashboard dash */}
+  <circle cx="420" cy="300" r="260" stroke="#6E7F86" strokeWidth="0.8" strokeOpacity="0.18" strokeDasharray="300 150" />
+  
+  {/* 3. Blue intelligence arc — shifted upward and made into a long trailing segment */}
+  <circle cx="390" cy="220" r="210" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.25" strokeDasharray="180 200 40 40" />
+  
+  {/* 4. Copper warmth trace — diving down from the top right, crossing the blue line */}
+  <circle cx="480" cy="280" r="170" stroke="#B8734A" strokeWidth="0.7" strokeOpacity="0.22" strokeDasharray="250 100" />
+  
+  {/* 5. Inner precision ring — offset horizontally, broken into a fast ticker/dot sequence */}
+  <circle cx="350" cy="340" r="130" stroke="#147BFF" strokeWidth="0.6" strokeOpacity="0.15" strokeDasharray="2 12 100 8" />
+  
+  {/* 6. Subtle background echo — massive and barely visible, tying everything together */}
+  <circle cx="500" cy="150" r="420" stroke="#6E7F86" strokeWidth="0.4" strokeOpacity="0.06" />
+</svg>
 
         {/* ── Login card ───────────────────────────────────────────────────── */}
         <div
