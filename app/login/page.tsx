@@ -137,7 +137,7 @@ export default async function LoginPage({
         />
 
    {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
-{/* 3-Ring Convergence: Sponsorship, Delivery, and Renewal paths merge into a single line */}
+{/* 3 independent paths that merge into a single shared track before fanning out */}
 <svg
   aria-hidden="true"
   style={{
@@ -153,18 +153,31 @@ export default async function LoginPage({
   viewBox="0 0 520 600"
   fill="none"
 >
-  {/* 1. SPONSORSHIP TERMS — The Massive Horizon Curve
-      So large it acts as the baseline track. Peak apex is at Y = 120. */}
-  <circle cx="500" cy="1120" r="1000" stroke="#6E7F86" strokeWidth="0.6" strokeOpacity="0.12" />
+  {/* 1. SPONSORSHIP TERMS (Slate Curve) */}
+  <path
+    d="M 520,480 C 460,400 380,330 320,300 C 260,270 240,270 180,240 C 130,215 80,160 0,110"
+    stroke="#6E7F86"
+    strokeWidth="0.8"
+    strokeOpacity="0.15"
+  />
 
-  {/* 2. DELIVERY EVIDENCE — The Medium Blue Intelligence Orbit
-      Rises up and locks directly onto the slate track at Y = 120 before sweeping away. */}
-  <circle cx="440" cy="460" r="340" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.18" />
+  {/* 2. DELIVERY EVIDENCE (Blue Curve) */}
+  <path
+    d="M 520,380 C 440,340 360,310 320,300 C 260,270 240,270 180,240 C 120,210 60,110 20,20"
+    stroke="#147BFF"
+    strokeWidth="0.8"
+    strokeOpacity="0.22"
+  />
 
-  {/* 3. RENEWAL CONFIDENCE — The Tight Copper Orbit
-      Loops up from below, seamlessly hitting the exact same track apex at Y = 120. */}
-  <circle cx="380" cy="320" r="200" stroke="#B8734A" strokeWidth="0.8" strokeOpacity="0.20" />
+  {/* 3. RENEWAL CONFIDENCE (Copper Curve) */}
+  <path
+    d="M 520,220 C 440,240 360,280 320,300 C 260,270 240,270 180,240 C 140,220 90,240 40,290"
+    stroke="#B8734A"
+    strokeWidth="0.8"
+    strokeOpacity="0.20"
+  />
 </svg>
+
 
         {/* ── Login card ───────────────────────────────────────────────────── */}
         <div
