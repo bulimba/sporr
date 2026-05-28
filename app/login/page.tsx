@@ -137,7 +137,7 @@ export default async function LoginPage({
         />
 
  {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
-{/* 4 nested tracks sharing a single convergence point, rotated subtly toward the login UI */}
+{/* 4 nested orbital trajectories sharing a single smooth tangent convergence point at (380, 130) */}
 <svg
   aria-hidden="true"
   style={{
@@ -153,20 +153,22 @@ export default async function LoginPage({
   viewBox="0 0 520 600"
   fill="none"
 >
-  {/* Group wrapper rotates all tracks simultaneously around their shared convergence apex (380, 130) */}
-  <g transform="rotate(-15 380 130)">
-    {/* 1. LARGE ELLIPTICAL TRAJECTORY (Sponsorship Terms) */}
-    <ellipse cx="380" cy="430" rx="220" ry="300" stroke="#6E7F86" strokeWidth="0.7" strokeOpacity="0.12" />
+  {/* 1. LARGE ELLIPTICAL TRAJECTORY (Sponsorship Terms)
+      Deep vertical ellipse plunging low into the canvas */}
+  <ellipse cx="380" cy="430" rx="220" ry="300" stroke="#6E7F86" strokeWidth="0.7" strokeOpacity="0.12" />
 
-    {/* 2. SMALLER CIRCULAR TRAJECTORY (Delivery Evidence) */}
-    <circle cx="380" cy="310" r="180" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.18" />
+  {/* 2. SMALLER CIRCULAR TRAJECTORY (Delivery Evidence)
+      The stable, balanced blue circular core */}
+  <circle cx="380" cy="310" r="180" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.18" />
 
-    {/* 3. TIGHTER ELLIPTICAL TRAJECTORY (Renewal Confidence) */}
-    <ellipse cx="380" cy="250" rx="150" ry="120" stroke="#B8734A" strokeWidth="0.8" strokeOpacity="0.20" />
+  {/* 3. TIGHTER ELLIPTICAL TRAJECTORY (Renewal Confidence)
+      A compact copper ellipse tracing an inner loop path */}
+  <ellipse cx="380" cy="250" rx="150" ry="120" stroke="#B8734A" strokeWidth="0.8" strokeOpacity="0.20" />
 
-    {/* 4. FAINTER PARABOLIC ESCAPE ARC (Dynamic Accent) */}
-    <ellipse cx="380" cy="630" rx="460" ry="500" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.06" />
-  </g>
+  {/* 4. FAINTER PARABOLIC ESCAPE ARC (Dynamic Accent)
+      An immense, highly elongated ellipse that acts exactly like a parabolic curve,
+      sweeping widely off-screen to the bottom-left */}
+  <ellipse cx="380" cy="630" rx="460" ry="500" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.06" />
 </svg>
 
         {/* ── Login card ───────────────────────────────────────────────────── */}
