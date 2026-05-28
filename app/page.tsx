@@ -182,7 +182,7 @@ export default function HomePage() {
         className="relative overflow-hidden"
         style={{ paddingTop: '64px', minHeight: '92vh' }}
       >
-        {/* Full-bleed photography — atmospheric, bleeds into layout */}
+        {/* Full-bleed photography — atmospheric layer */}
         <div
           className="absolute inset-0"
           style={{ zIndex: 0, backgroundColor: '#1a1a1a' }}
@@ -191,18 +191,16 @@ export default function HomePage() {
             src="/images/hero-stadium-track_1.jpg"
             alt="Operational verification in real space"
             className="w-full h-full object-cover"
-            style={{
-              objectPosition: 'center 30%',
-            }}
+            style={{ objectPosition: 'center 30%' }}
           />
-          {/* Gradient — left reads clearly, right bleeds into image */}
+          {/* Gradient — text zone reads clearly, right half bleeds to photo */}
           <div
             className="absolute inset-0"
             style={{
               background: 'linear-gradient(100deg, rgba(250,250,247,0.94) 0%, rgba(250,250,247,0.80) 25%, rgba(250,250,247,0.40) 50%, rgba(250,250,247,0.0) 68%)',
             }}
           />
-          {/* Bottom fade — blends into next section */}
+          {/* Bottom fade — dissolves into next section */}
           <div
             className="absolute bottom-0 left-0 right-0"
             style={{
@@ -211,6 +209,45 @@ export default function HomePage() {
             }}
           />
         </div>
+
+        {/* ── Eccentric telemetry arcs — above gradient, below content ── */}
+        {/* Each curve has a different centre point and radius — */}
+        {/* overlapping, architectural, subconscious. NOT concentric rings. */}
+        {/* Parabolic copper arc sweeps toward screen centre (left). */}
+        <svg
+          aria-hidden="true"
+          className="absolute pointer-events-none"
+          style={{
+            top: 0, left: 0,
+            width: '100%', height: '100%',
+            zIndex: 5,
+            overflow: 'visible',
+          }}
+          viewBox="0 0 1440 860"
+          preserveAspectRatio="xMidYMid slice"
+          fill="none"
+        >
+          {/* 1. Large vertical slate ellipse — anchored upper-right, plunges low */}
+          <ellipse cx="1180" cy="620" rx="380" ry="520"
+            stroke="#6E7F86" strokeWidth="0.7" strokeOpacity="0.13" />
+
+          {/* 2. Blue circular orbit — different centre, not concentric */}
+          <circle cx="1060" cy="340" r="310"
+            stroke="#147BFF" strokeWidth="0.85" strokeOpacity="0.18" />
+
+          {/* 3. Compact Deep Pine ellipse — inner loop, distinct centre */}
+          <ellipse cx="1240" cy="180" rx="240" ry="180"
+            stroke="#0F2A2E" strokeWidth="0.75" strokeOpacity="0.22" />
+
+          {/* 4. Parabolic copper arc — massive elongated ellipse, centre pulled */}
+          {/* toward screen centre so the sweep curves INTO the composition */}
+          <ellipse cx="820" cy="1180" rx="680" ry="760"
+            stroke="#B8734A" strokeWidth="0.7" strokeOpacity="0.16" />
+
+          {/* 5. Secondary blue — small, precise, upper area */}
+          <circle cx="980" cy="120" r="160"
+            stroke="#147BFF" strokeWidth="0.5" strokeOpacity="0.10" />
+        </svg>
 
         {/* Content — positioned left, generous top padding */}
         <div
@@ -227,7 +264,7 @@ export default function HomePage() {
                 color: '#081216',
               }}
             >
-              Sponsorship
+              Partnership
               <br />
               Accountability.
               <br />
@@ -244,8 +281,8 @@ export default function HomePage() {
                 lineHeight: '1.65',
               }}
             >
-              The alignment between
-              sponsorship terms, delivery evidence, and
+              The operational verification layer between
+              partnership terms, delivery evidence, and
               renewal confidence.
             </p>
 
@@ -377,44 +414,38 @@ export default function HomePage() {
           paddingBottom: '96px',
         }}
       >
-        {/* Atmospheric blue telemetry arc — infrastructural geometry */}
+        {/* Eccentric telemetry arcs — full-section, non-concentric */}
         <svg
-          className="absolute pointer-events-none"
-          style={{
-            top: '-10%',
-            right: '-8%',
-            width: '55%',
-            height: 'auto',
-            opacity: 1,
-          }}
-          viewBox="0 0 600 600"
-          fill="none"
           aria-hidden="true"
+          className="absolute pointer-events-none"
+          style={{ top: 0, left: 0, width: '100%', height: '100%', overflow: 'visible' }}
+          viewBox="0 0 1440 600"
+          preserveAspectRatio="xMidYMid slice"
+          fill="none"
         >
-          {/* Primary structural arc — slate */}
-          <circle cx="480" cy="120" r="340" stroke="#6E7F86" strokeWidth="0.6" strokeOpacity="0.12"/>
-          <circle cx="480" cy="120" r="290" stroke="#6E7F86" strokeWidth="0.4" strokeOpacity="0.08"/>
-          {/* Blue intelligence arc — signal layer */}
-          <circle cx="480" cy="120" r="255" stroke="#147BFF" strokeWidth="0.7" strokeOpacity="0.14"/>
-          {/* Copper warmth trace */}
-          <circle cx="480" cy="120" r="210" stroke="#B8734A" strokeWidth="0.4" strokeOpacity="0.08"/>
-        </svg>
+          {/* Large vertical slate ellipse — right side, plunges through */}
+          <ellipse cx="1260" cy="820" rx="420" ry="600"
+            stroke="#6E7F86" strokeWidth="0.7" strokeOpacity="0.14" />
 
-        {/* Secondary arc — lower left counterbalance */}
-        <svg
-          className="absolute pointer-events-none"
-          style={{
-            bottom: '-15%',
-            left: '-5%',
-            width: '35%',
-            height: 'auto',
-          }}
-          viewBox="0 0 400 400"
-          fill="none"
-          aria-hidden="true"
-        >
-          <circle cx="0" cy="400" r="280" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.1"/>
-          <circle cx="0" cy="400" r="230" stroke="#147BFF" strokeWidth="0.5" strokeOpacity="0.12"/>
+          {/* Blue orbit — different centre, sweeps upper-right */}
+          <circle cx="1080" cy="-80" r="420"
+            stroke="#147BFF" strokeWidth="0.85" strokeOpacity="0.16" />
+
+          {/* Compact pine ellipse — inner architectural detail */}
+          <ellipse cx="1380" cy="200" rx="260" ry="200"
+            stroke="#0F2A2E" strokeWidth="0.7" strokeOpacity="0.20" />
+
+          {/* Parabolic copper — sweeps toward screen centre from lower-right */}
+          <ellipse cx="680" cy="1100" rx="720" ry="820"
+            stroke="#B8734A" strokeWidth="0.65" strokeOpacity="0.14" />
+
+          {/* Secondary blue — lower-left counterbalance */}
+          <circle cx="-60" cy="480" r="320"
+            stroke="#147BFF" strokeWidth="0.5" strokeOpacity="0.10" />
+
+          {/* Slate counterbalance — far lower-left */}
+          <ellipse cx="-120" cy="700" rx="300" ry="240"
+            stroke="#6E7F86" strokeWidth="0.45" strokeOpacity="0.09" />
         </svg>
 
         {/* Fogged edge — top transition blends into section below */}
@@ -588,10 +619,19 @@ export default function HomePage() {
                 color: '#6E7F86',
               }}
             >
-SCANDINAVIAN-DESIGNED PROOF-OF-PERFORMANCE INFRASTRUCTURE.
+              TRUSTED BY FORWARD-THINKING ORGANISATIONS
             </p>
             <div className="flex items-center gap-8 flex-wrap">
-              
+              {[
+                'Nordic Wealth Partners',
+                'Arctic Hospitality',
+                'Pure Energy',
+                'Northern Bank',
+                'Community Youth Clinic',
+                'Aurora Logistics',
+              ].map(name => (
+                <TrustedLogo key={name} name={name} />
+              ))}
             </div>
           </div>
 
@@ -682,7 +722,7 @@ SCANDINAVIAN-DESIGNED PROOF-OF-PERFORMANCE INFRASTRUCTURE.
                 Ready to prove your partnerships?
               </p>
               <p style={{ fontSize: '13px', color: '#6E7F86', marginTop: '6px' }}>
-                sporr.no · Sponsorship Accountability. Proven.
+                sporr.no · Partnerships. Proven.
               </p>
             </div>
             <div className="flex items-center gap-3">
