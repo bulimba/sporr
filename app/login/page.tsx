@@ -136,8 +136,8 @@ export default async function LoginPage({
           }}
         />
 
-     {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
-{/* Matches the moodboard reference — blue + copper arc pair, right-centred */}
+    {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
+{/* Intersecting, continuous orbital paths tracking clean, connective vectors */}
 <svg
   aria-hidden="true"
   style={{
@@ -153,24 +153,22 @@ export default async function LoginPage({
   viewBox="0 0 520 600"
   fill="none"
 >
-  {/* 1. Ultra-wide horizon line — sweeping across the lower half */}
-  <circle cx="250" cy="450" r="380" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.10" />
-  
-  {/* 2. Main structural arc — broken into a long dashboard dash */}
-  <circle cx="420" cy="300" r="260" stroke="#6E7F86" strokeWidth="0.8" strokeOpacity="0.18" strokeDasharray="300 150" />
-  
-  {/* 3. Blue intelligence arc — shifted upward and made into a long trailing segment */}
-  <circle cx="390" cy="220" r="210" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.25" strokeDasharray="180 200 40 40" />
-  
-  {/* 4. Copper warmth trace — diving down from the top right, crossing the blue line */}
-  <circle cx="480" cy="280" r="170" stroke="#B8734A" strokeWidth="0.7" strokeOpacity="0.22" strokeDasharray="250 100" />
-  
-  {/* 5. Inner precision ring — offset horizontally, broken into a fast ticker/dot sequence */}
-  <circle cx="350" cy="340" r="130" stroke="#147BFF" strokeWidth="0.6" strokeOpacity="0.15" strokeDasharray="2 12 100 8" />
-  
-  {/* 6. Subtle background echo — massive and barely visible, tying everything together */}
-  <circle cx="500" cy="150" r="420" stroke="#6E7F86" strokeWidth="0.4" strokeOpacity="0.06" />
+  {/* 1. Large base structural sweep — completely continuous, anchor curve */}
+  <circle cx="280" cy="500" r="420" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.08" />
+
+  {/* 2. Main slate arc — one single, clean break to let it breathe */}
+  <circle cx="450" cy="270" r="280" stroke="#6E7F86" strokeWidth="0.7" strokeOpacity="0.12" strokeDasharray="500 200" />
+
+  {/* 3. Blue intelligence curve — sweeping wide from an elevated, offset center */}
+  <circle cx="340" cy="160" r="260" stroke="#147BFF" strokeWidth="0.7" strokeOpacity="0.16" />
+
+  {/* 4. Copper warmth trace — continuous line slicing down across the blue and slate arcs */}
+  <circle cx="490" cy="290" r="190" stroke="#B8734A" strokeWidth="0.7" strokeOpacity="0.16" />
+
+  {/* 5. Fine precision orbit — continuous, tight inner ring tracing a different axis */}
+  <circle cx="390" cy="380" r="140" stroke="#147BFF" strokeWidth="0.5" strokeOpacity="0.10" />
 </svg>
+
 
         {/* ── Login card ───────────────────────────────────────────────────── */}
         <div
