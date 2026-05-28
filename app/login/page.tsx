@@ -136,8 +136,8 @@ export default async function LoginPage({
           }}
         />
 
-    {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
-{/* 3-Ring Convergence: Sponsorship Terms, Delivery Evidence, and Renewal Confidence */}
+   {/* ── Telemetry arc geometry — right side, subconscious ───────────── */}
+{/* 3-Ring Convergence: Sponsorship, Delivery, and Renewal paths merge into a single line */}
 <svg
   aria-hidden="true"
   style={{
@@ -153,25 +153,18 @@ export default async function LoginPage({
   viewBox="0 0 520 600"
   fill="none"
 >
-  {/* 1. SPONSORSHIP TERMS — The Massive Horizon
-      Radius is so large (700) that it appears as a shallow, sweeping structural curve.
-      Intersects precisely at (320, 220) */}
-  <circle cx="1020" cy="220" r="700" stroke="#6E7F86" strokeWidth="0.6" strokeOpacity="0.12" />
+  {/* 1. SPONSORSHIP TERMS — The Massive Horizon Curve
+      So large it acts as the baseline track. Peak apex is at Y = 120. */}
+  <circle cx="500" cy="1120" r="1000" stroke="#6E7F86" strokeWidth="0.6" strokeOpacity="0.12" />
 
-  {/* 2. DELIVERY EVIDENCE — The Medium Dynamic Orbit
-      A sweeping blue intelligence arc tracking operational execution.
-      Intersects precisely at (320, 220) */}
-  <circle cx="580" cy="120" r="280" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.18" />
+  {/* 2. DELIVERY EVIDENCE — The Medium Blue Intelligence Orbit
+      Rises up and locks directly onto the slate track at Y = 120 before sweeping away. */}
+  <circle cx="440" cy="460" r="340" stroke="#147BFF" strokeWidth="0.8" strokeOpacity="0.18" />
 
-  {/* 3. RENEWAL CONFIDENCE — The Tight Precision Orbit
-      A warm copper trace looping up from below, locking the three elements together.
-      Intersects precisely at (320, 220) */}
-  <circle cx="470" cy="340" r="190" stroke="#B8734A" strokeWidth="0.8" strokeOpacity="0.18" />
-
-  {/* Optional Subtle Background Accent — A fine secondary line just to anchor the lower screen space */}
-  <circle cx="390" cy="520" r="120" stroke="#6E7F86" strokeWidth="0.4" strokeOpacity="0.06" />
+  {/* 3. RENEWAL CONFIDENCE — The Tight Copper Orbit
+      Loops up from below, seamlessly hitting the exact same track apex at Y = 120. */}
+  <circle cx="380" cy="320" r="200" stroke="#B8734A" strokeWidth="0.8" strokeOpacity="0.20" />
 </svg>
-
 
         {/* ── Login card ───────────────────────────────────────────────────── */}
         <div
