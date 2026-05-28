@@ -165,10 +165,10 @@ export default async function LoginPage({
       A compact copper ellipse tracing an inner loop path */}
   <ellipse cx="380" cy="250" rx="150" ry="120" stroke="#B8734A" strokeWidth="0.8" strokeOpacity="0.20" />
 
-  {/* 4. FAINTER PARABOLIC ESCAPE ARC (Dynamic Accent)
+  {/* 4. PARABOLIC ESCAPE ARC (Dynamic Accent)
       An immense, highly elongated ellipse that acts exactly like a parabolic curve,
       sweeping widely off-screen to the bottom-left */}
-  <ellipse cx="380" cy="630" rx="460" ry="500" stroke="#6E7F86" strokeWidth="0.5" strokeOpacity="0.06" />
+  <ellipse cx="380" cy="630" rx="460" ry="500" stroke="#36B37E" strokeWidth="0.6" strokeOpacity="0.18" />
 </svg>
 
         {/* ── Login card ───────────────────────────────────────────────────── */}
