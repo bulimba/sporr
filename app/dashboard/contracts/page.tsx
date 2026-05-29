@@ -4,110 +4,160 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
-type Sponsor = { id: string; company_name: string }
-type Contract = {
-  id: string; title: string; value_nok: number; season: string
-  status: string; start_date: string; end_date: string
-  sponsorship_tier: string
-  sponsors: { company_name: string }
-}
-type Obligation = {
-  id: string; description: string | null; proof_type: string
-  delivery_context: string; status: string; contract_id: string
-}
-type MediaHit = {
-  id: string
-  contract_id: string
-  media_type: string
-  outlet_name: string
-  reach: number
-  cpm_override: number | null
-  notes: string | null
-  hit_date: string | null
+// ── Tier system ───────────────────────────────────────────────────────────────
+// Plan tiers = operational complexity. No feature gates on contracts/sponsors.
+// Sponsor tiers = club's classification of sponsor support. No platform lock.
+
+const PLAN_TIER_LABELS: Record<string, string> = {
+  foundation: 'Foundation', organisation: 'Organisation',
+  portfolio: 'Portfolio', network: 'Network',
+  free: 'Foundation', club: 'Organisation', pro: 'Portfolio', agency: 'Network',
 }
 
+function normaliseTier(raw: string | null | undefined): string {
+  const map: Record<string, string> = { free: 'foundation', club: 'organisation', pro: 'portfolio', agency: 'network' }
+  return map[raw || ''] ?? raw ?? 'foundation'
+}
+
+const SPONSOR_TIERS: Record<string, { label: string; order: number; bg: string; text: string; border: string }> = {
+  community: { label: 'Bronze',   order: 4, bg: '#FDF4EC', text: '#92400E', border: '#FCD9A8' },
+  official:  { label: 'Silver',   order: 3, bg: '#F4F5F6', text: '#374151', border: '#D1D5DB' },
+  principal: { label: 'Gold',     order: 2, bg: '#FFFBEB', text: '#92400E', border: '#FDE68A' },
+  title:     { label: 'Platinum', order: 1, bg: '#F0F4FF', text: '#3730A3', border: '#C7D2FE' },
+  diamond:   { label: 'Diamond',  order: 0, bg: '#F0FDFA', text: '#0F766E', border: '#99F6E4' },
+}
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+type Sponsor    = { id: string; company_name: string }
+type Contract   = { id: string; title: string; value_nok: number; season: string; status: string; start_date: string; end_date: string; sponsorship_tier: string; sponsors: { company_name: string } }
+type Obligation = { id: string; description: string | null; proof_type: string; delivery_context: string; status: string; contract_id: string }
+type MediaHit   = { id: string; contract_id: string; media_type: string; outlet_name: string; reach: number; cpm_override: number | null; notes: string | null; hit_date: string | null }
+
+// ── Form options ──────────────────────────────────────────────────────────────
 const PROOF_TYPES = [
-  { value: 'photo', label: 'Photo — field capture on match day' },
-  { value: 'link', label: 'Link — social media post or digital asset' },
+  { value: 'photo',     label: 'Photo — field capture on match day' },
+  { value: 'link',      label: 'Link — social media post or digital asset' },
   { value: 'timestamp', label: 'Timestamp — confirmed presence or announcement' },
-  { value: 'note', label: 'Note — written confirmation of delivery' },
+  { value: 'note',      label: 'Note — written confirmation of delivery' },
 ]
 const ASSET_TYPES = ['LED board', 'Jersey / kit', 'Banner / signage', 'Social media post', 'PA announcement', 'Digital screen', 'Hospitality', 'Programme', 'Other']
 const DELIVERY_CONTEXTS = [
-  { value: 'match_day', label: 'Match day — captured at fixtures' },
-  { value: 'training', label: 'Training — captured at training sessions' },
-  { value: 'digital', label: 'Digital — online posts and content' },
+  { value: 'match_day',   label: 'Match day — captured at fixtures' },
+  { value: 'training',    label: 'Training — captured at training sessions' },
+  { value: 'digital',     label: 'Digital — online posts and content' },
   { value: 'season_long', label: 'Season-long — ongoing throughout season' },
-  { value: 'event', label: 'Event — specific club event or function' },
+  { value: 'event',       label: 'Event — specific club event or function' },
 ]
+
+// 5-tier sponsor classification — club defines meaning, no platform lock
 const SPONSORSHIP_TIERS = [
-  { value: 'community', label: 'Bronze', sublabel: 'Community sponsor', free: true },
-  { value: 'official', label: 'Silver', sublabel: 'Official sponsor', free: false },
-  { value: 'principal', label: 'Gold', sublabel: 'Principal sponsor', free: false },
-  { value: 'title', label: 'Platinum', sublabel: 'Title sponsor', free: false },
+  { value: 'community', label: 'Bronze',   sublabel: 'Entry level support' },
+  { value: 'official',  label: 'Silver',   sublabel: 'Official sponsor' },
+  { value: 'principal', label: 'Gold',     sublabel: 'Principal sponsor' },
+  { value: 'title',     label: 'Platinum', sublabel: 'Title sponsor' },
+  { value: 'diamond',   label: 'Diamond',  sublabel: 'Premium partner' },
 ]
 
 const MEDIA_TYPES = [
-  { value: 'newspaper', label: 'Newspaper / print', defaultCpm: 50, unit: 'circulation' },
-  { value: 'tv', label: 'Television', defaultCpm: 200, unit: 'viewership' },
-  { value: 'radio', label: 'Radio', defaultCpm: 35, unit: 'listeners' },
-  { value: 'online', label: 'Online / digital news', defaultCpm: 40, unit: 'page views' },
-  { value: 'podcast', label: 'Podcast', defaultCpm: 80, unit: 'listeners' },
-  { value: 'social_3p', label: 'Third-party social media', defaultCpm: 25, unit: 'impressions' },
-  { value: 'event_signage', label: 'Event signage / outdoor', defaultCpm: 15, unit: 'footfall' },
-  { value: 'other', label: 'Other', defaultCpm: 30, unit: 'reach' },
+  { value: 'newspaper',     label: 'Newspaper / print',          defaultCpm: 50,  unit: 'circulation' },
+  { value: 'tv',            label: 'Television',                  defaultCpm: 200, unit: 'viewership' },
+  { value: 'radio',         label: 'Radio',                       defaultCpm: 35,  unit: 'listeners' },
+  { value: 'online',        label: 'Online / digital news',       defaultCpm: 40,  unit: 'page views' },
+  { value: 'podcast',       label: 'Podcast',                     defaultCpm: 80,  unit: 'listeners' },
+  { value: 'social_3p',     label: 'Third-party social media',    defaultCpm: 25,  unit: 'impressions' },
+  { value: 'event_signage', label: 'Event signage / outdoor',     defaultCpm: 15,  unit: 'footfall' },
+  { value: 'other',         label: 'Other',                       defaultCpm: 30,  unit: 'reach' },
 ]
 
-// Tier contract limits (for accurate upgrade messaging)
-const CONTRACT_LIMITS: Record<string, number | null> = {
-  free: 1,
-  club: 5,   // 5 sponsors → up to 5 contracts per sponsor effectively; display as per sponsor count
-  pro: 20,
-  agency: null, // contact
+// ── SVG paths ─────────────────────────────────────────────────────────────────
+const O_ARC   = 'M873.735 347.639C898.493 344.775 922.792 349.648 943.469 363.849C964.779 378.522 979.408 401.039 984.155 426.472C989.607 456.155 982.16 481.366 965.308 505.675C957.877 501.095 950.861 497.807 943.039 494.028C951.244 484.183 956.989 472.528 959.799 460.024C963.871 441.089 960.3 421.313 949.863 404.998C938.576 387.638 922.504 377.041 902.392 372.759C901.94 372.676 901.487 372.599 901.033 372.528C880.508 369.277 859.101 373.103 842.11 385.427C826.478 396.918 816.067 414.162 813.178 433.347C809.468 457.588 816.492 475.116 830.476 494.232C822.176 497.845 815.897 501.472 808.117 505.943C798.035 490.808 791.722 477.724 789.052 459.404C785.108 433.179 791.888 406.471 807.864 385.303C824.374 363.356 846.814 351.416 873.735 347.639Z'
+const O_BREAK = 'M876.273 500.988C904.427 497.778 932.768 506.786 955.235 523.713C949.48 529.254 944.417 533.62 938.29 538.755C923.817 529.858 914.292 526.66 897.594 524.151C873.104 522.25 856.67 525.977 835.728 538.872C829.3 533.622 824.598 529.559 818.648 523.799C835.706 509.913 854.812 503.743 876.273 500.988Z'
+const S_PATH  = 'M438.532 347.689C466.232 344.584 505.581 349.465 529.745 363.724C526.819 371.238 523.812 378.72 520.726 386.17C496.565 374.864 477.723 371.516 451.744 371.626C432.898 371.705 393.747 376.892 396.627 402.78C402.181 452.685 495.21 415.624 524.433 449.977C534.051 461.284 538.333 468.556 538.756 483.329C539.162 529.497 497.926 539.067 461.429 539.876C427.58 540.636 402.505 536.592 371.777 522.545C373.856 516.241 378.482 506.016 381.147 499.586C412.813 514.903 447.612 518.555 482.304 513.625C491.624 512.3 502.467 509.271 508.621 501.656C512.967 496.375 515.004 489.567 514.274 482.767C510.834 450.619 453.621 458.064 430.541 454.825C403.388 451.014 375.226 442.167 372.154 409.224C368.205 366.885 402.263 351.712 438.532 347.689Z'
+const P_PATH  = 'M591.69 349.883L652.183 349.793C668.404 349.779 692.625 348.653 707.674 352.793C716.991 355.371 725.488 360.304 732.346 367.117C755.626 390.443 754.804 434.159 731.747 457.175C715.658 473.236 694.163 475.061 672.712 474.606C662.112 474.381 651.277 474.567 640.664 474.525L640.719 449.79C671.678 449.581 715.744 458.654 724.352 419.908C728.319 387.605 709.827 372.875 679.311 373.975C674.024 374.166 668.029 373.994 662.683 374.01L615.998 374.194L615.955 536.93L591.707 536.764L591.69 349.883Z'
+const R1_PATH = 'M1035.43 349.884L1101.63 349.779C1117.18 349.759 1131.76 348.914 1147.46 351.469C1191.83 358.684 1206.77 412.536 1180.62 445.935C1168.85 460.963 1152.77 464.378 1134.59 466.173C1153.69 487.785 1181.92 515.058 1202.56 536.176L1169.71 536.221L1089.56 454.24C1087.09 451.939 1084.2 449.709 1083.21 446.547C1083.28 446.008 1083.28 444.814 1083.5 444.371C1087.25 436.869 1140.71 450.713 1159.9 432.09C1166.14 426.039 1168.6 418.231 1168.74 409.707C1168.9 400.535 1166.81 391.482 1160.2 384.767C1155.36 379.849 1148.98 376.888 1142.31 375.376C1131.3 372.883 1118.95 373.958 1107.7 373.984L1059.72 374.152C1061.08 425.774 1059.83 483.997 1059.86 536.24L1035.47 536.222L1035.43 349.884Z'
+const R2_PATH = 'M1246.62 349.875L1312.17 349.807C1327.81 349.78 1343.83 348.82 1359.46 351.591C1403.07 359.319 1417.7 413.269 1391.45 445.997C1379.72 460.624 1363.79 464.578 1345.74 466.108L1413.86 536.156L1381.03 536.212L1303.04 456.941C1299.59 453.51 1295.46 450.323 1293.88 445.95C1293.94 444.993 1293.79 442.698 1295.09 442.617C1309.01 442.651 1323.68 441.158 1337.61 442.158C1371.86 444.615 1391.78 417.024 1372.73 386.625C1363.59 372.027 1336.52 373.922 1319.43 373.972L1271.43 374.171C1270.79 427.888 1271.57 482.37 1271.27 536.215L1246.58 536.273L1246.62 349.875Z'
+
+function SporrWordmark({ color = '#E7ECEF', breakColor = '#B8734A', width = 80 }: { color?: string; breakColor?: string; width?: number }) {
+  const h = (width / 1046) * 200
+  return (
+    <svg viewBox="371 344 1046 200" width={width} height={h} aria-label="Sporr" role="img">
+      {[S_PATH, P_PATH, O_ARC, R1_PATH, R2_PATH].map((d, i) => <path key={i} fill={color} d={d} />)}
+      <path fill={breakColor} d={O_BREAK} />
+    </svg>
+  )
 }
 
+function TierBadge({ tier }: { tier: string }) {
+  const meta = SPONSOR_TIERS[tier] || SPONSOR_TIERS.community
+  return (
+    <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full tracking-wide uppercase"
+      style={{ background: meta.bg, color: meta.text, border: `1px solid ${meta.border}` }}>
+      {meta.label}
+    </span>
+  )
+}
+
+// ── Shared nav items ──────────────────────────────────────────────────────────
+const NAV_ITEMS = [
+  { href: '/dashboard',             label: 'Overview',     icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><rect x="11" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><rect x="2" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><rect x="11" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/></svg> },
+  { href: '/dashboard/sponsors',    label: 'Sponsors',     icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.39 7.26L18 8.18L14 12.08L14.95 17.66L10 15L5.05 17.66L6 12.08L2 8.18L7.61 7.26L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/></svg> },
+  { href: '/dashboard/obligations', label: 'Deliverables', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><path d="M7 7h6M7 10h6M7 13h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+  { href: '/dashboard/audit',       label: 'Capture',      icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="6" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><circle cx="10" cy="12" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M7 6l1.2-2h3.6L13 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+  { href: '/dashboard/contracts',   label: 'Contracts',    icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="2" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+  { href: '/dashboard/financial',   label: 'Financial',    icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 14l4-5 3 3 5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+  { href: '/proof-pack',            label: 'Reports',      icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 10L10 3L17 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 8.5V17H15V8.5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><path d="M8 17V12h4v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+  { href: '/dashboard/club',        label: 'Profile',      icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+]
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const INK = '#081216'
+const FOG = '#E7ECEF'
+const SLATE = '#6E7F86'
+const BLUE = '#147BFF'
+const BG = '#F5F2ED'
+const WHITE = '#FFFFFF'
+const BORDER = 'rgba(8,18,22,0.08)'
+const SIDEBAR = '#0A1A1F'
+
+function inp(extra?: React.CSSProperties): React.CSSProperties {
+  return { width: '100%', background: WHITE, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '10px 14px', fontSize: 14, color: INK, outline: 'none', fontFamily: 'inherit', ...extra }
+}
+function sel(extra?: React.CSSProperties): React.CSSProperties { return inp(extra) }
+function lbl(): React.CSSProperties { return { display: 'block', fontSize: 11, fontWeight: 600, color: SLATE, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 } }
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function ContractsPage() {
-  const router = useRouter()
+  const router   = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
-  const [contracts, setContracts] = useState<Contract[]>([])
-  const [sponsors, setSponsors] = useState<Sponsor[]>([])
-  const [obligations, setObligations] = useState<Record<string, Obligation[]>>({})
-  const [mediaHits, setMediaHits] = useState<Record<string, MediaHit[]>>({})
-  const [orgId, setOrgId] = useState<string | null>(null)
-  const [orgTier, setOrgTier] = useState<string>('free')
-  const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+
+  const [contracts, setContracts]       = useState<Contract[]>([])
+  const [sponsors, setSponsors]         = useState<Sponsor[]>([])
+  const [obligations, setObligations]   = useState<Record<string, Obligation[]>>({})
+  const [mediaHits, setMediaHits]       = useState<Record<string, MediaHit[]>>({})
+  const [orgId, setOrgId]               = useState<string | null>(null)
+  const [orgName, setOrgName]           = useState('')
+  const [planTier, setPlanTier]         = useState('foundation')
+  const [clubPrimary, setClubPrimary]   = useState(INK)
+  const [loading, setLoading]           = useState(true)
+  const [showForm, setShowForm]         = useState(false)
+  const [saving, setSaving]             = useState(false)
+  const [error, setError]               = useState<string | null>(null)
   const [expandedContract, setExpandedContract] = useState<string | null>(null)
   const [showObligationForm, setShowObligationForm] = useState<string | null>(null)
   const [showMediaForm, setShowMediaForm] = useState<string | null>(null)
   const [savingObligation, setSavingObligation] = useState(false)
-  const [savingMedia, setSavingMedia] = useState(false)
-  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false)
-  const [form, setForm] = useState({
-    title: '', sponsor_id: '', value_nok: '', season: '2025-2026',
-    start_date: '', end_date: '', sponsorship_tier: 'community',
-  })
-  const [obligationForm, setObligationForm] = useState({
-    description: '', asset_type: 'Banner / signage', proof_type: 'photo', delivery_context: 'match_day',
-  })
-  const [mediaForm, setMediaForm] = useState({
-    media_type: 'newspaper',
-    outlet_name: '',
-    reach: '',
-    cpm_override: '',
-    notes: '',
-    hit_date: '',
-  })
+  const [savingMedia, setSavingMedia]   = useState(false)
 
-  const update = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
-  const updateOb = (f: string, v: string) => setObligationForm(p => ({ ...p, [f]: v }))
-  const updateMedia = (f: string, v: string) => setMediaForm(p => ({ ...p, [f]: v }))
+  const [form, setForm] = useState({ title: '', sponsor_id: '', value_nok: '', season: '2025-2026', start_date: '', end_date: '', sponsorship_tier: 'community' })
+  const [obligationForm, setObligationForm] = useState({ description: '', asset_type: 'Banner / signage', proof_type: 'photo', delivery_context: 'match_day' })
+  const [mediaForm, setMediaForm] = useState({ media_type: 'newspaper', outlet_name: '', reach: '', cpm_override: '', notes: '', hit_date: '' })
 
-  const isFree = orgTier === 'free'
-  const atContractLimit = isFree && contracts.length >= 1
+  const upd   = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
+  const updOb = (f: string, v: string) => setObligationForm(p => ({ ...p, [f]: v }))
+  const updMd = (f: string, v: string) => setMediaForm(p => ({ ...p, [f]: v }))
 
   const selectedMediaType = MEDIA_TYPES.find(m => m.value === mediaForm.media_type) || MEDIA_TYPES[0]
 
@@ -118,33 +168,33 @@ export default function ContractsPage() {
       const { data: userData } = await supabase.from('users').select('org_id').eq('id', session.user.id).single()
       if (!userData) { setLoading(false); return }
       setOrgId(userData.org_id)
-      const { data: orgData } = await supabase.from('organisations').select('tier').eq('id', userData.org_id).single()
-      setOrgTier(orgData?.tier || 'free')
+
+      const { data: orgData } = await supabase.from('organisations').select('tier, name, club_colour_primary').eq('id', userData.org_id).single()
+      setPlanTier(normaliseTier(orgData?.tier))
+      setOrgName(orgData?.name || '')
+      setClubPrimary(orgData?.club_colour_primary || INK)
+
       const [contractsRes, sponsorsRes] = await Promise.all([
-        supabase.from('contracts').select('id, title, value_nok, season, status, start_date, end_date, sponsorship_tier, sponsors(company_name)').eq('org_id', userData.org_id).order('created_at', { ascending: false }),
-        supabase.from('sponsors').select('id, company_name').eq('org_id', userData.org_id).order('company_name'),
+        supabase.from('contracts').select('id,title,value_nok,season,status,start_date,end_date,sponsorship_tier,sponsors(company_name)').eq('org_id', userData.org_id).order('created_at', { ascending: false }),
+        supabase.from('sponsors').select('id,company_name').eq('org_id', userData.org_id).order('company_name'),
       ])
+
       const contractList = (contractsRes.data as unknown as Contract[]) || []
       setContracts(contractList)
       setSponsors(sponsorsRes.data || [])
+
       if (contractList.length > 0) {
         const ids = contractList.map(c => c.id)
         const [oblRes, mediaRes] = await Promise.all([
-          supabase.from('obligations').select('id, description, proof_type, delivery_context, status, contract_id').in('contract_id', ids),
+          supabase.from('obligations').select('id,description,proof_type,delivery_context,status,contract_id').in('contract_id', ids),
           supabase.from('media_hits').select('*').in('contract_id', ids).order('hit_date', { ascending: false }),
         ])
-        const groupedObl: Record<string, Obligation[]> = {}
-        for (const ob of oblRes.data || []) {
-          if (!groupedObl[ob.contract_id]) groupedObl[ob.contract_id] = []
-          groupedObl[ob.contract_id].push(ob)
-        }
-        const groupedMedia: Record<string, MediaHit[]> = {}
-        for (const hit of mediaRes.data || []) {
-          if (!groupedMedia[hit.contract_id]) groupedMedia[hit.contract_id] = []
-          groupedMedia[hit.contract_id].push(hit)
-        }
-        setObligations(groupedObl)
-        setMediaHits(groupedMedia)
+        const gObl: Record<string, Obligation[]> = {}
+        for (const ob of oblRes.data || []) { if (!gObl[ob.contract_id]) gObl[ob.contract_id] = []; gObl[ob.contract_id].push(ob) }
+        const gMed: Record<string, MediaHit[]> = {}
+        for (const hit of mediaRes.data || []) { if (!gMed[hit.contract_id]) gMed[hit.contract_id] = []; gMed[hit.contract_id].push(hit) }
+        setObligations(gObl)
+        setMediaHits(gMed)
       }
       setLoading(false)
     }
@@ -152,22 +202,16 @@ export default function ContractsPage() {
   }, [])
 
   async function handleSave() {
-    if (!form.title) { setError('Contract title is required'); return }
+    if (!form.title)      { setError('Contract title is required'); return }
     if (!form.sponsor_id) { setError('Please select a sponsor'); return }
-    if (atContractLimit) { setError('Free plan is limited to 1 contract. Upgrade to add more.'); return }
-    if (isFree && form.sponsorship_tier !== 'community') {
-      setError('Free plan is limited to Bronze (Community) tier. Upgrade to add higher-tier sponsors.')
-      return
-    }
     if (!orgId) return
     setSaving(true); setError(null)
     const { data, error: saveError } = await supabase.from('contracts').insert({
       org_id: orgId, sponsor_id: form.sponsor_id, title: form.title,
       value_nok: form.value_nok ? parseFloat(form.value_nok) : 0,
-      season: form.season, start_date: form.start_date || null,
-      end_date: form.end_date || null, status: 'active',
-      sponsorship_tier: form.sponsorship_tier,
-    }).select('id, title, value_nok, season, status, start_date, end_date, sponsorship_tier, sponsors(company_name)').single()
+      season: form.season, start_date: form.start_date || null, end_date: form.end_date || null,
+      status: 'active', sponsorship_tier: form.sponsorship_tier,
+    }).select('id,title,value_nok,season,status,start_date,end_date,sponsorship_tier,sponsors(company_name)').single()
     if (saveError) { setError(saveError.message); setSaving(false); return }
     setContracts(prev => [data as unknown as Contract, ...prev])
     setForm({ title: '', sponsor_id: '', value_nok: '', season: '2025-2026', start_date: '', end_date: '', sponsorship_tier: 'community' })
@@ -180,10 +224,7 @@ export default function ContractsPage() {
     setSavingObligation(true)
     const contextName = DELIVERY_CONTEXTS.find(d => d.value === obligationForm.delivery_context)?.label.split(' —')[0].toLowerCase() || ''
     const description = obligationForm.description || `${obligationForm.asset_type} — ${contextName}`
-    const { data, error: obError } = await supabase.from('obligations').insert({
-      contract_id: contractId, org_id: orgId, description,
-      proof_type: obligationForm.proof_type, delivery_context: obligationForm.delivery_context, status: 'pending',
-    }).select().single()
+    const { data, error: obError } = await supabase.from('obligations').insert({ contract_id: contractId, org_id: orgId, description, proof_type: obligationForm.proof_type, delivery_context: obligationForm.delivery_context, status: 'pending' }).select().single()
     if (obError) { alert(obError.message); setSavingObligation(false); return }
     setObligations(prev => ({ ...prev, [contractId]: [...(prev[contractId] || []), data] }))
     setObligationForm({ description: '', asset_type: 'Banner / signage', proof_type: 'photo', delivery_context: 'match_day' })
@@ -193,16 +234,7 @@ export default function ContractsPage() {
   async function handleAddMediaHit(contractId: string) {
     if (!orgId || !mediaForm.outlet_name || !mediaForm.reach) return
     setSavingMedia(true)
-    const { data, error: mediaError } = await supabase.from('media_hits').insert({
-      contract_id: contractId,
-      org_id: orgId,
-      media_type: mediaForm.media_type,
-      outlet_name: mediaForm.outlet_name,
-      reach: parseInt(mediaForm.reach),
-      cpm_override: mediaForm.cpm_override ? parseInt(mediaForm.cpm_override) : null,
-      notes: mediaForm.notes || null,
-      hit_date: mediaForm.hit_date || null,
-    }).select().single()
+    const { data, error: mediaError } = await supabase.from('media_hits').insert({ contract_id: contractId, org_id: orgId, media_type: mediaForm.media_type, outlet_name: mediaForm.outlet_name, reach: parseInt(mediaForm.reach), cpm_override: mediaForm.cpm_override ? parseInt(mediaForm.cpm_override) : null, notes: mediaForm.notes || null, hit_date: mediaForm.hit_date || null }).select().single()
     if (mediaError) { alert(mediaError.message); setSavingMedia(false); return }
     setMediaHits(prev => ({ ...prev, [contractId]: [data as MediaHit, ...(prev[contractId] || [])] }))
     setMediaForm({ media_type: 'newspaper', outlet_name: '', reach: '', cpm_override: '', notes: '', hit_date: '' })
@@ -220,192 +252,295 @@ export default function ContractsPage() {
   }
 
   const contextLabel = (val: string) => DELIVERY_CONTEXTS.find(d => d.value === val)?.label.split(' —')[0] || val
+  const mediaValue = (hit: MediaHit) => Math.round(hit.reach * (hit.cpm_override ?? (MEDIA_TYPES.find(m => m.value === hit.media_type)?.defaultCpm || 30)) / 1000)
+  const totalMediaValue = (contractId: string) => (mediaHits[contractId] || []).reduce((sum, hit) => sum + mediaValue(hit), 0)
 
-  const mediaValue = (hit: MediaHit) => {
-    const cpm = hit.cpm_override ?? (MEDIA_TYPES.find(m => m.value === hit.media_type)?.defaultCpm || 30)
-    return Math.round(hit.reach * cpm / 1000)
-  }
+  const planLabel = PLAN_TIER_LABELS[planTier] || 'Foundation'
 
-  const totalMediaValue = (contractId: string) =>
-    (mediaHits[contractId] || []).reduce((sum, hit) => sum + mediaValue(hit), 0)
+  // ── Sidebar ─────────────────────────────────────────────────────────────────
+  const Sidebar = () => (
+    <aside className="hidden lg:flex flex-col w-[220px] min-h-screen fixed left-0 top-0 bottom-0 z-40" style={{ background: SIDEBAR, borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <SporrWordmark color={FOG} breakColor="#B8734A" width={72} />
+      </div>
+      <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center" style={{ background: clubPrimary + '22', border: `1.5px solid ${clubPrimary}55` }}>
+            <span className="text-xs font-bold" style={{ color: FOG }}>{orgName.charAt(0) || 'O'}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate" style={{ color: FOG }}>{orgName || 'Your organisation'}</p>
+            <p className="text-xs" style={{ color: SLATE }}>{planLabel}</p>
+          </div>
+        </div>
+      </div>
+      <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
+        {NAV_ITEMS.map(item => {
+          const active = pathname === item.href
+          return (
+            <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium"
+              style={{ color: active ? '#FFFFFF' : SLATE, background: active ? clubPrimary : 'transparent' }}
+              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.05)' }}
+              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}>
+              <span style={{ color: active ? '#FFFFFF' : SLATE }}>{item.icon(active)}</span>
+              {item.label}
+            </Link>
+          )
+        })}
+      </nav>
+      <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+        <Link href="/dashboard" className="text-xs flex items-center gap-2" style={{ color: SLATE }}
+          onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = FOG)}
+          onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = SLATE)}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          Back to dashboard
+        </Link>
+      </div>
+    </aside>
+  )
 
-  if (loading) return <main className="min-h-screen bg-sporr-cream flex items-center justify-center"><div className="text-sporr-muted text-sm">Loading...</div></main>
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: BG }}><div style={{ color: SLATE, fontSize: 13 }}>Loading...</div></div>
 
   return (
-    <main className="min-h-screen bg-sporr-cream">
-      <nav className="bg-sporr-dark px-6 py-4 flex items-center justify-between">
-        <Link href="/dashboard"><img src="https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public/Sporr%20logo/image.svg" alt="Sporr" className="h-20" /></Link>
-        <Link href="/dashboard" className="text-sporr-cream hover:text-sporr-sage text-sm transition-colors">← Dashboard</Link>
-      </nav>
+    <div className="min-h-screen" style={{ background: BG, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <Sidebar />
 
-      {/* Upgrade prompt modal */}
-      {showUpgradePrompt && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-6">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full">
-            <p className="text-sporr-sage text-xs uppercase tracking-widest mb-1">Free plan limit</p>
-            <h2 className="text-sporr-dark text-xl font-medium mb-3">Upgrade to add higher-tier sponsors</h2>
-            <p className="text-sporr-muted text-sm leading-relaxed mb-6">
-              The free plan supports Bronze (Community) tier only. Upgrade to Club to add Silver, Gold, or Platinum tier sponsors.
-            </p>
-            <div className="bg-sporr-light rounded-xl p-4 mb-6">
-              <p className="text-sporr-dark font-medium mb-1">Club — 490NOK/mnd</p>
-              <p className="text-sporr-muted text-sm">Up to 5 sponsors · All tiers · 10GB storage · Unlimited Proof Packs</p>
-            </div>
-            <div className="flex gap-3">
-              <Link href="/dashboard/club" className="flex-1 bg-sporr-dark text-sporr-cream text-sm font-medium px-4 py-3 rounded-lg text-center hover:bg-sporr-mid transition-colors">
-                Upgrade now →
-              </Link>
-              <button onClick={() => setShowUpgradePrompt(false)} className="flex-1 btn-secondary text-sm py-3">Maybe later</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Mobile header */}
+      <div className="lg:hidden flex items-center justify-between px-4 py-3" style={{ background: SIDEBAR, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        <SporrWordmark color={FOG} breakColor="#B8734A" width={56} />
+        <Link href="/dashboard" className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.08)', color: FOG }}>← Dashboard</Link>
+      </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-sporr-dark text-2xl font-medium mb-1">Contracts</h1>
-            <p className="text-sporr-muted text-sm">{contracts.length} contract{contracts.length !== 1 ? 's' : ''}</p>
-          </div>
-          {atContractLimit ? (
-            <Link href="/dashboard/club" className="btn-primary">Upgrade to add more →</Link>
-          ) : (
-            <button onClick={() => setShowForm(true)} className="btn-primary">New contract</button>
-          )}
-        </div>
+      <main className="lg:pl-[220px] pb-16">
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '36px 24px' }}>
 
-        {/* FIX: Accurate tier limit messaging — removed 'unlimited contracts' claim */}
-        {atContractLimit && (
-          <div className="bg-sporr-dark rounded-2xl px-6 py-4 mb-6 flex items-center justify-between gap-4 flex-wrap">
+          {/* Page header */}
+          <div className="flex items-start justify-between gap-4 mb-8">
             <div>
-              <p className="text-sporr-cream text-sm font-medium mb-0.5">Free plan — 1 contract limit reached</p>
-              <p className="text-sporr-sage text-xs">Upgrade to Club (490NOK/mnd) for up to 5 sponsors, or Pro (1490NOK/mnd) for up to 20.</p>
+              <h1 className="font-bold tracking-tight mb-1" style={{ fontSize: 26, color: INK, letterSpacing: '-0.02em' }}>Contracts</h1>
+              <p style={{ fontSize: 14, color: SLATE }}>
+                {contracts.length} contract{contracts.length !== 1 ? 's' : ''}
+                {contracts.length > 0 && <span> · {contracts.filter(c => c.status === 'active').length} active</span>}
+              </p>
             </div>
-            <Link href="/dashboard/club" className="bg-sporr-cream text-sporr-dark text-xs font-medium px-4 py-2 rounded-lg hover:bg-sporr-sage-lt transition-colors whitespace-nowrap flex-shrink-0">
-              Upgrade plan →
-            </Link>
+            <button onClick={() => setShowForm(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ background: INK, color: FOG }}
+              onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = '#0F2A2E')}
+              onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = INK)}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              New contract
+            </button>
           </div>
-        )}
 
-        {showForm && !atContractLimit && (
-          <div className="card mb-8">
-            <h2 className="text-sporr-dark text-lg font-medium mb-6">New contract</h2>
-            {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>}
-            {sponsors.length === 0 && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm rounded-lg px-4 py-3 mb-6">
-                Add a sponsor first. <Link href="/dashboard/sponsors" className="underline">Add a sponsor</Link>
-              </div>
-            )}
-            <div className="mb-6">
-              <label className="label">Sponsorship tier</label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {SPONSORSHIP_TIERS.map(tier => {
-                  const locked = isFree && !tier.free
-                  const selected = form.sponsorship_tier === tier.value
-                  return (
-                    <button
-                      key={tier.value}
-                      type="button"
-                      onClick={() => {
-                        if (locked) { setShowUpgradePrompt(true); return }
-                        update('sponsorship_tier', tier.value)
-                      }}
-                      className={`relative text-left rounded-xl p-4 border-2 transition-colors ${
-                        selected ? 'border-sporr-dark bg-sporr-dark text-sporr-cream'
-                        : locked ? 'border-sporr-sage-lt bg-sporr-light opacity-60 cursor-not-allowed'
-                        : 'border-sporr-sage-lt hover:border-sporr-dark bg-white'
-                      }`}
-                    >
-                      {locked && <span className="absolute top-2 right-2 text-xs bg-sporr-sage-lt text-sporr-muted px-1.5 py-0.5 rounded-full">Club</span>}
-                      <p className={`font-medium text-sm mb-0.5 ${selected ? 'text-sporr-cream' : 'text-sporr-dark'}`}>{tier.label}</p>
-                      <p className={`text-xs ${selected ? 'text-sporr-sage' : 'text-sporr-muted'}`}>{tier.sublabel}</p>
-                    </button>
-                  )
-                })}
-              </div>
-              {isFree && <p className="text-sporr-muted text-xs mt-2">Free plan includes Bronze tier only. <Link href="/dashboard/club" className="text-sporr-dark underline">Upgrade</Link> to add higher-tier sponsors.</p>}
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <div className="sm:col-span-2"><label className="label">Contract title</label><input className="input" placeholder="2025/26 Season Partnership" value={form.title} onChange={e => update('title', e.target.value)} /></div>
-              <div><label className="label">Sponsor</label><select className="input" value={form.sponsor_id} onChange={e => update('sponsor_id', e.target.value)}><option value="">Select a sponsor...</option>{sponsors.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}</select></div>
-              <div><label className="label">Total value (NOK)</label><input type="number" className="input" placeholder="50 000" value={form.value_nok} onChange={e => update('value_nok', e.target.value)} /></div>
-              <div><label className="label">Season</label><input className="input" placeholder="2025-2026" value={form.season} onChange={e => update('season', e.target.value)} /></div>
-              <div><label className="label">Start date</label><input type="date" className="input" value={form.start_date} onChange={e => update('start_date', e.target.value)} /></div>
-              <div><label className="label">End date</label><input type="date" className="input" value={form.end_date} onChange={e => update('end_date', e.target.value)} /></div>
-            </div>
-            <div className="flex gap-3">
-              <button onClick={handleSave} disabled={saving || sponsors.length === 0} className="btn-primary disabled:opacity-50">{saving ? 'Saving...' : 'Save contract'}</button>
-              <button onClick={() => { setShowForm(false); setError(null) }} className="btn-secondary">Cancel</button>
-            </div>
-          </div>
-        )}
+          {/* New contract form */}
+          {showForm && (
+            <div className="rounded-2xl p-6 mb-6" style={{ background: WHITE, border: `1px solid ${BORDER}` }}>
+              <h2 className="font-semibold mb-5" style={{ fontSize: 16, color: INK }}>New contract</h2>
 
-        {contracts.length === 0 && !showForm ? (
-          <div className="card text-center py-16">
-            <p className="text-sporr-muted text-lg mb-2">No contracts yet</p>
-            <p className="text-sporr-muted text-sm mb-6">Create your first contract to start tracking obligations</p>
-            <button onClick={() => setShowForm(true)} className="btn-primary">Create first contract</button>
-          </div>
-        ) : (
-          <div className="space-y-4">
+              {error && (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-xl mb-5" style={{ background: '#FEF3C7', border: '1px solid #FDE68A' }}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 flex-shrink-0"><path d="M8 2v7M8 11v2" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <p style={{ fontSize: 13, color: '#92400E' }}>{error}</p>
+                </div>
+              )}
+
+              {sponsors.length === 0 && (
+                <div className="flex items-start gap-3 px-4 py-3 rounded-xl mb-5" style={{ background: '#F0F9FF', border: '1px solid #BFDBFE' }}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="mt-0.5 flex-shrink-0"><circle cx="8" cy="8" r="6" stroke="#3B82F6" strokeWidth="1.2"/><path d="M8 5v4M8 11v1" stroke="#3B82F6" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                  <p style={{ fontSize: 13, color: '#1E40AF' }}>Add a sponsor before creating a contract. <Link href="/dashboard/sponsors" style={{ fontWeight: 600, textDecoration: 'underline' }}>Add a sponsor →</Link></p>
+                </div>
+              )}
+
+              {/* Sponsor tier selection — all 5 tiers, no platform lock */}
+              <div className="mb-5">
+                <label style={lbl()}>Sponsor tier</label>
+                <p className="text-xs mb-3" style={{ color: SLATE }}>Your classification of this sponsor&apos;s level of support. Choose whatever fits your partnership model.</p>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {SPONSORSHIP_TIERS.map(tier => {
+                    const selected = form.sponsorship_tier === tier.value
+                    const meta = SPONSOR_TIERS[tier.value]
+                    return (
+                      <button key={tier.value} type="button" onClick={() => upd('sponsorship_tier', tier.value)}
+                        className="text-left rounded-xl p-3 border-2 transition-all"
+                        style={{
+                          borderColor: selected ? meta.border : 'rgba(8,18,22,0.08)',
+                          background: selected ? meta.bg : WHITE,
+                        }}>
+                        <p className="text-xs font-bold mb-0.5" style={{ color: selected ? meta.text : INK }}>{tier.label}</p>
+                        <p className="text-[10px]" style={{ color: SLATE }}>{tier.sublabel}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                <div className="sm:col-span-2">
+                  <label style={lbl()}>Contract title</label>
+                  <input style={inp()} placeholder="2025/26 Season Partnership" value={form.title} onChange={e => upd('title', e.target.value)} />
+                </div>
+                <div>
+                  <label style={lbl()}>Sponsor</label>
+                  <select style={sel()} value={form.sponsor_id} onChange={e => upd('sponsor_id', e.target.value)}>
+                    <option value="">Select a sponsor...</option>
+                    {sponsors.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={lbl()}>Total value (€)</label>
+                  <input type="number" style={inp()} placeholder="50 000" value={form.value_nok} onChange={e => upd('value_nok', e.target.value)} />
+                </div>
+                <div>
+                  <label style={lbl()}>Season</label>
+                  <input style={inp()} placeholder="2025-2026" value={form.season} onChange={e => upd('season', e.target.value)} />
+                </div>
+                <div>
+                  <label style={lbl()}>Start date</label>
+                  <input type="date" style={inp()} value={form.start_date} onChange={e => upd('start_date', e.target.value)} />
+                </div>
+                <div>
+                  <label style={lbl()}>End date</label>
+                  <input type="date" style={inp()} value={form.end_date} onChange={e => upd('end_date', e.target.value)} />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button onClick={handleSave} disabled={saving || sponsors.length === 0}
+                  className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40"
+                  style={{ background: INK, color: FOG }}>
+                  {saving ? 'Saving...' : 'Save contract'}
+                </button>
+                <button onClick={() => { setShowForm(false); setError(null) }}
+                  className="px-5 py-2.5 rounded-xl text-sm font-medium"
+                  style={{ background: 'rgba(8,18,22,0.06)', color: INK }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {contracts.length === 0 && !showForm && (
+            <div className="rounded-2xl px-6 py-16 text-center" style={{ background: WHITE, border: `1px solid ${BORDER}` }}>
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: '#F5F2ED' }}>
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="4" y="2" width="12" height="16" rx="2" stroke="#6E7F86" strokeWidth="1.5"/><path d="M7 7h6M7 10h6M7 13h4" stroke="#6E7F86" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </div>
+              <p className="text-base font-semibold mb-1" style={{ color: INK }}>No contracts yet</p>
+              <p className="text-sm mb-5" style={{ color: SLATE }}>Create your first contract to start tracking obligations and media coverage.</p>
+              <button onClick={() => setShowForm(true)} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ background: INK, color: FOG }}>Create first contract</button>
+            </div>
+          )}
+
+          {/* Contract list */}
+          <div className="space-y-3">
             {contracts.map(contract => {
-              const tier = SPONSORSHIP_TIERS.find(t => t.value === contract.sponsorship_tier)
+              const tierMeta = SPONSOR_TIERS[contract.sponsorship_tier] || SPONSOR_TIERS.community
               const hits = mediaHits[contract.id] || []
-              const totalMediaVal = totalMediaValue(contract.id)
+              const totalMV = totalMediaValue(contract.id)
+              const oblList = obligations[contract.id] || []
+              const delivered = oblList.filter(o => o.status === 'delivered').length
+              const pct = oblList.length > 0 ? Math.round((delivered / oblList.length) * 100) : 0
+              const expanded = expandedContract === contract.id
+
               return (
-                <div key={contract.id} className="card">
-                  <div className="flex items-center justify-between cursor-pointer" onClick={() => setExpandedContract(expandedContract === contract.id ? null : contract.id)}>
-                    <div>
-                      <p className="text-sporr-dark font-medium">{contract.title}</p>
-                      <p className="text-sporr-muted text-sm mt-0.5">
-                        {contract.sponsors?.company_name}
-                        {contract.season && <span> · {contract.season}</span>}
-                        <span> · {obligations[contract.id]?.length || 0} obligation{obligations[contract.id]?.length !== 1 ? 's' : ''}</span>
-                        {hits.length > 0 && <span> · {hits.length} media hit{hits.length !== 1 ? 's' : ''}</span>}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 flex-wrap justify-end">
-                      {tier && <span className="text-xs font-medium px-2 py-1 rounded-full bg-sporr-sage-lt text-sporr-dark">{tier.label}</span>}
-                      {contract.value_nok > 0 && <p className="text-sporr-dark font-medium text-sm">Kr {contract.value_nok.toLocaleString('nb-NO')}</p>}
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${contract.status === 'active' ? 'bg-sporr-sage-lt text-sporr-dark' : 'bg-sporr-light text-sporr-muted'}`}>{contract.status}</span>
-                      <span className="text-sporr-muted text-lg">{expandedContract === contract.id ? '↑' : '↓'}</span>
+                <div key={contract.id} className="rounded-2xl overflow-hidden" style={{ background: WHITE, border: `1px solid ${BORDER}` }}>
+                  {/* Club colour top border */}
+                  <div className="h-0.5 w-full" style={{ background: clubPrimary }} />
+
+                  {/* Contract header — clickable */}
+                  <div className="px-5 py-4 cursor-pointer" onClick={() => setExpandedContract(expanded ? null : contract.id)}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2.5 flex-wrap mb-1">
+                          <p className="text-sm font-semibold" style={{ color: INK }}>{contract.title}</p>
+                          <TierBadge tier={contract.sponsorship_tier} />
+                          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: contract.status === 'active' ? '#DCFCE7' : '#F5F2ED', color: contract.status === 'active' ? '#16A34A' : SLATE }}>
+                            {contract.status}
+                          </span>
+                        </div>
+                        <p className="text-xs" style={{ color: SLATE }}>
+                          {contract.sponsors?.company_name}
+                          {contract.season && ` · ${contract.season}`}
+                          {` · ${oblList.length} obligation${oblList.length !== 1 ? 's' : ''}`}
+                          {hits.length > 0 && ` · ${hits.length} media hit${hits.length !== 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4 flex-shrink-0">
+                        {contract.value_nok > 0 && (
+                          <p className="text-sm font-semibold" style={{ color: INK }}>€{contract.value_nok.toLocaleString('nb-NO')}</p>
+                        )}
+                        {oblList.length > 0 && (
+                          <div className="hidden sm:flex items-center gap-2">
+                            <div className="w-20 h-1 rounded-full overflow-hidden" style={{ background: '#E7ECEF' }}>
+                              <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 2)}%`, background: pct === 100 ? '#36B37E' : '#147BFF' }} />
+                            </div>
+                            <span className="text-xs font-medium" style={{ color: SLATE }}>{pct}%</span>
+                          </div>
+                        )}
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: SLATE, transform: expanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }}>
+                          <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      </div>
                     </div>
                   </div>
 
-                  {expandedContract === contract.id && (
-                    <div className="mt-6 pt-6 border-t border-sporr-sage-lt space-y-6">
+                  {/* Expanded detail */}
+                  {expanded && (
+                    <div className="px-5 pb-6 space-y-6" style={{ borderTop: `1px solid ${BORDER}` }}>
 
                       {/* Obligations */}
-                      <div>
+                      <div className="pt-5">
                         <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-sporr-dark text-sm font-medium uppercase tracking-widest">Obligations</h3>
-                          <button onClick={() => setShowObligationForm(showObligationForm === contract.id ? null : contract.id)} className="text-sporr-dark text-sm font-medium hover:text-sporr-mid transition-colors">+ Add obligation</button>
+                          <div>
+                            <h3 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: SLATE }}>Obligations</h3>
+                            {oblList.length > 0 && <p className="text-xs mt-0.5" style={{ color: SLATE }}>{delivered} of {oblList.length} delivered</p>}
+                          </div>
+                          <button onClick={() => setShowObligationForm(showObligationForm === contract.id ? null : contract.id)}
+                            className="text-xs font-medium flex items-center gap-1.5" style={{ color: BLUE }}
+                            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.opacity = '0.75')}
+                            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.opacity = '1')}>
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                            Add obligation
+                          </button>
                         </div>
+
                         {showObligationForm === contract.id && (
-                          <div className="bg-sporr-light rounded-xl p-4 mb-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                              <div><label className="label">Asset type</label><select className="input" value={obligationForm.asset_type} onChange={e => updateOb('asset_type', e.target.value)}>{ASSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                              <div><label className="label">When is it delivered?</label><select className="input" value={obligationForm.delivery_context} onChange={e => updateOb('delivery_context', e.target.value)}>{DELIVERY_CONTEXTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
-                              <div><label className="label">Proof required</label><select className="input" value={obligationForm.proof_type} onChange={e => updateOb('proof_type', e.target.value)}>{PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
-                              <div><label className="label">Description (optional)</label><input className="input" placeholder="e.g. North stand banner, visible throughout match" value={obligationForm.description} onChange={e => updateOb('description', e.target.value)} /></div>
+                          <div className="rounded-xl p-4 mb-4" style={{ background: '#F5F2ED', border: `1px solid ${BORDER}` }}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                              <div><label style={lbl()}>Asset type</label><select style={sel()} value={obligationForm.asset_type} onChange={e => updOb('asset_type', e.target.value)}>{ASSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                              <div><label style={lbl()}>When is it delivered?</label><select style={sel()} value={obligationForm.delivery_context} onChange={e => updOb('delivery_context', e.target.value)}>{DELIVERY_CONTEXTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
+                              <div><label style={lbl()}>Proof required</label><select style={sel()} value={obligationForm.proof_type} onChange={e => updOb('proof_type', e.target.value)}>{PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
+                              <div><label style={lbl()}>Description (optional)</label><input style={inp()} placeholder="e.g. North stand banner, visible throughout match" value={obligationForm.description} onChange={e => updOb('description', e.target.value)} /></div>
                             </div>
                             <div className="flex gap-2">
-                              <button onClick={() => handleAddObligation(contract.id)} disabled={savingObligation} className="btn-primary text-sm py-2 px-4 disabled:opacity-50">{savingObligation ? 'Saving...' : 'Add obligation'}</button>
-                              <button onClick={() => setShowObligationForm(null)} className="btn-secondary text-sm py-2 px-4">Cancel</button>
+                              <button onClick={() => handleAddObligation(contract.id)} disabled={savingObligation}
+                                className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40" style={{ background: INK, color: FOG }}>
+                                {savingObligation ? 'Saving...' : 'Add obligation'}
+                              </button>
+                              <button onClick={() => setShowObligationForm(null)} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: 'rgba(8,18,22,0.06)', color: INK }}>Cancel</button>
                             </div>
                           </div>
                         )}
-                        {(obligations[contract.id] || []).length === 0 ? (
-                          <p className="text-sporr-muted text-sm py-2">No obligations yet — add the assets this sponsor expects to see delivered.</p>
+
+                        {oblList.length === 0 ? (
+                          <p className="text-sm py-2" style={{ color: SLATE }}>No obligations yet. Add the assets this sponsor expects to see delivered.</p>
                         ) : (
                           <div className="space-y-2">
-                            {(obligations[contract.id] || []).map(ob => (
-                              <div key={ob.id} className="flex items-center justify-between bg-sporr-light rounded-lg px-4 py-3">
-                                <div>
-                                  <p className="text-sporr-dark text-sm font-medium">{ob.description}</p>
-                                  <p className="text-sporr-muted text-xs mt-0.5 capitalize">{ob.proof_type} proof · {contextLabel(ob.delivery_context)}</p>
+                            {oblList.map(ob => (
+                              <div key={ob.id} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: '#F5F2ED' }}>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ob.status === 'delivered' ? '#36B37E' : '#D1D5DB' }} />
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-medium truncate" style={{ color: INK }}>{ob.description}</p>
+                                    <p className="text-xs capitalize" style={{ color: SLATE }}>{ob.proof_type} proof · {contextLabel(ob.delivery_context)}</p>
+                                  </div>
                                 </div>
-                                <button onClick={() => deleteObligation(ob.id, contract.id)} className="text-sporr-muted hover:text-red-500 text-sm transition-colors ml-4">✕</button>
+                                <button onClick={() => deleteObligation(ob.id, contract.id)} className="ml-4 p-1 rounded flex-shrink-0" style={{ color: SLATE }}
+                                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = '#DC2626')}
+                                  onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = SLATE)}>
+                                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -413,92 +548,105 @@ export default function ContractsPage() {
                       </div>
 
                       {/* Media hits */}
-                      <div className="border-t border-sporr-sage-lt pt-6">
+                      <div style={{ borderTop: `1px solid ${BORDER}` }} className="pt-5">
                         <div className="flex items-center justify-between mb-4">
                           <div>
-                            <h3 className="text-sporr-dark text-sm font-medium uppercase tracking-widest">Media coverage</h3>
-                            {totalMediaVal > 0 && (
-                              <p className="text-sporr-muted text-xs mt-0.5">
-                                Estimated media value: <strong className="text-sporr-dark">Kr {totalMediaVal.toLocaleString('nb-NO')}</strong>
+                            <h3 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: SLATE }}>Media Coverage</h3>
+                            {totalMV > 0 && (
+                              <p className="text-xs mt-0.5" style={{ color: SLATE }}>
+                                Estimated value: <span className="font-semibold" style={{ color: INK }}>€{totalMV.toLocaleString('nb-NO')}</span>
                               </p>
                             )}
                           </div>
-                          <button onClick={() => setShowMediaForm(showMediaForm === contract.id ? null : contract.id)} className="text-sporr-dark text-sm font-medium hover:text-sporr-mid transition-colors">+ Log media hit</button>
+                          <button onClick={() => setShowMediaForm(showMediaForm === contract.id ? null : contract.id)}
+                            className="text-xs font-medium flex items-center gap-1.5" style={{ color: BLUE }}
+                            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.opacity = '0.75')}
+                            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.opacity = '1')}>
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                            Log media hit
+                          </button>
                         </div>
 
                         {showMediaForm === contract.id && (
-                          <div className="bg-sporr-light rounded-xl p-4 mb-4">
-                            <p className="text-sporr-muted text-xs mb-4">Log media coverage as it happens — TV, newspaper, radio, online, and more. Estimated values are calculated automatically and included in your Proof Pack ROI.</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                          <div className="rounded-xl p-4 mb-4" style={{ background: '#F5F2ED', border: `1px solid ${BORDER}` }}>
+                            <p className="text-xs mb-4" style={{ color: SLATE }}>Log earned media coverage. Estimated values are calculated automatically and included in your Proof of Performance Report ROI.</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                               <div>
-                                <label className="label">Media type</label>
-                                <select className="input" value={mediaForm.media_type} onChange={e => updateMedia('media_type', e.target.value)}>
+                                <label style={lbl()}>Media type</label>
+                                <select style={sel()} value={mediaForm.media_type} onChange={e => updMd('media_type', e.target.value)}>
                                   {MEDIA_TYPES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                                 </select>
                               </div>
                               <div>
-                                <label className="label">Outlet / publication name</label>
-                                <input className="input" placeholder="e.g. Sandnesposten, TV2 Sport..." value={mediaForm.outlet_name} onChange={e => updateMedia('outlet_name', e.target.value)} />
+                                <label style={lbl()}>Outlet / publication</label>
+                                <input style={inp()} placeholder="e.g. Sandnesposten, TV2 Sport..." value={mediaForm.outlet_name} onChange={e => updMd('outlet_name', e.target.value)} />
                               </div>
                               <div>
-                                <label className="label">Estimated {selectedMediaType.unit}</label>
-                                <input type="number" className="input" placeholder="e.g. 12 000" value={mediaForm.reach} onChange={e => updateMedia('reach', e.target.value)} />
-                                <p className="text-sporr-muted text-xs mt-1">
-                                  Default CPM: Kr {selectedMediaType.defaultCpm} · Estimated value: Kr {mediaForm.reach ? Math.round(parseInt(mediaForm.reach) * (mediaForm.cpm_override ? parseInt(mediaForm.cpm_override) : selectedMediaType.defaultCpm) / 1000).toLocaleString('nb-NO') : '—'}
+                                <label style={lbl()}>Estimated {selectedMediaType.unit}</label>
+                                <input type="number" style={inp()} placeholder="e.g. 12 000" value={mediaForm.reach} onChange={e => updMd('reach', e.target.value)} />
+                                <p className="text-xs mt-1" style={{ color: SLATE }}>
+                                  Default CPM: €{selectedMediaType.defaultCpm} · Estimated value: €{mediaForm.reach ? Math.round(parseInt(mediaForm.reach) * (mediaForm.cpm_override ? parseInt(mediaForm.cpm_override) : selectedMediaType.defaultCpm) / 1000).toLocaleString('nb-NO') : '—'}
                                 </p>
                               </div>
                               <div>
-                                <label className="label">CPM override (optional)</label>
-                                <input type="number" className="input" placeholder={`Default: ${selectedMediaType.defaultCpm}`} value={mediaForm.cpm_override} onChange={e => updateMedia('cpm_override', e.target.value)} />
-                                <p className="text-sporr-muted text-xs mt-1">Leave blank to use the default rate</p>
+                                <label style={lbl()}>CPM override (optional)</label>
+                                <input type="number" style={inp()} placeholder={`Default: ${selectedMediaType.defaultCpm}`} value={mediaForm.cpm_override} onChange={e => updMd('cpm_override', e.target.value)} />
+                                <p className="text-xs mt-1" style={{ color: SLATE }}>Leave blank to use the default rate</p>
                               </div>
                               <div>
-                                <label className="label">Date of coverage</label>
-                                <input type="date" className="input" value={mediaForm.hit_date} onChange={e => updateMedia('hit_date', e.target.value)} />
+                                <label style={lbl()}>Date of coverage</label>
+                                <input type="date" style={inp()} value={mediaForm.hit_date} onChange={e => updMd('hit_date', e.target.value)} />
                               </div>
                               <div>
-                                <label className="label">Notes (optional)</label>
-                                <input className="input" placeholder="e.g. Front page feature, 3-minute segment..." value={mediaForm.notes} onChange={e => updateMedia('notes', e.target.value)} />
+                                <label style={lbl()}>Notes (optional)</label>
+                                <input style={inp()} placeholder="e.g. Front page feature, 3-minute segment..." value={mediaForm.notes} onChange={e => updMd('notes', e.target.value)} />
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <button onClick={() => handleAddMediaHit(contract.id)} disabled={savingMedia || !mediaForm.outlet_name || !mediaForm.reach} className="btn-primary text-sm py-2 px-4 disabled:opacity-50">{savingMedia ? 'Saving...' : 'Log media hit'}</button>
-                              <button onClick={() => setShowMediaForm(null)} className="btn-secondary text-sm py-2 px-4">Cancel</button>
+                              <button onClick={() => handleAddMediaHit(contract.id)} disabled={savingMedia || !mediaForm.outlet_name || !mediaForm.reach}
+                                className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40" style={{ background: INK, color: FOG }}>
+                                {savingMedia ? 'Saving...' : 'Log media hit'}
+                              </button>
+                              <button onClick={() => setShowMediaForm(null)} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: 'rgba(8,18,22,0.06)', color: INK }}>Cancel</button>
                             </div>
                           </div>
                         )}
 
                         {hits.length === 0 ? (
-                          <p className="text-sporr-muted text-sm py-2">No media hits logged yet. Log coverage as it happens — TV, newspaper, radio, online.</p>
+                          <p className="text-sm py-2" style={{ color: SLATE }}>No media hits logged yet. Log coverage as it happens — TV, newspaper, radio, online.</p>
                         ) : (
                           <div className="space-y-2">
                             {hits.map(hit => {
                               const val = mediaValue(hit)
                               const mt = MEDIA_TYPES.find(m => m.value === hit.media_type)
                               return (
-                                <div key={hit.id} className="flex items-center justify-between bg-sporr-light rounded-lg px-4 py-3">
-                                  <div>
-                                    <p className="text-sporr-dark text-sm font-medium">{hit.outlet_name}</p>
-                                    <p className="text-sporr-muted text-xs mt-0.5">
+                                <div key={hit.id} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: '#F5F2ED' }}>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium" style={{ color: INK }}>{hit.outlet_name}</p>
+                                    <p className="text-xs" style={{ color: SLATE }}>
                                       {mt?.label} · {hit.reach.toLocaleString('nb-NO')} {mt?.unit}
                                       {hit.hit_date && ` · ${new Date(hit.hit_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`}
                                     </p>
-                                    {hit.notes && <p className="text-sporr-muted text-xs mt-0.5 italic">{hit.notes}</p>}
+                                    {hit.notes && <p className="text-xs mt-0.5 italic" style={{ color: SLATE }}>{hit.notes}</p>}
                                   </div>
-                                  <div className="flex items-center gap-3 ml-4">
-                                    <span className="text-sporr-dark text-sm font-medium whitespace-nowrap">Kr {val.toLocaleString('nb-NO')}</span>
-                                    <button onClick={() => deleteMediaHit(hit.id, contract.id)} className="text-sporr-muted hover:text-red-500 text-sm transition-colors">✕</button>
+                                  <div className="flex items-center gap-3 ml-4 flex-shrink-0">
+                                    <span className="text-sm font-semibold" style={{ color: INK }}>€{val.toLocaleString('nb-NO')}</span>
+                                    <button onClick={() => deleteMediaHit(hit.id, contract.id)} className="p-1 rounded" style={{ color: SLATE }}
+                                      onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = '#DC2626')}
+                                      onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = SLATE)}>
+                                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                                    </button>
                                   </div>
                                 </div>
                               )
                             })}
-                            <div className="flex justify-between items-center px-4 py-2 border-t border-sporr-sage-lt">
-                              <span className="text-sporr-muted text-xs uppercase tracking-widest">Total estimated media value</span>
-                              <span className="text-sporr-dark font-medium text-sm">Kr {totalMediaVal.toLocaleString('nb-NO')}</span>
+                            <div className="flex items-center justify-between px-4 py-2.5" style={{ borderTop: `1px solid ${BORDER}` }}>
+                              <span className="text-[11px] uppercase tracking-widest font-medium" style={{ color: SLATE }}>Total estimated media value</span>
+                              <span className="text-sm font-bold" style={{ color: INK }}>€{totalMV.toLocaleString('nb-NO')}</span>
                             </div>
                           </div>
                         )}
-                        <p className="text-sporr-muted text-xs mt-3">Values are indicative estimates based on international CPM benchmarks. Actual value may vary.</p>
+                        <p className="text-xs mt-3" style={{ color: SLATE }}>Values are indicative estimates based on international CPM benchmarks. Actual value may vary.</p>
                       </div>
 
                     </div>
@@ -507,8 +655,9 @@ export default function ContractsPage() {
               )
             })}
           </div>
-        )}
-      </div>
-    </main>
+
+        </div>
+      </main>
+    </div>
   )
 }
