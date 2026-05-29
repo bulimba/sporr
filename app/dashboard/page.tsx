@@ -6,55 +6,26 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Tier system ───────────────────────────────────────────────────────────────
+// Plan tiers = operational complexity (number of environments)
+// Sponsor tiers = club's own classification of sponsor support level
+// No feature gates on sponsors / contracts / users / captures / reports
 
-type Organisation = {
-  id: string
-  name: string
-  tier: string
-  sports: string[] | null
-  logo_url: string | null
-  show_logo_on_dashboard: boolean | null
-  club_colour_primary: string | null
-  club_colour_secondary: string | null
+const PLAN_TIER_LABELS: Record<string, string> = {
+  foundation: 'Foundation', organisation: 'Organisation',
+  portfolio: 'Portfolio', network: 'Network',
+  // legacy DB values
+  free: 'Foundation', club: 'Organisation', pro: 'Portfolio', agency: 'Network',
 }
 
-type SponsorCard = {
-  id: string
-  company_name: string
-  logo_url: string | null
-  sponsorship_tier: string
-  contract_title: string
-  contract_value: number
-  delivered: number
-  pending: number
-  total: number
-  health_score: number
+function normaliseTier(raw: string | null | undefined): string {
+  const map: Record<string, string> = {
+    free: 'foundation', club: 'organisation', pro: 'portfolio', agency: 'network',
+  }
+  return map[raw || ''] ?? raw ?? 'foundation'
 }
 
-type ProofEntry = {
-  id: string
-  captured_at: string
-  photo_url: string | null
-  obligation_description: string | null
-  sponsor_name: string | null
-}
-
-type AlertItem = {
-  id: string
-  type: 'overdue_deliverable' | 'overdue_invoice' | 'renewal_alert'
-  message: string
-  detail: string | null
-}
-
-// ── Constants ─────────────────────────────────────────────────────────────────
-
-const STORAGE_LIMITS: Record<string, number> = {
-  free: 100, club: 10240, pro: 51200, agency: 102400,
-}
-
-// 5-tier badge system: Bronze → Silver → Gold → Platinum → Diamond
-const TIER_META: Record<string, { label: string; order: number; bg: string; text: string; border: string }> = {
+const SPONSOR_TIERS: Record<string, { label: string; order: number; bg: string; text: string; border: string }> = {
   community: { label: 'Bronze',   order: 4, bg: '#FDF4EC', text: '#92400E', border: '#FCD9A8' },
   official:  { label: 'Silver',   order: 3, bg: '#F4F5F6', text: '#374151', border: '#D1D5DB' },
   principal: { label: 'Gold',     order: 2, bg: '#FFFBEB', text: '#92400E', border: '#FDE68A' },
@@ -62,33 +33,47 @@ const TIER_META: Record<string, { label: string; order: number; bg: string; text
   diamond:   { label: 'Diamond',  order: 0, bg: '#F0FDFA', text: '#0F766E', border: '#99F6E4' },
 }
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+type Organisation = {
+  id: string; name: string; tier: string
+  sports: string[] | null; logo_url: string | null
+  show_logo_on_dashboard: boolean | null
+  club_colour_primary: string | null; club_colour_secondary: string | null
+}
+
+type SponsorCard = {
+  id: string; company_name: string; logo_url: string | null
+  sponsorship_tier: string; contract_title: string; contract_value: number
+  delivered: number; pending: number; total: number; health_score: number
+}
+
+type ProofEntry = {
+  id: string; captured_at: string; photo_url: string | null
+  obligation_description: string | null; sponsor_name: string | null
+}
+
+type AlertItem = {
+  id: string; type: string; message: string; detail: string | null
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
 const SPORT_KIT_MAP: Record<string, string> = {
   'Football': 'football', 'Rugby': 'rugby', 'Rugby league': 'rugby',
   'Rugby Union': 'rugby', 'Basketball': 'basketball', 'Volleyball': 'volleyball',
   'Handball': 'handball', 'Ice hockey': 'ice-hockey', 'Cycling': 'cycling',
   'Golf': 'golf', 'Swimming': 'swimming', 'Athletics': 'athletics',
-  'Running': 'running', 'Martial arts': 'martial-arts', 'MMA': 'martial-arts',
-  'Cross country skiing': 'snow-sports', 'Skiing': 'snow-sports',
-  'Biathlon': 'snow-sports', 'Snowboarding': 'snow-sports',
 }
-
 const SUPABASE_STORAGE = 'https://oibigydthtoulttigtgy.supabase.co/storage/v1/object/public'
-
 function getKitUrl(sports: string[] | null) {
   if (!sports?.length) return `${SUPABASE_STORAGE}/sporr-kits/generic.svg`
-  const key = SPORT_KIT_MAP[sports[0]] || 'generic'
-  return `${SUPABASE_STORAGE}/sporr-kits/${key}.svg`
+  return `${SUPABASE_STORAGE}/sporr-kits/${SPORT_KIT_MAP[sports[0]] || 'generic'}.svg`
 }
+function fmtCurrency(v: number) { return `€${v.toLocaleString('nb-NO')}` }
+function fmtStorage(mb: number) { return mb < 1024 ? `${mb} MB` : `${(mb / 1024).toFixed(1)} GB` }
 
-function fmtStorage(mb: number) {
-  return mb < 1024 ? `${mb} MB` : `${(mb / 1024).toFixed(1)} GB`
-}
-
-function fmtCurrency(val: number) {
-  return `€${val.toLocaleString('nb-NO')}`
-}
-
-// ── Sporr wordmark SVG paths ──────────────────────────────────────────────────
+// ── SVG wordmark paths ────────────────────────────────────────────────────────
 const O_ARC   = 'M873.735 347.639C898.493 344.775 922.792 349.648 943.469 363.849C964.779 378.522 979.408 401.039 984.155 426.472C989.607 456.155 982.16 481.366 965.308 505.675C957.877 501.095 950.861 497.807 943.039 494.028C951.244 484.183 956.989 472.528 959.799 460.024C963.871 441.089 960.3 421.313 949.863 404.998C938.576 387.638 922.504 377.041 902.392 372.759C901.94 372.676 901.487 372.599 901.033 372.528C880.508 369.277 859.101 373.103 842.11 385.427C826.478 396.918 816.067 414.162 813.178 433.347C809.468 457.588 816.492 475.116 830.476 494.232C822.176 497.845 815.897 501.472 808.117 505.943C798.035 490.808 791.722 477.724 789.052 459.404C785.108 433.179 791.888 406.471 807.864 385.303C824.374 363.356 846.814 351.416 873.735 347.639Z'
 const O_BREAK = 'M876.273 500.988C904.427 497.778 932.768 506.786 955.235 523.713C949.48 529.254 944.417 533.62 938.29 538.755C923.817 529.858 914.292 526.66 897.594 524.151C873.104 522.25 856.67 525.977 835.728 538.872C829.3 533.622 824.598 529.559 818.648 523.799C835.706 509.913 854.812 503.743 876.273 500.988Z'
 const S_PATH  = 'M438.532 347.689C466.232 344.584 505.581 349.465 529.745 363.724C526.819 371.238 523.812 378.72 520.726 386.17C496.565 374.864 477.723 371.516 451.744 371.626C432.898 371.705 393.747 376.892 396.627 402.78C402.181 452.685 495.21 415.624 524.433 449.977C534.051 461.284 538.333 468.556 538.756 483.329C539.162 529.497 497.926 539.067 461.429 539.876C427.58 540.636 402.505 536.592 371.777 522.545C373.856 516.241 378.482 506.016 381.147 499.586C412.813 514.903 447.612 518.555 482.304 513.625C491.624 512.3 502.467 509.271 508.621 501.656C512.967 496.375 515.004 489.567 514.274 482.767C510.834 450.619 453.621 458.064 430.541 454.825C403.388 451.014 375.226 442.167 372.154 409.224C368.205 366.885 402.263 351.712 438.532 347.689Z'
@@ -96,9 +81,7 @@ const P_PATH  = 'M591.69 349.883L652.183 349.793C668.404 349.779 692.625 348.653
 const R1_PATH = 'M1035.43 349.884L1101.63 349.779C1117.18 349.759 1131.76 348.914 1147.46 351.469C1191.83 358.684 1206.77 412.536 1180.62 445.935C1168.85 460.963 1152.77 464.378 1134.59 466.173C1153.69 487.785 1181.92 515.058 1202.56 536.176L1169.71 536.221L1089.56 454.24C1087.09 451.939 1084.2 449.709 1083.21 446.547C1083.28 446.008 1083.28 444.814 1083.5 444.371C1087.25 436.869 1140.71 450.713 1159.9 432.09C1166.14 426.039 1168.6 418.231 1168.74 409.707C1168.9 400.535 1166.81 391.482 1160.2 384.767C1155.36 379.849 1148.98 376.888 1142.31 375.376C1131.3 372.883 1118.95 373.958 1107.7 373.984L1059.72 374.152C1061.08 425.774 1059.83 483.997 1059.86 536.24L1035.47 536.222L1035.43 349.884Z'
 const R2_PATH = 'M1246.62 349.875L1312.17 349.807C1327.81 349.78 1343.83 348.82 1359.46 351.591C1403.07 359.319 1417.7 413.269 1391.45 445.997C1379.72 460.624 1363.79 464.578 1345.74 466.108L1413.86 536.156L1381.03 536.212L1303.04 456.941C1299.59 453.51 1295.46 450.323 1293.88 445.95C1293.94 444.993 1293.79 442.698 1295.09 442.617C1309.01 442.651 1323.68 441.158 1337.61 442.158C1371.86 444.615 1391.78 417.024 1372.73 386.625C1363.59 372.027 1336.52 373.922 1319.43 373.972L1271.43 374.171C1270.79 427.888 1271.57 482.37 1271.27 536.215L1246.58 536.273L1246.62 349.875Z'
 
-function SporrWordmark({ color = '#E7ECEF', breakColor = '#B8734A', width = 80 }: {
-  color?: string; breakColor?: string; width?: number
-}) {
+function SporrWordmark({ color = '#E7ECEF', breakColor = '#B8734A', width = 80 }: { color?: string; breakColor?: string; width?: number }) {
   const h = (width / 1046) * 200
   return (
     <svg viewBox="371 344 1046 200" width={width} height={h} aria-label="Sporr" role="img">
@@ -108,21 +91,8 @@ function SporrWordmark({ color = '#E7ECEF', breakColor = '#B8734A', width = 80 }
   )
 }
 
-// ── Nav items ─────────────────────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Overview', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .15 : 0}/><rect x="11" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .15 : 0}/><rect x="2" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .15 : 0}/><rect x="11" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .15 : 0}/></svg> },
-  { href: '/dashboard/sponsors', label: 'Sponsors', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.39 7.26L18 8.18L14 12.08L14.95 17.66L10 15L5.05 17.66L6 12.08L2 8.18L7.61 7.26L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .15 : 0}/></svg> },
-  { href: '/dashboard/obligations', label: 'Deliverables', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .1 : 0}/><path d="M7 7h6M7 10h6M7 13h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
-  { href: '/dashboard/audit', label: 'Capture', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="6" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .1 : 0}/><circle cx="10" cy="12" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M7 6l1.2-2h3.6L13 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-  { href: '/dashboard/contracts', label: 'Contracts', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="2" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .1 : 0}/><path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
-  { href: '/dashboard/financial', label: 'Financial', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 14l4-5 3 3 5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
-  { href: '/proof-pack', label: 'Reports', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 10L10 3L17 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 8.5V17H15V8.5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .1 : 0}/><path d="M8 17V12h4v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
-  { href: '/dashboard/club', label: 'Club', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill={a ? 'currentColor' : 'none'} fillOpacity={a ? .15 : 0}/><path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
-]
-
-// ── Tier badge ─────────────────────────────────────────────────────────────────
 function TierBadge({ tier }: { tier: string }) {
-  const meta = TIER_META[tier] || TIER_META.community
+  const meta = SPONSOR_TIERS[tier] || SPONSOR_TIERS.community
   return (
     <span className="inline-flex items-center text-[10px] font-semibold px-2 py-0.5 rounded-full tracking-wide uppercase"
       style={{ background: meta.bg, color: meta.text, border: `1px solid ${meta.border}` }}>
@@ -131,7 +101,6 @@ function TierBadge({ tier }: { tier: string }) {
   )
 }
 
-// ── Static sparkline ──────────────────────────────────────────────────────────
 function Sparkline({ color = '#147BFF' }: { color?: string }) {
   return (
     <svg width="80" height="28" viewBox="0 0 80 28" fill="none">
@@ -141,22 +110,36 @@ function Sparkline({ color = '#147BFF' }: { color?: string }) {
   )
 }
 
+// ── Nav ───────────────────────────────────────────────────────────────────────
+const NAV_ITEMS = [
+  { href: '/dashboard',              label: 'Overview',     icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><rect x="11" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><rect x="2" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><rect x="11" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/></svg> },
+  { href: '/dashboard/sponsors',     label: 'Sponsors',     icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.39 7.26L18 8.18L14 12.08L14.95 17.66L10 15L5.05 17.66L6 12.08L2 8.18L7.61 7.26L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/></svg> },
+  { href: '/dashboard/obligations',  label: 'Deliverables', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><path d="M7 7h6M7 10h6M7 13h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+  { href: '/dashboard/audit',        label: 'Capture',      icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="6" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><circle cx="10" cy="12" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M7 6l1.2-2h3.6L13 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+  { href: '/dashboard/contracts',    label: 'Contracts',    icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="2" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+  { href: '/dashboard/financial',    label: 'Financial',    icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 14l4-5 3 3 5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
+  { href: '/proof-pack',             label: 'Reports',      icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M3 10L10 3L17 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M5 8.5V17H15V8.5" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><path d="M8 17V12h4v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+  { href: '/dashboard/club',         label: 'Profile',      icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+]
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function DashboardPage() {
-  const router = useRouter()
+  const router   = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
 
-  const [org, setOrg] = useState<Organisation | null>(null)
-  const [userName, setUserName] = useState('')
+  const [org, setOrg]               = useState<Organisation | null>(null)
+  const [planTier, setPlanTier]     = useState<string>('foundation')
+  const [userName, setUserName]     = useState('')
   const [sponsorCards, setSponsorCards] = useState<SponsorCard[]>([])
   const [recentProofs, setRecentProofs] = useState<ProofEntry[]>([])
-  const [alerts, setAlerts] = useState<AlertItem[]>([])
+  const [alerts, setAlerts]         = useState<AlertItem[]>([])
   const [activeSession, setActiveSession] = useState<{ id: string; token: string } | null>(null)
-  const [nextEvent, setNextEvent] = useState<{ title: string; venue: string | null; starts_at: string | null } | null>(null)
+  const [nextEvent, setNextEvent]   = useState<{ title: string; venue: string | null; starts_at: string | null } | null>(null)
   const [photoCount, setPhotoCount] = useState(0)
-  const [stats, setStats] = useState({ pending: 0, delivered: 0, total: 0 })
-  const [loading, setLoading] = useState(true)
+  const [storageMB, setStorageMB]   = useState(0)
+  const [stats, setStats]           = useState({ pending: 0, delivered: 0, total: 0 })
+  const [loading, setLoading]       = useState(true)
   const currentSeason = '2025/26'
 
   const hour = new Date().getHours()
@@ -170,83 +153,53 @@ export default function DashboardPage() {
       const metaName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
       setUserName(metaName.split(' ')[0] || '')
 
-      const { data: userData } = await supabase
-        .from('users').select('org_id, full_name').eq('id', session.user.id).single()
+      const { data: userData } = await supabase.from('users').select('org_id, full_name').eq('id', session.user.id).single()
       if (!userData) { setLoading(false); return }
       if (userData.full_name && !metaName) setUserName(userData.full_name.split(' ')[0])
 
       const orgId = userData.org_id
 
-      const [
-        orgRes, obligationsRes, activeSessionRes, nextEventRes,
-        recentProofsRes, sponsorContractsRes, photosRes,
-      ] = await Promise.all([
-        supabase.from('organisations')
-          .select('id,name,tier,sports,logo_url,show_logo_on_dashboard,club_colour_primary,club_colour_secondary')
-          .eq('id', orgId).single(),
+      const [orgRes, obligationsRes, activeSessionRes, nextEventRes, recentProofsRes, sponsorContractsRes, photosRes] = await Promise.all([
+        supabase.from('organisations').select('id,name,tier,sports,logo_url,show_logo_on_dashboard,club_colour_primary,club_colour_secondary').eq('id', orgId).single(),
         supabase.from('obligations').select('id,status,contract_id').eq('org_id', orgId).neq('status', 'not_applicable'),
         supabase.from('audit_sessions').select('id,session_token').eq('org_id', orgId).eq('status', 'active').order('created_at', { ascending: false }).limit(1),
-        supabase.from('events').select('id,title,venue,starts_at').eq('org_id', orgId)
-          .gte('starts_at', new Date().toISOString().split('T')[0]).order('starts_at', { ascending: true }).limit(1),
-        supabase.from('proofs')
-          .select('id,captured_at,photo_url,obligations(description,contracts(sponsors(company_name)))')
-          .eq('org_id', orgId).not('photo_url', 'is', null)
-          .order('captured_at', { ascending: false }).limit(6),
-        supabase.from('contracts')
-          .select('id,title,sponsorship_tier,sponsor_id,value_nok,sponsors(id,company_name,logo_url,health_score)')
-          .eq('org_id', orgId).eq('status', 'active'),
+        supabase.from('events').select('id,title,venue,starts_at').eq('org_id', orgId).gte('starts_at', new Date().toISOString().split('T')[0]).order('starts_at', { ascending: true }).limit(1),
+        supabase.from('proofs').select('id,captured_at,photo_url,obligations(description,contracts(sponsors(company_name)))').eq('org_id', orgId).not('photo_url', 'is', null).order('captured_at', { ascending: false }).limit(6),
+        supabase.from('contracts').select('id,title,sponsorship_tier,sponsor_id,value_nok,sponsors(id,company_name,logo_url,health_score)').eq('org_id', orgId).eq('status', 'active'),
         supabase.from('proofs').select('id', { count: 'exact' }).eq('org_id', orgId).not('photo_url', 'is', null),
       ])
 
+      const rawTier = orgRes.data?.tier || 'foundation'
+      setPlanTier(normaliseTier(rawTier))
       setOrg(orgRes.data)
       setPhotoCount(photosRes.count || 0)
+      setStorageMB(photosRes.count || 0) // 1MB estimate per photo
+
       if (activeSessionRes.data?.[0]) setActiveSession({ id: activeSessionRes.data[0].id, token: activeSessionRes.data[0].session_token })
       if (nextEventRes.data?.[0]) setNextEvent(nextEventRes.data[0])
 
       const obs = obligationsRes.data || []
-      setStats({
-        pending: obs.filter((o: any) => o.status === 'pending').length,
-        delivered: obs.filter((o: any) => o.status === 'delivered').length,
-        total: obs.length,
-      })
+      setStats({ pending: obs.filter((o: any) => o.status === 'pending').length, delivered: obs.filter((o: any) => o.status === 'delivered').length, total: obs.length })
 
       if (recentProofsRes.data) {
-        setRecentProofs((recentProofsRes.data as any[]).map(p => ({
-          id: p.id, captured_at: p.captured_at, photo_url: p.photo_url,
-          obligation_description: p.obligations?.description || null,
-          sponsor_name: p.obligations?.contracts?.sponsors?.company_name || null,
-        })))
+        setRecentProofs((recentProofsRes.data as any[]).map(p => ({ id: p.id, captured_at: p.captured_at, photo_url: p.photo_url, obligation_description: p.obligations?.description || null, sponsor_name: p.obligations?.contracts?.sponsors?.company_name || null })))
       }
 
       if (sponsorContractsRes.data) {
         const contracts = sponsorContractsRes.data as any[]
         const contractIds = contracts.map(c => c.id)
-        const { data: oblData } = contractIds.length
-          ? await supabase.from('obligations').select('contract_id,status').in('contract_id', contractIds).neq('status', 'not_applicable')
-          : { data: [] }
+        const { data: oblData } = contractIds.length ? await supabase.from('obligations').select('contract_id,status').in('contract_id', contractIds).neq('status', 'not_applicable') : { data: [] }
 
         const cards: SponsorCard[] = contracts.map(c => {
           const cobs = (oblData || []).filter((o: any) => o.contract_id === c.id)
-          return {
-            id: c.sponsor_id,
-            company_name: c.sponsors?.company_name || '—',
-            logo_url: c.sponsors?.logo_url || null,
-            sponsorship_tier: c.sponsorship_tier || 'community',
-            contract_title: c.title || '—',
-            contract_value: c.value_nok || 0,
-            delivered: cobs.filter((o: any) => o.status === 'delivered').length,
-            pending: cobs.filter((o: any) => o.status === 'pending').length,
-            total: cobs.length,
-            health_score: c.sponsors?.health_score || 0,
-          }
+          return { id: c.sponsor_id, company_name: c.sponsors?.company_name || '—', logo_url: c.sponsors?.logo_url || null, sponsorship_tier: c.sponsorship_tier || 'community', contract_title: c.title || '—', contract_value: c.value_nok || 0, delivered: cobs.filter((o: any) => o.status === 'delivered').length, pending: cobs.filter((o: any) => o.status === 'pending').length, total: cobs.length, health_score: c.sponsors?.health_score || 0 }
         })
-        cards.sort((a, b) => (TIER_META[a.sponsorship_tier]?.order ?? 9) - (TIER_META[b.sponsorship_tier]?.order ?? 9))
+        cards.sort((a, b) => (SPONSOR_TIERS[a.sponsorship_tier]?.order ?? 9) - (SPONSOR_TIERS[b.sponsorship_tier]?.order ?? 9))
         setSponsorCards(cards)
 
         const alertList: AlertItem[] = []
-        if (obs.filter((o: any) => o.status === 'pending').length > 0) {
-          alertList.push({ id: 'obl-1', type: 'overdue_deliverable', message: `${obs.filter((o: any) => o.status === 'pending').length} deliverable${obs.filter((o: any) => o.status === 'pending').length > 1 ? 's' : ''} pending`, detail: 'Require attention' })
-        }
+        const pendingCount = obs.filter((o: any) => o.status === 'pending').length
+        if (pendingCount > 0) alertList.push({ id: 'obl-1', type: 'overdue_deliverable', message: `${pendingCount} deliverable${pendingCount > 1 ? 's' : ''} pending`, detail: 'Require attention' })
         setAlerts(alertList)
       }
 
@@ -255,65 +208,45 @@ export default function DashboardPage() {
     load()
   }, [])
 
-  async function handleSignOut() {
-    await supabase.auth.signOut()
-    router.push('/')
-  }
+  async function handleSignOut() { await supabase.auth.signOut(); router.push('/') }
 
-  const clubPrimary = org?.club_colour_primary || '#081216'
-  const isFree = org?.tier === 'free'
-  const tierLimit = STORAGE_LIMITS[org?.tier || 'free'] || 100
-  const usagePct = Math.min(Math.round((photoCount / tierLimit) * 100), 100)
-  const nearLimit = usagePct >= 80
-  const showCrest = org?.show_logo_on_dashboard && org?.logo_url
-  const kitUrl = getKitUrl(org?.sports || null)
-  const deliveryPct = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0
-  const avgConfidence = sponsorCards.length > 0
-    ? Math.round(sponsorCards.reduce((s, c) => s + (c.health_score || 70), 0) / sponsorCards.length)
-    : deliveryPct
+  const clubPrimary  = org?.club_colour_primary || '#081216'
+  const showCrest    = org?.show_logo_on_dashboard && org?.logo_url
+  const kitUrl       = getKitUrl(org?.sports || null)
+  const deliveryPct  = stats.total > 0 ? Math.round((stats.delivered / stats.total) * 100) : 0
+  const avgConf      = sponsorCards.length > 0 ? Math.round(sponsorCards.reduce((s, c) => s + (c.health_score || 70), 0) / sponsorCards.length) : deliveryPct
+  const planLabel    = PLAN_TIER_LABELS[planTier] || 'Foundation'
 
   const captureStatus = activeSession ? 'active'
     : nextEvent ? (nextEvent.starts_at && new Date(nextEvent.starts_at).toDateString() === new Date().toDateString() ? 'match-day' : 'upcoming')
     : 'idle'
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F2ED' }}>
-        <div style={{ color: '#6E7F86', fontSize: 13 }}>Loading...</div>
-      </div>
-    )
-  }
+  // Portfolio upsell — soft, not a hard block
+  const showPortfolioUpsell = planTier === 'foundation' || planTier === 'organisation'
 
-  // ── Sidebar ───────────────────────────────────────────────────────────────
+  if (loading) return <div className="min-h-screen flex items-center justify-center" style={{ background: '#F5F2ED' }}><div style={{ color: '#6E7F86', fontSize: 13 }}>Loading...</div></div>
+
   const Sidebar = () => (
-    <aside className="hidden lg:flex flex-col w-[220px] min-h-screen fixed left-0 top-0 bottom-0 z-40"
-      style={{ background: '#0A1A1F', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-
+    <aside className="hidden lg:flex flex-col w-[220px] min-h-screen fixed left-0 top-0 bottom-0 z-40" style={{ background: '#0A1A1F', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <SporrWordmark color="#E7ECEF" breakColor="#B8734A" width={72} />
       </div>
-
       <div className="px-4 py-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden"
-            style={{ background: clubPrimary + '22', border: `1.5px solid ${clubPrimary}55` }}>
-            {showCrest
-              ? <img src={org!.logo_url!} alt={org?.name} className="w-full h-full object-contain p-0.5" />
-              : <img src={kitUrl} alt="" className="w-full h-full object-contain" />}
+          <div className="w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden" style={{ background: clubPrimary + '22', border: `1.5px solid ${clubPrimary}55` }}>
+            {showCrest ? <img src={org!.logo_url!} alt={org?.name} className="w-full h-full object-contain p-0.5" /> : <img src={kitUrl} alt="" className="w-full h-full object-contain" />}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate" style={{ color: '#E7ECEF' }}>{org?.name || 'Your club'}</p>
-            <p className="text-xs capitalize" style={{ color: '#6E7F86' }}>{org?.tier} · {currentSeason}</p>
+            <p className="text-sm font-medium truncate" style={{ color: '#E7ECEF' }}>{org?.name || 'Your organisation'}</p>
+            <p className="text-xs capitalize" style={{ color: '#6E7F86' }}>{planLabel} · {currentSeason}</p>
           </div>
         </div>
       </div>
-
       <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(item => {
           const active = pathname === item.href
           return (
-            <Link key={item.href} href={item.href}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors"
+            <Link key={item.href} href={item.href} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] font-medium transition-colors"
               style={{ color: active ? '#FFFFFF' : '#6E7F86', background: active ? clubPrimary : 'transparent' }}
               onMouseEnter={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.05)' }}
               onMouseLeave={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent' }}>
@@ -323,34 +256,25 @@ export default function DashboardPage() {
           )
         })}
       </nav>
-
       <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[11px]" style={{ color: '#6E7F86' }}>Storage</span>
-          <span className="text-[11px] font-medium" style={{ color: nearLimit ? '#F59E0B' : '#6E7F86' }}>
-            {fmtStorage(photoCount)} / {fmtStorage(tierLimit)}
-          </span>
+          <span className="text-[11px]" style={{ color: '#6E7F86' }}>{fmtStorage(storageMB)}</span>
         </div>
         <div className="h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-          <div className="h-full rounded-full transition-all"
-            style={{ width: `${Math.max(usagePct, 2)}%`, background: nearLimit ? '#F59E0B' : '#36B37E' }} />
+          <div className="h-full rounded-full" style={{ width: `${Math.min(storageMB / 10240 * 100, 100)}%`, background: '#36B37E' }} />
         </div>
       </div>
-
       <div className="px-5 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[13px] font-medium" style={{ color: '#E7ECEF' }}>{userName || 'Account'}</p>
-            <p className="text-[11px]" style={{ color: '#6E7F86' }}>Club Admin</p>
+            <p className="text-[11px]" style={{ color: '#6E7F86' }}>Admin · {planLabel}</p>
           </div>
-          <button onClick={handleSignOut} className="p-2 rounded-lg transition-colors"
-            style={{ color: '#6E7F86' }} aria-label="Sign out"
+          <button onClick={handleSignOut} className="p-2 rounded-lg" style={{ color: '#6E7F86' }} aria-label="Sign out"
             onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = '#E7ECEF')}
             onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = '#6E7F86')}>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M10 11l3-3-3-3M13 8H6"
-                stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 14H3a1 1 0 01-1-1V3a1 1 0 011-1h3M10 11l3-3-3-3M13 8H6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </button>
         </div>
       </div>
@@ -358,19 +282,13 @@ export default function DashboardPage() {
   )
 
   const BottomNav = () => (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-2 py-2"
-      style={{ background: '#0A1A1F', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-center justify-around px-2 py-2" style={{ background: '#0A1A1F', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
       {[NAV_ITEMS[0], NAV_ITEMS[3], NAV_ITEMS[1], NAV_ITEMS[7]].map(item => {
         const active = pathname === item.href
         return (
-          <Link key={item.href} href={item.href}
-            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg min-w-0"
-            style={{ color: active ? '#FFFFFF' : '#6E7F86' }}>
+          <Link key={item.href} href={item.href} className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg" style={{ color: active ? '#FFFFFF' : '#6E7F86' }}>
             {item.label === 'Capture'
-              ? <div className="w-10 h-10 rounded-full flex items-center justify-center"
-                  style={{ background: active ? clubPrimary : 'rgba(255,255,255,0.08)' }}>
-                  {item.icon(active)}
-                </div>
+              ? <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: active ? clubPrimary : 'rgba(255,255,255,0.08)' }}>{item.icon(active)}</div>
               : item.icon(active)}
             <span className="text-[10px] font-medium">{item.label === 'Overview' ? 'Home' : item.label}</span>
           </Link>
@@ -379,33 +297,18 @@ export default function DashboardPage() {
     </nav>
   )
 
-  // ── RENDER ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen" style={{ background: '#F5F2ED' }}>
       <Sidebar />
       <BottomNav />
 
       {/* Mobile top bar */}
-      <div className="lg:hidden flex items-center justify-between px-4 py-3"
-        style={{ background: '#0A1A1F', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div className="lg:hidden flex items-center justify-between px-4 py-3" style={{ background: '#0A1A1F', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <SporrWordmark color="#E7ECEF" breakColor="#B8734A" width={56} />
-        <div className="flex items-center gap-2">
-          {isFree && <Link href="/dashboard/club" className="text-xs font-medium px-3 py-1.5 rounded-lg" style={{ background: '#147BFF', color: '#FFFFFF' }}>Upgrade</Link>}
-          <button className="p-2 relative" style={{ color: '#6E7F86' }} aria-label="Notifications">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2.5A5.5 5.5 0 004.5 8v3.5L3 13h14l-1.5-1.5V8A5.5 5.5 0 0010 2.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M8.5 13v.5a1.5 1.5 0 003 0V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-            {alerts.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: '#B8734A' }} />}
-          </button>
-        </div>
+        <button className="p-2" style={{ color: '#6E7F86' }} aria-label="Notifications">
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2.5A5.5 5.5 0 004.5 8v3.5L3 13h14l-1.5-1.5V8A5.5 5.5 0 0010 2.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M8.5 13v.5a1.5 1.5 0 003 0V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+        </button>
       </div>
-
-      {isFree && (
-        <div className="lg:pl-[220px]">
-          <div className="flex items-center justify-between gap-4 px-6 py-2.5" style={{ background: '#0A1A1F', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <p className="text-xs" style={{ color: '#6E7F86' }}>Free plan · 1 sponsor · 1 contract · watermarked reports</p>
-            <Link href="/dashboard/club" className="text-xs font-medium underline underline-offset-2" style={{ color: '#E7ECEF' }}>Upgrade →</Link>
-          </div>
-        </div>
-      )}
 
       <main className="lg:pl-[220px] pb-24 lg:pb-10">
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: '32px 24px' }}>
@@ -413,15 +316,13 @@ export default function DashboardPage() {
           {/* Header */}
           <div className="flex items-start justify-between gap-4 mb-8">
             <div>
-              <h1 className="font-bold tracking-tight mb-1"
-                style={{ fontSize: 'clamp(22px, 3vw, 28px)', color: '#081216', letterSpacing: '-0.02em' }}>
+              <h1 className="font-bold tracking-tight mb-1" style={{ fontSize: 'clamp(22px, 3vw, 28px)', color: '#081216', letterSpacing: '-0.02em' }}>
                 {greeting}{userName ? `, ${userName}.` : '.'}
               </h1>
               <p style={{ fontSize: 14, color: '#6E7F86' }}>Here&apos;s what&apos;s happening with your partnerships today.</p>
             </div>
             <div className="hidden lg:flex items-center gap-3 flex-shrink-0">
-              <Link href="/dashboard/audit" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
-                style={{ background: '#081216', color: '#E7ECEF' }}>
+              <Link href="/dashboard/audit" className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium" style={{ background: '#081216', color: '#E7ECEF' }}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><circle cx="7" cy="7.5" r="2.5" stroke="currentColor" strokeWidth="1.2"/></svg>
                 Quick capture
               </Link>
@@ -434,58 +335,50 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Portfolio upsell — soft, informational only, not a block */}
+          {showPortfolioUpsell && sponsorCards.length >= 3 && (
+            <div className="flex items-start justify-between gap-4 px-5 py-4 rounded-xl mb-5" style={{ background: '#F0F9FF', border: '1px solid #BFDBFE' }}>
+              <div>
+                <p className="text-sm font-medium mb-0.5" style={{ color: '#1E40AF' }}>Managing multiple operational contexts?</p>
+                <p className="text-xs" style={{ color: '#3B82F6' }}>Portfolio plan unlocks roll-up reporting and cross-environment visibility.</p>
+              </div>
+              <Link href="/dashboard/club" className="text-xs font-semibold whitespace-nowrap px-3 py-1.5 rounded-lg flex-shrink-0" style={{ background: '#1E40AF', color: '#FFFFFF' }}>Learn more</Link>
+            </div>
+          )}
+
           {/* ROW 1: Today's Operational Status + Metric stack */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 mb-5">
-
-            {/* Large operational status card — atmospheric background */}
             <div className="relative rounded-2xl overflow-hidden" style={{ minHeight: 300 }}>
-              <img src="/images/hero-stadium-night_3.jpg" alt="" aria-hidden="true"
-                className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 40%', opacity: 0.65 }} />
+              <img src="/images/hero-stadium-night_3.jpg" alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover" style={{ objectPosition: 'center 40%', opacity: 0.65 }} />
               <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(8,18,22,0.93) 0%, rgba(15,30,36,0.78) 55%, rgba(8,18,22,0.35) 100%)' }} />
-
               <div className="relative z-10 p-7 h-full flex flex-col justify-between">
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-widest mb-4" style={{ color: '#6E7F86' }}>Today&apos;s Operational Status</p>
-                  <h2 className="font-bold leading-tight mb-5"
-                    style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', color: '#E7ECEF', letterSpacing: '-0.02em' }}>
-                    {captureStatus === 'active' ? 'Capture session active'
-                      : captureStatus === 'match-day' ? 'Capture session ready to start'
-                      : nextEvent ? 'Upcoming fixture scheduled'
-                      : 'No active session'}
+                  <h2 className="font-bold leading-tight mb-5" style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', color: '#E7ECEF', letterSpacing: '-0.02em' }}>
+                    {captureStatus === 'active' ? 'Capture session active' : captureStatus === 'match-day' ? 'Capture session ready to start' : nextEvent ? 'Upcoming fixture scheduled' : 'No active session'}
                   </h2>
-
                   <div className="space-y-3 mb-6">
                     <div className="flex items-start gap-3">
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="mt-0.5 flex-shrink-0"><rect x="1" y="2" width="12" height="11" rx="1.5" stroke="#6E7F86" strokeWidth="1.2"/><path d="M4 1v2M10 1v2M1 5h12" stroke="#6E7F86" strokeWidth="1.2" strokeLinecap="round"/></svg>
-                      <div>
-                        <span className="text-xs" style={{ color: '#6E7F86' }}>Next fixture  </span>
-                        <span className="text-xs font-medium" style={{ color: '#E7ECEF' }}>
-                          {nextEvent?.title ? `${nextEvent.title}${nextEvent.starts_at ? ' · ' + new Date(nextEvent.starts_at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}` : 'None scheduled'}
-                        </span>
-                      </div>
+                      <div><span className="text-xs" style={{ color: '#6E7F86' }}>Next fixture  </span><span className="text-xs font-medium" style={{ color: '#E7ECEF' }}>{nextEvent?.title ? `${nextEvent.title}${nextEvent.starts_at ? ' · ' + new Date(nextEvent.starts_at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}` : 'None scheduled'}</span></div>
                     </div>
                     {nextEvent?.venue && (
                       <div className="flex items-center gap-3">
                         <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1C4.79 1 3 2.79 3 5c0 3 4 8 4 8s4-5 4-8c0-2.21-1.79-4-4-4z" stroke="#6E7F86" strokeWidth="1.2"/><circle cx="7" cy="5" r="1.5" stroke="#6E7F86" strokeWidth="1.2"/></svg>
-                        <div><span className="text-xs" style={{ color: '#6E7F86' }}>Venue  </span><span className="text-xs font-medium" style={{ color: '#E7ECEF' }}>{nextEvent.venue}</span></div>
+                        <span className="text-xs" style={{ color: '#6E7F86' }}>Venue  </span><span className="text-xs font-medium" style={{ color: '#E7ECEF' }}>{nextEvent.venue}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-3">
                       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="4" width="12" height="8" rx="1.5" stroke="#6E7F86" strokeWidth="1.2"/><circle cx="7" cy="8" r="2" stroke="#6E7F86" strokeWidth="1.2"/><path d="M5 4l1-2h2l1 2" stroke="#6E7F86" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs" style={{ color: '#6E7F86' }}>Session status  </span>
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style={{ background: captureStatus === 'active' ? clubPrimary : 'rgba(255,255,255,0.1)', color: '#E7ECEF' }}>
-                          {captureStatus === 'active' ? 'Active' : captureStatus === 'match-day' ? 'Match day' : captureStatus === 'upcoming' ? 'Upcoming' : 'Not started'}
-                        </span>
-                      </div>
+                      <span className="text-xs" style={{ color: '#6E7F86' }}>Session status  </span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full" style={{ background: captureStatus === 'active' ? clubPrimary : 'rgba(255,255,255,0.1)', color: '#E7ECEF' }}>
+                        {captureStatus === 'active' ? 'Active' : captureStatus === 'match-day' ? 'Match day' : captureStatus === 'upcoming' ? 'Upcoming' : 'Not started'}
+                      </span>
                     </div>
                   </div>
                 </div>
-
                 <Link href={captureStatus === 'active' && activeSession ? `/audit/${activeSession.token}` : '/dashboard/audit'}
-                  className="inline-flex items-center gap-2.5 self-start px-5 py-3 rounded-xl font-semibold text-sm"
-                  style={{ background: '#147BFF', color: '#FFFFFF' }}
+                  className="inline-flex items-center gap-2.5 self-start px-5 py-3 rounded-xl font-semibold text-sm" style={{ background: '#147BFF', color: '#FFFFFF' }}
                   onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.background = '#0E6AE0')}
                   onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.background = '#147BFF')}>
                   {captureStatus === 'active' ? 'Resume capture session' : 'Start capture session'}
@@ -494,39 +387,31 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Metric stack */}
             <div className="flex flex-col gap-3">
-
               {/* Renewal Confidence */}
-              <Link href="/dashboard/sponsors" className="flex items-center justify-between px-5 py-4 rounded-2xl transition-colors"
-                style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
+              <Link href="/dashboard/sponsors" className="flex items-center justify-between px-5 py-4 rounded-2xl" style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
                 onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.15)')}
                 onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.07)')}>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: avgConfidence >= 80 ? '#DCFCE7' : avgConfidence >= 60 ? '#FEF3C7' : '#FEE2E2' }}>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1l1.5 3 3.5.5-2.5 2.5.5 3.5L7 9l-3 1.5.5-3.5L2 4.5 5.5 4 7 1z" stroke={avgConfidence >= 80 ? '#16A34A' : avgConfidence >= 60 ? '#D97706' : '#DC2626'} strokeWidth="1.1" strokeLinejoin="round"/></svg>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: avgConf >= 80 ? '#DCFCE7' : avgConf >= 60 ? '#FEF3C7' : '#FEE2E2' }}>
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1l1.5 3 3.5.5-2.5 2.5.5 3.5L7 9l-3 1.5.5-3.5L2 4.5 5.5 4 7 1z" stroke={avgConf >= 80 ? '#16A34A' : avgConf >= 60 ? '#D97706' : '#DC2626'} strokeWidth="1.1" strokeLinejoin="round"/></svg>
                   </div>
                   <div>
                     <p className="text-[10px] uppercase tracking-widest font-medium mb-0.5" style={{ color: '#6E7F86' }}>Renewal Confidence</p>
-                    <p className="text-2xl font-bold leading-none" style={{ color: '#081216' }}>{avgConfidence}<span className="text-sm font-normal" style={{ color: '#6E7F86' }}>%</span></p>
-                    <p className="text-xs" style={{ color: '#6E7F86' }}>{avgConfidence >= 80 ? 'Very strong' : avgConfidence >= 60 ? 'On track' : 'At risk'}</p>
+                    <p className="text-2xl font-bold leading-none" style={{ color: '#081216' }}>{avgConf}<span className="text-sm font-normal" style={{ color: '#6E7F86' }}>%</span></p>
+                    <p className="text-xs" style={{ color: '#6E7F86' }}>{avgConf >= 80 ? 'Very strong' : avgConf >= 60 ? 'On track' : 'At risk'}</p>
                   </div>
                 </div>
                 <Sparkline color="#147BFF" />
               </Link>
 
               {/* Verification Completion */}
-              <Link href="/dashboard/obligations" className="flex items-center justify-between px-5 py-4 rounded-2xl transition-colors"
-                style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
+              <Link href="/dashboard/obligations" className="flex items-center justify-between px-5 py-4 rounded-2xl" style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
                 onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.15)')}
                 onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.07)')}>
                 <div className="flex-1 min-w-0 pr-4">
                   <p className="text-[10px] uppercase tracking-widest font-medium mb-0.5" style={{ color: '#6E7F86' }}>Verification Completion</p>
-                  <p className="text-2xl font-bold leading-none mb-2" style={{ color: '#081216' }}>
-                    {deliveryPct}<span className="text-sm font-normal" style={{ color: '#6E7F86' }}>%  </span>
-                    <span className="text-xs font-normal" style={{ color: '#6E7F86' }}>On track</span>
-                  </p>
+                  <p className="text-2xl font-bold leading-none mb-2" style={{ color: '#081216' }}>{deliveryPct}<span className="text-sm font-normal" style={{ color: '#6E7F86' }}>%  On track</span></p>
                   <div className="h-1.5 rounded-full overflow-hidden" style={{ background: '#E7ECEF' }}>
                     <div className="h-full rounded-full" style={{ width: `${Math.max(deliveryPct, 2)}%`, background: '#147BFF' }} />
                   </div>
@@ -535,8 +420,7 @@ export default function DashboardPage() {
               </Link>
 
               {/* Partnership Health */}
-              <div className="flex items-center justify-between px-5 py-4 rounded-2xl"
-                style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}>
+              <div className="flex items-center justify-between px-5 py-4 rounded-2xl" style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}>
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#DCFCE7' }}>
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l3 3 7-7" stroke="#16A34A" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -551,13 +435,12 @@ export default function DashboardPage() {
               </div>
 
               {/* Deliverables Pending */}
-              <Link href="/dashboard/obligations" className="flex items-center justify-between px-5 py-4 rounded-2xl transition-colors"
+              <Link href="/dashboard/obligations" className="flex items-center justify-between px-5 py-4 rounded-2xl"
                 style={{ background: '#FFFFFF', border: `1px solid ${stats.pending > 0 ? '#FCD34D' : 'rgba(8,18,22,0.07)'}` }}
                 onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = stats.pending > 0 ? '#F59E0B' : 'rgba(8,18,22,0.15)')}
                 onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = stats.pending > 0 ? '#FCD34D' : 'rgba(8,18,22,0.07)')}>
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: stats.pending > 0 ? '#FEF3C7' : '#F0F9FF' }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: stats.pending > 0 ? '#FEF3C7' : '#F0F9FF' }}>
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke={stats.pending > 0 ? '#D97706' : '#6E7F86'} strokeWidth="1.2"/><path d="M4 7h6M4 4.5h6M4 9.5h3" stroke={stats.pending > 0 ? '#D97706' : '#6E7F86'} strokeWidth="1.2" strokeLinecap="round"/></svg>
                   </div>
                   <div>
@@ -575,39 +458,27 @@ export default function DashboardPage() {
           <div className="mb-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: '#6E7F86' }}>Sponsor Overview</p>
-              <Link href="/dashboard/sponsors" className="text-xs transition-colors" style={{ color: '#6E7F86' }}
+              <Link href="/dashboard/sponsors" className="text-xs" style={{ color: '#6E7F86' }}
                 onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = '#081216')}
-                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = '#6E7F86')}>
-                View all sponsors →
-              </Link>
+                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = '#6E7F86')}>View all sponsors →</Link>
             </div>
-
             {sponsorCards.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
                 {sponsorCards.map(card => {
                   const pct = card.total > 0 ? Math.round((card.delivered / card.total) * 100) : 0
                   const allDone = card.pending === 0 && card.total > 0
                   const allocated = card.contract_value > 0 ? Math.round((card.delivered / Math.max(card.total, 1)) * card.contract_value) : 0
-                  const remaining = card.contract_value - allocated
-
                   return (
-                    <Link key={card.id} href="/dashboard/obligations"
-                      className="block rounded-2xl overflow-hidden transition-colors"
+                    <Link key={card.id} href="/dashboard/obligations" className="block rounded-2xl overflow-hidden"
                       style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
                       onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.15)')}
                       onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.07)')}>
-                      {/* Club colour top border — thin, restrained */}
                       <div className="h-0.5 w-full" style={{ background: clubPrimary }} />
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-2 mb-3">
                           <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden"
-                              style={{ background: '#F5F2ED', border: '1px solid rgba(8,18,22,0.06)' }}>
-                              {card.logo_url
-                                ? <img src={card.logo_url} alt="" className="w-full h-full object-contain p-0.5" />
-                                : <div className="w-full h-full flex items-center justify-center">
-                                    <span className="text-xs font-bold" style={{ color: '#6E7F86' }}>{card.company_name.charAt(0)}</span>
-                                  </div>}
+                            <div className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden" style={{ background: '#F5F2ED', border: '1px solid rgba(8,18,22,0.06)' }}>
+                              {card.logo_url ? <img src={card.logo_url} alt="" className="w-full h-full object-contain p-0.5" /> : <div className="w-full h-full flex items-center justify-center"><span className="text-xs font-bold" style={{ color: '#6E7F86' }}>{card.company_name.charAt(0)}</span></div>}
                             </div>
                             <div className="min-w-0">
                               <p className="text-sm font-semibold truncate" style={{ color: '#081216' }}>{card.company_name}</p>
@@ -616,37 +487,23 @@ export default function DashboardPage() {
                           </div>
                           <TierBadge tier={card.sponsorship_tier} />
                         </div>
-
                         {card.contract_value > 0 && (
                           <div className="grid grid-cols-3 gap-2 mb-3 pb-3" style={{ borderBottom: '1px solid rgba(8,18,22,0.06)' }}>
-                            {[{ label: 'Committed', value: fmtCurrency(card.contract_value) }, { label: 'Allocated', value: fmtCurrency(allocated) }, { label: 'Remaining', value: fmtCurrency(remaining) }].map(({ label, value }) => (
-                              <div key={label}>
-                                <p className="text-xs font-medium" style={{ color: '#081216' }}>{value}</p>
-                                <p className="text-[10px]" style={{ color: '#6E7F86' }}>{label}</p>
-                              </div>
+                            {[{ label: 'Committed', value: fmtCurrency(card.contract_value) }, { label: 'Allocated', value: fmtCurrency(allocated) }, { label: 'Remaining', value: fmtCurrency(card.contract_value - allocated) }].map(({ label, value }) => (
+                              <div key={label}><p className="text-xs font-medium" style={{ color: '#081216' }}>{value}</p><p className="text-[10px]" style={{ color: '#6E7F86' }}>{label}</p></div>
                             ))}
                           </div>
                         )}
-
                         <div className="flex items-center justify-between mb-1.5">
-                          <p className="text-xs" style={{ color: '#6E7F86' }}>
-                            <span className="font-medium" style={{ color: '#081216' }}>{pct}% </span>
-                            {card.contract_value > 0 ? 'allocated' : 'delivered'}
-                          </p>
-                          <p className="text-xs font-medium" style={{ color: allDone ? '#36B37E' : card.pending > 0 ? '#B8734A' : '#6E7F86' }}>
-                            {allDone ? 'On track' : card.pending > 0 ? `${card.pending} pending` : '—'}
-                          </p>
+                          <p className="text-xs" style={{ color: '#6E7F86' }}><span className="font-medium" style={{ color: '#081216' }}>{pct}% </span>delivered</p>
+                          <p className="text-xs font-medium" style={{ color: allDone ? '#36B37E' : card.pending > 0 ? '#B8734A' : '#6E7F86' }}>{allDone ? 'On track' : card.pending > 0 ? `${card.pending} pending` : '—'}</p>
                         </div>
                         <div className="h-1 rounded-full overflow-hidden" style={{ background: '#E7ECEF' }}>
-                          <div className="h-full rounded-full transition-all"
-                            style={{ width: `${Math.max(pct, 2)}%`, background: allDone ? '#36B37E' : pct >= 60 ? '#147BFF' : '#B8734A' }} />
+                          <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 2)}%`, background: allDone ? '#36B37E' : pct >= 60 ? '#147BFF' : '#B8734A' }} />
                         </div>
-
                         <div className="flex items-center gap-1.5 mt-2.5">
                           <span className="w-1.5 h-1.5 rounded-full" style={{ background: allDone ? '#36B37E' : card.pending > 0 ? '#B8734A' : '#6E7F86' }} />
-                          <span className="text-xs" style={{ color: '#6E7F86' }}>
-                            {allDone ? 'Complete' : card.pending > 0 ? `${card.pending} pending` : 'No deliverables'}
-                          </span>
+                          <span className="text-xs" style={{ color: '#6E7F86' }}>{allDone ? 'Complete' : card.pending > 0 ? `${card.pending} pending` : 'No deliverables'}</span>
                         </div>
                       </div>
                     </Link>
@@ -662,93 +519,37 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* ROW 3: Commercial overview — 4 placeholder cards */}
+          {/* ROW 3: Commercial overview */}
           <div className="mb-5">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-3" style={{ color: '#6E7F86' }}>Commercial Overview</p>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-
-              {/* Financial Summary */}
-              <Link href="/dashboard/financial" className="rounded-2xl p-5 transition-colors"
-                style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
-                onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.15)')}
-                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.07)')}>
-                <p className="text-[10px] uppercase tracking-widest font-medium mb-3" style={{ color: '#6E7F86' }}>Financial Summary</p>
-                <p className="text-[11px] mb-0.5" style={{ color: '#6E7F86' }}>Contracted Revenue</p>
-                <p className="text-xl font-bold mb-1" style={{ color: '#081216' }}>—</p>
-                <p className="text-[11px] mb-0.5" style={{ color: '#6E7F86' }}>Collected Revenue</p>
-                <p className="text-sm font-medium mb-3" style={{ color: '#081216' }}>—</p>
-                <div className="flex items-center justify-between mb-1">
-                  <p className="text-[10px]" style={{ color: '#6E7F86' }}>Outstanding</p>
-                  <p className="text-xs font-semibold" style={{ color: '#B8734A' }}>—</p>
-                </div>
-                <p className="text-[10px]" style={{ color: '#6E7F86' }}>Collection Rate</p>
-                <p className="text-xs font-semibold mt-0.5" style={{ color: '#081216' }}>—</p>
-                <p className="text-xs mt-3" style={{ color: '#147BFF' }}>View details →</p>
-              </Link>
-
-              {/* Pipeline Overview */}
-              <Link href="/dashboard/pipeline" className="rounded-2xl p-5 transition-colors"
-                style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
-                onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.15)')}
-                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.07)')}>
-                <p className="text-[10px] uppercase tracking-widest font-medium mb-3" style={{ color: '#6E7F86' }}>Pipeline Overview</p>
-                <p className="text-[11px] mb-0.5" style={{ color: '#6E7F86' }}>Pipeline Value</p>
-                <p className="text-xl font-bold mb-3" style={{ color: '#081216' }}>—</p>
-                <p className="text-[11px] mb-2" style={{ color: '#6E7F86' }}>Active Opportunities</p>
-                {['Lead', 'Proposal Sent', 'Negotiating'].map((label, i) => (
-                  <div key={label} className="flex items-center gap-2 mb-1.5">
-                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: i === 0 ? '#147BFF' : i === 1 ? '#081216' : '#6E7F86' }} />
-                    <span className="text-[11px] flex-1" style={{ color: '#6E7F86' }}>{label}</span>
-                    <span className="text-[11px] font-medium" style={{ color: '#081216' }}>—</span>
+              {[
+                { title: 'Financial Summary', href: '/dashboard/financial', rows: [['Contracted Revenue', '—'], ['Collected Revenue', '—'], ['Outstanding', '—'], ['Collection Rate', '—']] },
+                { title: 'Pipeline Overview', href: '/dashboard/pipeline', rows: [['Pipeline Value', '—'], ['Lead', '—'], ['Proposal Sent', '—'], ['Negotiating', '—']] },
+                { title: 'Payment Tracker', href: '/dashboard/payments', rows: [['Outstanding Invoices', '—'], ['0–30 days', '—'], ['31–60 days', '—'], ['61–90 days', '—']] },
+                { title: 'Renewal Performance', href: '/dashboard/renewals', rows: [['Renewal Rate', '—'], ['Renewed', '—'], ['At Risk', '—'], ['Not Renewed', '—']] },
+              ].map(({ title, href, rows }) => (
+                <Link key={title} href={href} className="rounded-2xl p-5"
+                  style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
+                  onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.15)')}
+                  onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.07)')}>
+                  <p className="text-[10px] uppercase tracking-widest font-medium mb-3" style={{ color: '#6E7F86' }}>{title}</p>
+                  <div className="space-y-2">
+                    {rows.map(([label, val], i) => (
+                      <div key={label} className="flex items-center justify-between">
+                        <span className="text-[11px]" style={{ color: '#6E7F86' }}>{label}</span>
+                        <span className="text-[11px] font-medium" style={{ color: i === 0 ? '#081216' : '#6E7F86' }}>{val}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-                <p className="text-xs mt-3" style={{ color: '#147BFF' }}>View details →</p>
-              </Link>
-
-              {/* Payment Tracker */}
-              <Link href="/dashboard/payments" className="rounded-2xl p-5 transition-colors"
-                style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
-                onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.15)')}
-                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.07)')}>
-                <p className="text-[10px] uppercase tracking-widest font-medium mb-3" style={{ color: '#6E7F86' }}>Payment Tracker</p>
-                <p className="text-[11px] mb-0.5" style={{ color: '#6E7F86' }}>Outstanding Invoices</p>
-                <p className="text-xl font-bold mb-3" style={{ color: '#081216' }}>—</p>
-                {[{ label: '0–30 days', color: '#36B37E' }, { label: '31–60 days', color: '#F59E0B' }, { label: '61–90 days', color: '#B8734A' }, { label: '90+ days', color: '#DC2626' }].map(({ label, color }) => (
-                  <div key={label} className="flex items-center gap-2 mb-2">
-                    <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: '#E7ECEF' }}>
-                      <div className="h-full rounded-full" style={{ width: '0%', background: color }} />
-                    </div>
-                    <span className="text-[10px] w-16 text-right flex-shrink-0" style={{ color: '#6E7F86' }}>{label}</span>
-                  </div>
-                ))}
-                <p className="text-xs mt-2" style={{ color: '#147BFF' }}>View details →</p>
-              </Link>
-
-              {/* Renewal Performance */}
-              <Link href="/dashboard/renewals" className="rounded-2xl p-5 transition-colors"
-                style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}
-                onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.15)')}
-                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.borderColor = 'rgba(8,18,22,0.07)')}>
-                <p className="text-[10px] uppercase tracking-widest font-medium mb-3" style={{ color: '#6E7F86' }}>Renewal Performance</p>
-                <p className="text-[11px] mb-0.5" style={{ color: '#6E7F86' }}>Renewal Rate</p>
-                <p className="text-xl font-bold mb-3" style={{ color: '#081216' }}>—</p>
-                {[{ label: 'Renewed', color: '#36B37E' }, { label: 'At Risk', color: '#F59E0B' }, { label: 'Not Renewed', color: '#6E7F86' }].map(({ label, color }) => (
-                  <div key={label} className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full" style={{ background: color }} />
-                      <span className="text-[11px]" style={{ color: '#6E7F86' }}>{label}</span>
-                    </div>
-                    <span className="text-[11px] font-medium" style={{ color: '#081216' }}>—</span>
-                  </div>
-                ))}
-                <p className="text-xs mt-2" style={{ color: '#147BFF' }}>View details →</p>
-              </Link>
+                  <p className="text-xs mt-4" style={{ color: '#147BFF' }}>View details →</p>
+                </Link>
+              ))}
             </div>
           </div>
 
-          {/* ROW 4: Category Exclusivity + Operational Alerts + Recent Verification Activity */}
+          {/* ROW 4: Bottom sections */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-
             {/* Category Exclusivity */}
             <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(8,18,22,0.07)' }}>
               <div className="flex items-center justify-between mb-4">
@@ -756,16 +557,12 @@ export default function DashboardPage() {
                 <Link href="/dashboard/exclusivity" className="text-xs" style={{ color: '#147BFF' }}>View all</Link>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {['Food & Beverage', 'Banking', 'Automotive', 'Energy', 'Telecoms', 'Travel'].map((cat, i) => {
-                  const locked = i < sponsorCards.length
-                  return (
-                    <div key={cat} className="flex items-center gap-2 px-3 py-2 rounded-lg"
-                      style={{ background: locked ? '#F0F9FF' : '#FAFAF7', border: '1px solid rgba(8,18,22,0.06)' }}>
-                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: locked ? '#147BFF' : '#D1D5DB' }} />
-                      <span className="text-[11px] truncate" style={{ color: '#081216' }}>{cat}</span>
-                    </div>
-                  )
-                })}
+                {['Food & Beverage', 'Banking', 'Automotive', 'Energy', 'Telecoms', 'Travel'].map((cat, i) => (
+                  <div key={cat} className="flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: i < sponsorCards.length ? '#F0F9FF' : '#FAFAF7', border: '1px solid rgba(8,18,22,0.06)' }}>
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: i < sponsorCards.length ? '#147BFF' : '#D1D5DB' }} />
+                    <span className="text-[11px] truncate" style={{ color: '#081216' }}>{cat}</span>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -779,8 +576,7 @@ export default function DashboardPage() {
                 <div className="space-y-3">
                   {alerts.map(alert => (
                     <div key={alert.id} className="flex items-start gap-3 pb-3" style={{ borderBottom: '1px solid rgba(8,18,22,0.05)' }}>
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ background: '#FEF3C7' }}>
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5" style={{ background: '#FEF3C7' }}>
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v5M6 9v1" stroke="#D97706" strokeWidth="1.5" strokeLinecap="round"/></svg>
                       </div>
                       <div>
@@ -816,9 +612,7 @@ export default function DashboardPage() {
                     return (
                       <div key={proof.id} className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg flex-shrink-0 overflow-hidden" style={{ background: '#F5F2ED', border: '1px solid rgba(8,18,22,0.06)' }}>
-                          {proof.photo_url
-                            ? <img src={proof.photo_url} alt="" className="w-full h-full object-cover" />
-                            : <div className="w-full h-full flex items-center justify-center"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="9" rx="1.5" stroke="#6E7F86" strokeWidth="1.1"/><circle cx="7" cy="6.5" r="2" stroke="#6E7F86" strokeWidth="1.1"/></svg></div>}
+                          {proof.photo_url ? <img src={proof.photo_url} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="9" rx="1.5" stroke="#6E7F86" strokeWidth="1.1"/><circle cx="7" cy="6.5" r="2" stroke="#6E7F86" strokeWidth="1.1"/></svg></div>}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate" style={{ color: '#081216' }}>{proof.obligation_description || 'Proof captured'}</p>
@@ -839,8 +633,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Reports CTA */}
-          <Link href="/proof-pack" className="flex items-center justify-between gap-4 px-6 py-5 rounded-2xl transition-colors"
-            style={{ background: '#081216' }}
+          <Link href="/proof-pack" className="flex items-center justify-between gap-4 px-6 py-5 rounded-2xl" style={{ background: '#081216' }}
             onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.background = '#0F2A2E')}
             onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.background = '#081216')}>
             <div>
