@@ -62,6 +62,12 @@ function textOnColour(hex: string): 'dark' | 'light' {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? 'dark' : 'light'
 }
 
+// ── Currency / number formatting (nb-NO) ───────────────────────────────────────
+const eur = (n: number) =>
+  new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(n)
+const nb1 = (n: number) =>
+  new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 }).format(n)
+
 // ── Plan tier system ──────────────────────────────────────────────────────────
 // Tiers = operational complexity (number of environments)
 // No gates on sponsors, contracts, users, captures, reports, deliverables
@@ -107,6 +113,23 @@ const PLANS = [
   },
 ]
 
+// ── Storage system ──────────────────────────────────────────────────────────
+// Storage is the ONLY metered resource. Never meter users, sponsors,
+// contracts, captures, deliverables, or reports — participation is never billed.
+// Base allowance is included with each tier; add-ons are a pure utility top-up.
+const STORAGE_BASE_GB: Record<string, number | null> = {
+  foundation:   5,
+  organisation: 25,
+  portfolio:    100,
+  network:      null, // Custom — provisioned per agreement
+}
+
+const STORAGE_ADDONS = [
+  { key: '100gb', addLabel: '100 GB', monthly: 10, blurb: 'For growing capture libraries' },
+  { key: '500gb', addLabel: '500 GB', monthly: 35, blurb: 'For high-volume operations' },
+  { key: '1tb',   addLabel: '1 TB',   monthly: 60, blurb: 'For large portfolios and archives' },
+]
+
 // ── Sports ────────────────────────────────────────────────────────────────────
 const ALL_SPORTS = [
   'Football', 'Handball', 'Gymnastics', 'Golf', 'Cross country skiing',
@@ -130,11 +153,22 @@ type OrgData = {
 }
 type UserData = { id: string; full_name: string | null; email: string | null; role: string }
 
+// A unified checkout item — used by both tier upgrades and storage add-ons,
+// so they share one payment flow (Vipps / Stripe / Invoice).
+type CheckoutItem = {
+  kind: 'plan' | 'storage'
+  label: string
+  price: string
+  description: string
+  selfServe: boolean
+}
+
 // ── Style tokens ──────────────────────────────────────────────────────────────
 const INK    = '#081216'
 const FOG    = '#E7ECEF'
 const SLATE  = '#6E7F86'
 const BLUE   = '#147BFF'
+const COPPER = '#B8734A'
 const BG     = '#F5F2ED'
 const WHITE  = '#FFFFFF'
 const SIDE   = '#0A1A1F'
@@ -296,9 +330,9 @@ export default function ProfilePage() {
   const [colourPickerTarget, setColourPickerTarget] = useState<'primary' | 'secondary' | null>(null)
   const [coloursSaved, setColoursSaved]         = useState(false)
 
-  // Upgrade modal
-  const [upgradeTarget, setUpgradeTarget] = useState<typeof PLANS[0] | null>(null)
-  const [upgradeMethod, setUpgradeMethod] = useState<'vipps' | 'stripe' | 'invoice' | null>(null)
+  // Checkout modal — shared by tier upgrades and storage add-ons
+  const [checkout, setCheckout]     = useState<CheckoutItem | null>(null)
+  const [payMethod, setPayMethod]   = useState<'vipps' | 'stripe' | 'invoice' | null>(null)
 
   const [form, setForm] = useState({
     name: '', sports: [] as string[], country: 'NO',
@@ -408,6 +442,22 @@ export default function ProfilePage() {
   const planLabel      = PLAN_META[planTier]?.label || 'Foundation'
   const estimatedMB    = photoCount
 
+  // Storage — base allowance per tier (null = custom / Network)
+  const baseGb   = STORAGE_BASE_GB[planTier] ?? null
+  const capMb    = baseGb !== null ? baseGb * 1024 : null
+  const usedPct  = capMb ? Math.min((estimatedMB / capMb) * 100, 100) : 0
+  const usedLabel = estimatedMB >= 1024 ? `${nb1(estimatedMB / 1024)} GB` : `${estimatedMB} MB`
+  const nearLimit = usedPct > 85
+
+  // Build the mailto for the current checkout item
+  const checkoutMailto = (method?: string) => {
+    if (!checkout) return ''
+    const subject = checkout.kind === 'storage'
+      ? `Storage add-on — ${checkout.label}${method ? ` — ${method}` : ''}`
+      : `Upgrade ${method ? `to ${checkout.label} — ${method}` : `enquiry — ${checkout.label}`}`
+    return `mailto:hello@sporr.no?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(`Organisation: ${form.name}\nContact: ${user?.email || ''}\nItem: ${checkout.label} (${checkout.price})`)}`
+  }
+
   // ── Sidebar ─────────────────────────────────────────────────────────────────
   const Sidebar = () => (
     <aside className="hidden lg:flex flex-col w-[220px] min-h-screen fixed left-0 top-0 bottom-0 z-40"
@@ -465,20 +515,22 @@ export default function ProfilePage() {
     <div className="min-h-screen" style={{ background: BG, fontFamily: "'DM Sans', system-ui, sans-serif" }}>
       <Sidebar />
 
-      {/* ── Upgrade modal ─────────────────────────────────────────────────── */}
-      {upgradeTarget && (
+      {/* ── Checkout modal (tier upgrades + storage add-ons) ──────────────── */}
+      {checkout && (
         <div className="fixed inset-0 flex items-center justify-center z-50 px-6"
           style={{ background: 'rgba(8,18,22,0.6)', backdropFilter: 'blur(4px)' }}>
           <div className="rounded-2xl p-8 w-full max-w-md" style={{ background: WHITE }}>
 
-            {!upgradeMethod ? (
+            {!payMethod ? (
               <>
-                <p className="text-[10px] uppercase tracking-widest font-medium mb-1" style={{ color: SLATE }}>Upgrade to</p>
-                <h2 className="text-xl font-bold mb-1" style={{ color: INK }}>{upgradeTarget.label}</h2>
-                <p className="font-semibold text-lg mb-2" style={{ color: INK }}>{upgradeTarget.price}</p>
-                <p className="text-sm leading-relaxed mb-6" style={{ color: SLATE }}>{upgradeTarget.description}</p>
+                <p className="text-[10px] uppercase tracking-widest font-medium mb-1" style={{ color: SLATE }}>
+                  {checkout.kind === 'storage' ? 'Add storage' : 'Upgrade to'}
+                </p>
+                <h2 className="text-xl font-bold mb-1" style={{ color: INK }}>{checkout.label}</h2>
+                <p className="font-semibold text-lg mb-2" style={{ color: INK }}>{checkout.price}</p>
+                <p className="text-sm leading-relaxed mb-6" style={{ color: SLATE }}>{checkout.description}</p>
 
-                {upgradeTarget.selfServe ? (
+                {checkout.selfServe ? (
                   <>
                     <p className="text-sm font-semibold mb-3" style={{ color: INK }}>Choose payment method</p>
                     <div className="space-y-2 mb-5">
@@ -487,7 +539,7 @@ export default function ProfilePage() {
                         { key: 'stripe',  label: 'Card — Stripe',   sub: 'Visa, Mastercard, Amex' },
                         { key: 'invoice', label: 'Invoice',          sub: '30-day payment terms' },
                       ] as const).map(m => (
-                        <button key={m.key} onClick={() => setUpgradeMethod(m.key)}
+                        <button key={m.key} onClick={() => setPayMethod(m.key)}
                           className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors"
                           style={{ border: `2px solid ${BORDER}`, background: WHITE }}
                           onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.borderColor = INK)}
@@ -499,14 +551,14 @@ export default function ProfilePage() {
                     </div>
                   </>
                 ) : (
-                  <a href={`mailto:hello@sporr.no?subject=Upgrade enquiry — ${upgradeTarget.label}&body=Organisation: ${form.name}%0AContact: ${user?.email || ''}`}
+                  <a href={checkoutMailto()}
                     className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl text-sm font-semibold mb-3"
                     style={{ background: INK, color: FOG }}>
                     Contact Sporr to discuss →
                   </a>
                 )}
 
-                <button onClick={() => { setUpgradeTarget(null); setUpgradeMethod(null) }}
+                <button onClick={() => { setCheckout(null); setPayMethod(null) }}
                   className="w-full px-4 py-2.5 rounded-xl text-sm font-medium"
                   style={{ background: 'rgba(8,18,22,0.06)', color: INK }}>
                   Cancel
@@ -515,9 +567,9 @@ export default function ProfilePage() {
             ) : (
               <>
                 <p className="text-[10px] uppercase tracking-widest font-medium mb-1" style={{ color: SLATE }}>
-                  {upgradeMethod === 'vipps' ? 'Pay with Vipps' : upgradeMethod === 'stripe' ? 'Pay by card — Stripe' : 'Pay by invoice'}
+                  {payMethod === 'vipps' ? 'Pay with Vipps' : payMethod === 'stripe' ? 'Pay by card — Stripe' : 'Pay by invoice'}
                 </p>
-                <h2 className="text-xl font-bold mb-4" style={{ color: INK }}>{upgradeTarget.label} — {upgradeTarget.price}</h2>
+                <h2 className="text-xl font-bold mb-4" style={{ color: INK }}>{checkout.label} — {checkout.price}</h2>
 
                 <div className="rounded-xl px-5 py-6 text-center mb-5" style={{ background: BG }}>
                   <div className="w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-3"
@@ -529,18 +581,18 @@ export default function ProfilePage() {
                   </div>
                   <p className="text-sm font-semibold mb-1" style={{ color: INK }}>Coming soon</p>
                   <p className="text-xs leading-relaxed" style={{ color: SLATE }}>
-                    {upgradeMethod === 'vipps' && 'Vipps integration is being set up. Contact us to upgrade by invoice in the meantime.'}
-                    {upgradeMethod === 'stripe' && 'Stripe card payments are being set up. Contact us to upgrade by invoice in the meantime.'}
-                    {upgradeMethod === 'invoice' && 'Invoice payments are being set up. Contact us directly and we\'ll invoice you within 24 hours.'}
+                    {payMethod === 'vipps' && 'Vipps integration is being set up. Contact us to set this up by invoice in the meantime.'}
+                    {payMethod === 'stripe' && 'Stripe card payments are being set up. Contact us to set this up by invoice in the meantime.'}
+                    {payMethod === 'invoice' && 'Invoice payments are being set up. Contact us directly and we\'ll invoice you within 24 hours.'}
                   </p>
                 </div>
 
-                <a href={`mailto:hello@sporr.no?subject=Upgrade to ${upgradeTarget.label} — ${upgradeMethod}&body=Organisation: ${form.name}%0AContact: ${user?.email || ''}`}
+                <a href={checkoutMailto(payMethod)}
                   className="flex items-center justify-center w-full px-4 py-3 rounded-xl text-sm font-semibold mb-3"
                   style={{ background: INK, color: FOG }}>
-                  Contact us to complete upgrade →
+                  Contact us to complete {checkout.kind === 'storage' ? 'this add-on' : 'upgrade'} →
                 </a>
-                <button onClick={() => setUpgradeMethod(null)}
+                <button onClick={() => setPayMethod(null)}
                   className="w-full px-4 py-2.5 rounded-xl text-sm font-medium"
                   style={{ background: 'rgba(8,18,22,0.06)', color: INK }}>← Back</button>
               </>
@@ -900,16 +952,78 @@ export default function ProfilePage() {
           {/* ── Storage ──────────────────────────────────────────────────── */}
           <div style={{ ...CARD, marginBottom: 16 }}>
             <p style={sectionHead}>Storage</p>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm" style={{ color: SLATE }}>{estimatedMB} MB estimated usage</span>
-              <span className="text-xs" style={{ color: SLATE }}>{photoCount} proof photo{photoCount !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="h-1.5 rounded-full overflow-hidden mb-3" style={{ background: BORDER }}>
-              <div className="h-full rounded-full" style={{ width: `${Math.min(estimatedMB / 102400 * 100, 100)}%`, background: '#36B37E' }} />
-            </div>
-            <p className="text-xs" style={{ color: SLATE }}>
-              Storage is measured by photo uploads. Additional storage is available as an add-on — contact us if you need more.
-            </p>
+
+            {baseGb === null ? (
+              /* Network — custom allocation */
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium" style={{ color: INK }}>Custom storage</span>
+                  <span className="text-xs" style={{ color: SLATE }}>{photoCount} proof photo{photoCount !== 1 ? 's' : ''}</span>
+                </div>
+                <p className="text-xs leading-relaxed" style={{ color: SLATE }}>
+                  Network plans include custom storage provisioned to your agreement. Contact us to review or adjust your allocation.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium" style={{ color: INK }}>{usedLabel} of {baseGb} GB</span>
+                  <span className="text-xs" style={{ color: SLATE }}>{photoCount} proof photo{photoCount !== 1 ? 's' : ''}</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden mb-2" style={{ background: BORDER }}>
+                  <div className="h-full rounded-full" style={{ width: `${usedPct}%`, background: nearLimit ? COPPER : SLATE }} />
+                </div>
+                <p className="text-xs leading-relaxed mb-6" style={{ color: SLATE }}>
+                  {baseGb} GB is included on the {planLabel} plan. Storage is the only metered resource — users, sponsors,
+                  contracts, captures, deliverables, and reports are always unlimited.
+                </p>
+
+                {/* Add-ons */}
+                <p className="text-[10px] uppercase tracking-widest font-medium mb-3" style={{ color: SLATE }}>Add more storage</p>
+                <div className="space-y-2">
+                  {STORAGE_ADDONS.map(a => (
+                    <div key={a.key} className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl"
+                      style={{ border: `1px solid ${BORDER}` }}>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-sm font-semibold" style={{ color: INK }}>+{a.addLabel} storage</p>
+                          <span className="text-xs font-medium" style={{ color: SLATE }}>— {eur(a.monthly)} / month</span>
+                        </div>
+                        <p className="text-xs" style={{ color: SLATE }}>{a.blurb}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setCheckout({
+                            kind: 'storage',
+                            label: `+${a.addLabel} storage`,
+                            price: `${eur(a.monthly)} / month`,
+                            description: `Adds ${a.addLabel} of storage on top of your ${planLabel} plan. Billed monthly. Cancel anytime.`,
+                            selfServe: true,
+                          })
+                          setPayMethod(null)
+                        }}
+                        className="px-4 py-2 rounded-lg text-sm font-semibold flex-shrink-0"
+                        style={{ background: INK, color: FOG }}
+                        onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = '#0F2A2E')}
+                        onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = INK)}>
+                        Add →
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-xs mt-4 pt-4" style={{ color: SLATE, borderTop: `1px solid ${BORDER}` }}>
+                  Storage is measured by photo uploads. Add-ons stack on top of your included allowance — need more than 1 TB?
+                  {' '}
+                  <a href={`mailto:hello@sporr.no?subject=${encodeURIComponent('Storage enquiry')}&body=${encodeURIComponent(`Organisation: ${form.name}\nContact: ${user?.email || ''}`)}`}
+                    className="font-medium underline underline-offset-2" style={{ color: INK }}
+                    onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = BLUE)}
+                    onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = INK)}>
+                    Contact us
+                  </a>.
+                </p>
+              </>
+            )}
           </div>
 
           {/* ── Upgrade plan ─────────────────────────────────────────────── */}
@@ -932,7 +1046,11 @@ export default function ProfilePage() {
                       </div>
                       <p className="text-xs leading-relaxed" style={{ color: SLATE }}>{plan.description}</p>
                     </div>
-                    <button onClick={() => { setUpgradeTarget(plan); setUpgradeMethod(null) }}
+                    <button
+                      onClick={() => {
+                        setCheckout({ kind: 'plan', label: plan.label, price: plan.price, description: plan.description, selfServe: plan.selfServe })
+                        setPayMethod(null)
+                      }}
                       className="px-4 py-2 rounded-lg text-sm font-semibold flex-shrink-0"
                       style={{ background: INK, color: FOG }}
                       onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = '#0F2A2E')}
