@@ -148,7 +148,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) { router.push('/'); return }
+if (!session) { setLoading(false); return }
 
       const metaName = session.user.user_metadata?.full_name || session.user.user_metadata?.name || ''
       setUserName(metaName.split(' ')[0] || '')
