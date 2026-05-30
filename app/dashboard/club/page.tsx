@@ -62,9 +62,21 @@ function textOnColour(hex: string): 'dark' | 'light' {
   return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55 ? 'dark' : 'light'
 }
 
-// ── Currency / number formatting (nb-NO) ───────────────────────────────────────
-const eur = (n: number) =>
-  new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(n)
+// ── Currency / number formatting ──────────────────────────────────────────────
+// ACTIVE_CURRENCY drives how money is displayed across the page. When Sporr
+// expands into new markets, add the locale/currency here and switch this one
+// constant — no other code changes. Amounts are stored in minor units (øre/cents)
+// on each priced item, so they format cleanly in any currency.
+const ACTIVE_CURRENCY = { locale: 'nb-NO', currency: 'NOK' }
+
+// Format a minor-unit integer (e.g. 2900 = 29 kr) as a currency string.
+const money = (minor: number) =>
+  new Intl.NumberFormat(ACTIVE_CURRENCY.locale, {
+    style: 'currency',
+    currency: ACTIVE_CURRENCY.currency,
+    minimumFractionDigits: 0,
+  }).format(minor / 100)
+
 const nb1 = (n: number) =>
   new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 1 }).format(n)
 
@@ -124,10 +136,12 @@ const STORAGE_BASE_GB: Record<string, number | null> = {
   network:      null, // Custom — provisioned per agreement
 }
 
+// Add-on prices are stored in MINOR units (øre) and rendered via money(),
+// so adding a new market = add its locale/currency to ACTIVE_CURRENCY, not here.
 const STORAGE_ADDONS = [
-  { key: '100gb', addLabel: '100 GB', monthly: 10, blurb: 'For growing capture libraries' },
-  { key: '500gb', addLabel: '500 GB', monthly: 35, blurb: 'For high-volume operations' },
-  { key: '1tb',   addLabel: '1 TB',   monthly: 60, blurb: 'For large portfolios and archives' },
+  { key: '50gb',  addLabel: '50 GB',  priceMinor: 2900,  blurb: 'For growing capture libraries' },
+  { key: '500gb', addLabel: '500 GB', priceMinor: 7900,  blurb: 'For high-volume operations' },
+  { key: '1tb',   addLabel: '1 TB',   priceMinor: 14900, blurb: 'For large portfolios and archives' },
 ]
 
 // ── Sports ────────────────────────────────────────────────────────────────────
@@ -987,7 +1001,7 @@ export default function ProfilePage() {
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
                           <p className="text-sm font-semibold" style={{ color: INK }}>+{a.addLabel} storage</p>
-                          <span className="text-xs font-medium" style={{ color: SLATE }}>— {eur(a.monthly)} / month</span>
+                          <span className="text-xs font-medium" style={{ color: SLATE }}>— {money(a.priceMinor)} / month</span>
                         </div>
                         <p className="text-xs" style={{ color: SLATE }}>{a.blurb}</p>
                       </div>
@@ -996,7 +1010,7 @@ export default function ProfilePage() {
                           setCheckout({
                             kind: 'storage',
                             label: `+${a.addLabel} storage`,
-                            price: `${eur(a.monthly)} / month`,
+                            price: `${money(a.priceMinor)} / month`,
                             description: `Adds ${a.addLabel} of storage on top of your ${planLabel} plan. Billed monthly. Cancel anytime.`,
                             selfServe: true,
                           })
