@@ -194,7 +194,9 @@ export default function HomePage() {
                 lineHeight: '1.65',
               }}
             >
-              The easiest way to track and prove sponsorship obligations and deliver automated reports that secure renewals. Year after year.
+              The easiest way to track and prove sponsorship 
+              obligations and deliver automated reports that 
+              drive renewals. Year after year.
             </p>
 
             <div className="flex items-center gap-4 mt-8 flex-wrap">
