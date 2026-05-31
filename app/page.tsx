@@ -264,7 +264,7 @@ export default function HomePage() {
                 color: '#081216',
               }}
             >
-              Partnership
+              Sponsorship
               <br />
               Accountability.
               <br />
@@ -281,9 +281,10 @@ export default function HomePage() {
                 lineHeight: '1.65',
               }}
             >
-              The operational verification layer between
-              partnership terms, delivery evidence, and
-              renewal confidence.
+            The easiest way to track and prove
+            sponsorship obligations and deliver
+            automated reports that secure renewals.
+            Year after year.
             </p>
 
             {/* CTAs */}
@@ -497,23 +498,23 @@ export default function HomePage() {
                 {[
                   {
                     n: '01',
-                    title: 'Partnership Terms',
-                    body: 'Commitments are defined, structured and aligned across all stakeholders.',
+                    title: 'Sponsorship Terms',
+                    body: 'Digitalize your sponsorship agreements, tracking every single asset—from jersey logos to digital ads—in one clear calendar.',
                   },
                   {
                     n: '02',
-                    title: 'Deliverables',
-                    body: 'Deliverables are captured in real time and verified at source.',
+                    title: 'Capture the Evidence',
+                    body: 'Volunteers or staff use Sporr to snap photos and log geo-tagged proof of activation right from the sidelines.',
                   },
                   {
                     n: '03',
-                    title: 'Capture Intelligence',
-                    body: 'Verified evidence is organised into a single source of operational truth.',
+                    title: 'Automate the Report',
+                    body: 'Sporr automatically compiles the proof into a professional sponsor report. No more chasing files at the end of the season.',
                   },
                   {
                     n: '04',
-                    title: 'Renewal Confidence',
-                    body: 'Proof-of-performance strengthens relationships and secures renewals.',
+                    title: 'Secure the Renewal',
+                    body: 'Send your sponsors proof that you delivered exactly what was agreed, protecting your partnership for next year.',
                   },
                 ].map((step, i) => (
                   <div key={i} className="flex flex-row md:flex-col items-start md:items-start flex-1">
@@ -605,35 +606,44 @@ export default function HomePage() {
             </div>
 
           </div>
-
-          {/* Trusted-by strip */}
-          <div
-            className="mt-16 pt-10 flex flex-col gap-4"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
-          >
-            <p
-              style={{
-                fontSize: '10px',
-                fontWeight: 600,
-                letterSpacing: '0.14em',
-                color: '#6E7F86',
-              }}
-            >
-              TRUSTED BY FORWARD-THINKING ORGANISATIONS
-            </p>
-            <div className="flex items-center gap-8 flex-wrap">
-              {[
-                'Nordic Wealth Partners',
-                'Arctic Hospitality',
-                'Pure Energy',
-                'Northern Bank',
-                'Community Youth Clinic',
-                'Aurora Logistics',
-              ].map(name => (
-                <TrustedLogo key={name} name={name} />
-              ))}
-            </div>
-          </div>
+{/* Trusted-by strip */}
+<div
+  className="mt-16 pt-10 flex flex-col gap-4"
+  style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}
+>
+  <p
+    style={{
+      fontSize: '10px',
+      fontWeight: 600,
+      letterSpacing: '0.14em',
+      color: '#6E7F86',
+    }}
+  >
+    BUILT IN NORWAY. TRUSTED EVERYWHERE.
+  </p>
+  <div className="flex items-center gap-x-8 gap-y-3 flex-wrap" style={{ opacity: 0.75 }}>
+    {[
+      'Clubs',
+      'Federations',
+      'Events',
+      'Tournaments',
+      'Athletes',
+      'Charities & CSR'
+    ].map(name => (
+      <span 
+        key={name} 
+        style={{ 
+          fontSize: '12px', 
+          fontWeight: 500, 
+          letterSpacing: '0.04em', 
+          color: '#8A9CA3' 
+        }}
+      >
+        {name}
+      </span>
+    ))}
+  </div>
+</div>
 
         </div>
       </section>
