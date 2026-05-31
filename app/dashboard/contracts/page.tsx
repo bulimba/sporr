@@ -31,12 +31,14 @@ const SPONSOR_TIERS: Record<string, { label: string; order: number; bg: string; 
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Sponsor    = { id: string; company_name: string }
-type Contract   = { id: string; title: string; value_nok: number; season: string; status: string; start_date: string; end_date: string; sponsorship_tier: string; sponsors: { company_name: string } }
-type Asset      = { id: string; name: string; asset_type: string }
+type Contract   = { id: string; title: string; value_nok: number; season: string; status: string; start_date: string; end_date: string; sponsorship_tier: string; sponsor_id: string; sponsors: { company_name: string } }
+type Asset      = { id: string; name: string; asset_type: string; sponsor_id: string | null }
+type EventRow   = { id: string; event_type: string; club: string | null; starts_at: string | null; ends_at: string | null }
 type Commitment = {
   id: string; contract_id: string; asset_id: string | null
   description: string | null; proof_type: string
   recurrence_rule: string; applies_to: string; quantity: number; active: boolean
+  club: string | null
   assets?: { name: string | null; asset_type: string | null } | null
 }
 type MediaHit   = { id: string; contract_id: string; media_type: string; outlet_name: string; reach: number; cpm_override: number | null; notes: string | null; hit_date: string | null }
@@ -58,6 +60,18 @@ const RECURRENCE_RULES = [
   { value: 'once',         label: 'One-off',         hint: 'Standing — a single capture' },
 ]
 
+const ASSET_TYPES = [
+  { value: 'LED_BOARD',      label: 'LED board' },
+  { value: 'JERSEY',         label: 'Jersey / kit' },
+  { value: 'BANNER',         label: 'Banner / signage' },
+  { value: 'SOCIAL_POST',    label: 'Social media post' },
+  { value: 'PA_ANNOUNCEMENT',label: 'PA announcement' },
+  { value: 'DIGITAL_SCREEN', label: 'Digital screen' },
+  { value: 'HOSPITALITY',    label: 'Hospitality' },
+  { value: 'PROGRAMME',      label: 'Programme' },
+  { value: 'OTHER',          label: 'Other' },
+]
+
 const APPLIES_TO = [
   { value: 'home', label: 'Home only' },
   { value: 'away', label: 'Away only' },
@@ -76,6 +90,19 @@ function recurrenceSummary(c: Commitment): string {
     case 'season_long':  return 'Season-long'
     case 'once':         return 'One-off'
     default:             return c.recurrence_rule
+  }
+}
+
+// recurrence → event_type set, mirroring the engine (§4.1)
+function expectedEventTypes(rule: string, appliesTo: string): string[] {
+  switch (rule) {
+    case 'per_match':
+      return appliesTo === 'away' ? ['away_match']
+        : appliesTo === 'both' ? ['home_match', 'away_match']
+        : ['home_match']
+    case 'per_training': return ['training']
+    case 'per_event':    return ['event', 'community', 'media']
+    default:             return [] // once / season_long → standing
   }
 }
 
@@ -156,6 +183,8 @@ export default function ContractsPage() {
   const [contracts, setContracts]       = useState<Contract[]>([])
   const [sponsors, setSponsors]         = useState<Sponsor[]>([])
   const [assets, setAssets]             = useState<Asset[]>([])
+  const [events, setEvents]             = useState<EventRow[]>([])
+  const [orgSports, setOrgSports]       = useState<string[]>([])
   const [commitments, setCommitments]   = useState<Record<string, Commitment[]>>({})
   const [mediaHits, setMediaHits]       = useState<Record<string, MediaHit[]>>({})
   const [orgId, setOrgId]               = useState<string | null>(null)
@@ -171,11 +200,14 @@ export default function ContractsPage() {
   const [showMediaForm, setShowMediaForm] = useState<string | null>(null)
   const [savingCommitment, setSavingCommitment] = useState(false)
   const [savingMedia, setSavingMedia]   = useState(false)
+  const [showAssetForm, setShowAssetForm] = useState(false)
+  const [savingAsset, setSavingAsset]   = useState(false)
+  const [assetForm, setAssetForm]       = useState({ name: '', asset_type: 'LED_BOARD' })
 
   const [form, setForm] = useState({ title: '', sponsor_id: '', value_nok: '', season: '2025-2026', start_date: '', end_date: '', sponsorship_tier: 'community' })
   const [commitmentForm, setCommitmentForm] = useState({
     asset_id: '', description: '', proof_type: 'photo',
-    recurrence_rule: 'per_match', applies_to: 'home', quantity: '1',
+    recurrence_rule: 'per_match', applies_to: 'home', quantity: '1', club: '',
   })
   const [mediaForm, setMediaForm] = useState({ media_type: 'newspaper', outlet_name: '', reach: '', cpm_override: '', notes: '', hit_date: '' })
 
@@ -193,26 +225,29 @@ export default function ContractsPage() {
       if (!userData) { setLoading(false); return }
       setOrgId(userData.org_id)
 
-      const { data: orgData } = await supabase.from('organisations').select('tier, name, club_colour_primary').eq('id', userData.org_id).single()
+      const { data: orgData } = await supabase.from('organisations').select('tier, name, club_colour_primary, sports').eq('id', userData.org_id).single()
       setPlanTier(normaliseTier(orgData?.tier))
       setOrgName(orgData?.name || '')
       setClubPrimary(orgData?.club_colour_primary || INK)
+      setOrgSports((orgData?.sports as string[] | null) || [])
 
-      const [contractsRes, sponsorsRes, assetsRes] = await Promise.all([
-        supabase.from('contracts').select('id,title,value_nok,season,status,start_date,end_date,sponsorship_tier,sponsors(company_name)').eq('org_id', userData.org_id).order('created_at', { ascending: false }),
+      const [contractsRes, sponsorsRes, assetsRes, eventsRes] = await Promise.all([
+        supabase.from('contracts').select('id,title,value_nok,season,status,start_date,end_date,sponsorship_tier,sponsor_id,sponsors(company_name)').eq('org_id', userData.org_id).order('created_at', { ascending: false }),
         supabase.from('sponsors').select('id,company_name').eq('org_id', userData.org_id).order('company_name'),
-        supabase.from('assets').select('id,name,asset_type').eq('org_id', userData.org_id).order('name'),
+        supabase.from('assets').select('id,name,asset_type,sponsor_id').eq('org_id', userData.org_id).order('name'),
+        supabase.from('events').select('id,event_type,club,starts_at,ends_at').eq('org_id', userData.org_id),
       ])
 
       const contractList = (contractsRes.data as unknown as Contract[]) || []
       setContracts(contractList)
       setSponsors(sponsorsRes.data || [])
       setAssets((assetsRes.data as Asset[]) || [])
+      setEvents((eventsRes.data as EventRow[]) || [])
 
       if (contractList.length > 0) {
         const ids = contractList.map(c => c.id)
         const [commitRes, mediaRes] = await Promise.all([
-          supabase.from('commitments').select('id,contract_id,asset_id,description,proof_type,recurrence_rule,applies_to,quantity,active,assets(name,asset_type)').in('contract_id', ids).eq('active', true),
+          supabase.from('commitments').select('id,contract_id,asset_id,description,proof_type,recurrence_rule,applies_to,quantity,active,club,assets(name,asset_type)').in('contract_id', ids).eq('active', true),
           supabase.from('media_hits').select('*').in('contract_id', ids).order('hit_date', { ascending: false }),
         ])
         const gCom: Record<string, Commitment[]> = {}
@@ -237,7 +272,7 @@ export default function ContractsPage() {
       value_nok: form.value_nok ? parseFloat(form.value_nok) : 0,
       season: form.season, start_date: form.start_date || null, end_date: form.end_date || null,
       status: 'active', sponsorship_tier: form.sponsorship_tier,
-    }).select('id,title,value_nok,season,status,start_date,end_date,sponsorship_tier,sponsors(company_name)').single()
+    }).select('id,title,value_nok,season,status,start_date,end_date,sponsorship_tier,sponsor_id,sponsors(company_name)').single()
     if (saveError) { setError(saveError.message); setSaving(false); return }
     setContracts(prev => [data as unknown as Contract, ...prev])
     setForm({ title: '', sponsor_id: '', value_nok: '', season: '2025-2026', start_date: '', end_date: '', sponsorship_tier: 'community' })
@@ -259,6 +294,7 @@ export default function ContractsPage() {
     // applies_to is only meaningful for per_match; force 'home' otherwise (DB default)
     const appliesTo = commitmentForm.recurrence_rule === 'per_match' ? commitmentForm.applies_to : 'home'
     const qty = Math.max(1, parseInt(commitmentForm.quantity) || 1)
+    const club = commitmentForm.club || null  // '' = club-wide (all sports)
 
     const { data, error: cErr } = await supabase.from('commitments').insert({
       org_id: orgId,
@@ -269,13 +305,45 @@ export default function ContractsPage() {
       recurrence_rule: commitmentForm.recurrence_rule,
       applies_to: appliesTo,
       quantity: qty,
+      club,
       active: true,
-    }).select('id,contract_id,asset_id,description,proof_type,recurrence_rule,applies_to,quantity,active,assets(name,asset_type)').single()
+    }).select('id,contract_id,asset_id,description,proof_type,recurrence_rule,applies_to,quantity,active,club,assets(name,asset_type)').single()
 
     if (cErr) { alert(cErr.message); setSavingCommitment(false); return }
     setCommitments(prev => ({ ...prev, [contractId]: [...(prev[contractId] || []), data as unknown as Commitment] }))
-    setCommitmentForm({ asset_id: '', description: '', proof_type: 'photo', recurrence_rule: 'per_match', applies_to: 'home', quantity: '1' })
+    setCommitmentForm({ asset_id: '', description: '', proof_type: 'photo', recurrence_rule: 'per_match', applies_to: 'home', quantity: '1', club: '' })
     setShowCommitmentForm(null); setSavingCommitment(false)
+  }
+
+  // Inline asset authoring — scoped to a sponsor (Step 4.5). Writes assets.sponsor_id.
+  async function handleAddAsset(sponsorId: string) {
+    if (!orgId || !assetForm.name.trim()) return
+    setSavingAsset(true)
+    const { data, error: aErr } = await supabase.from('assets').insert({
+      org_id: orgId,
+      sponsor_id: sponsorId,
+      name: assetForm.name.trim(),
+      asset_type: assetForm.asset_type,
+    }).select('id,name,asset_type,sponsor_id').single()
+    if (aErr) { alert(aErr.message); setSavingAsset(false); return }
+    const newAsset = data as Asset
+    setAssets(prev => [...prev, newAsset])
+    setCommitmentForm(p => ({ ...p, asset_id: newAsset.id })) // auto-select the new asset
+    setAssetForm({ name: '', asset_type: 'LED_BOARD' })
+    setShowAssetForm(false); setSavingAsset(false)
+  }
+
+  // Assets selectable for a given sponsor: that sponsor's + club-wide (sponsor_id null).
+  function assetsForSponsor(sponsorId: string | undefined) {
+    return assets.filter(a => a.sponsor_id === sponsorId || a.sponsor_id === null)
+  }
+
+  // Coverage: how many scheduled events a commitment's recurrence+scope currently matches.
+  function coverageFor(c: { recurrence_rule: string; applies_to: string; club: string | null }) {
+    const types = expectedEventTypes(c.recurrence_rule, c.applies_to)
+    if (types.length === 0) return null // standing — not event-bound
+    const n = events.filter(e => types.includes(e.event_type) && (!c.club || c.club === e.club)).length
+    return n
   }
 
   // Archive (soft) — never hard-delete a commitment that may have capture history.
@@ -587,13 +655,50 @@ export default function ContractsPage() {
                                 </div>
                               )}
 
-                              {/* Asset (optional) */}
+                              {/* Group scope — only shown for multi-sport clubs */}
+                              {orgSports.length > 1 && (
+                                <div>
+                                  <label style={lbl()}>Applies to which sport?</label>
+                                  <select style={sel()} value={commitmentForm.club} onChange={e => updC('club', e.target.value)}>
+                                    <option value="">Whole club — all sports</option>
+                                    {orgSports.map(sp => <option key={sp} value={sp}>{sp} only</option>)}
+                                  </select>
+                                  <p className="text-[11px] mt-1" style={{ color: SLATE }}>Group sponsors only generate tasks for their sport's events.</p>
+                                </div>
+                              )}
+
+                              {/* Asset (optional) — scoped to this sponsor + club-wide */}
                               <div>
-                                <label style={lbl()}>Asset (optional)</label>
-                                <select style={sel()} value={commitmentForm.asset_id} onChange={e => updC('asset_id', e.target.value)}>
-                                  <option value="">No specific asset</option>
-                                  {assets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                                </select>
+                                <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+                                  <label style={{ ...lbl(), marginBottom: 0 }}>Asset (optional)</label>
+                                  {!showAssetForm && (
+                                    <button type="button" onClick={() => setShowAssetForm(true)} className="text-[11px] font-medium" style={{ color: BLUE }}>+ New asset</button>
+                                  )}
+                                </div>
+                                {showAssetForm ? (
+                                  <div className="rounded-lg p-3" style={{ background: WHITE, border: `1px dashed ${BORDER}` }}>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2">
+                                      <input style={inp()} placeholder="Asset name — e.g. East stand LED" value={assetForm.name} onChange={e => setAssetForm(p => ({ ...p, name: e.target.value }))} />
+                                      <select style={sel()} value={assetForm.asset_type} onChange={e => setAssetForm(p => ({ ...p, asset_type: e.target.value }))}>
+                                        {ASSET_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                      </select>
+                                    </div>
+                                    <div className="flex gap-2">
+                                      <button type="button" onClick={() => handleAddAsset(contract.sponsor_id)} disabled={savingAsset || !assetForm.name.trim()}
+                                        className="px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-40" style={{ background: INK, color: FOG }}>
+                                        {savingAsset ? 'Saving…' : `Add to ${contract.sponsors?.company_name || 'sponsor'}`}
+                                      </button>
+                                      <button type="button" onClick={() => { setShowAssetForm(false); setAssetForm({ name: '', asset_type: 'LED_BOARD' }) }} className="px-3 py-1.5 rounded-lg text-xs font-medium" style={{ background: 'rgba(8,18,22,0.06)', color: INK }}>Cancel</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <select style={sel()} value={commitmentForm.asset_id} onChange={e => updC('asset_id', e.target.value)}>
+                                    <option value="">No specific asset</option>
+                                    {assetsForSponsor(contract.sponsor_id).map(a => (
+                                      <option key={a.id} value={a.id}>{a.name}{a.sponsor_id === null ? ' (club-wide)' : ''}</option>
+                                    ))}
+                                  </select>
+                                )}
                               </div>
 
                               {/* Quantity */}
@@ -610,6 +715,26 @@ export default function ContractsPage() {
                                 <p className="text-[11px] mt-1" style={{ color: SLATE }}>Leave blank to use the asset name on the field card.</p>
                               </div>
                             </div>
+                            {/* Live coverage preview */}
+                            {(() => {
+                              const n = coverageFor({ recurrence_rule: commitmentForm.recurrence_rule, applies_to: commitmentForm.applies_to, club: commitmentForm.club || null })
+                              if (n === null) return (
+                                <div className="rounded-lg px-3 py-2 mb-3 text-xs" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: SLATE }}>
+                                  Standing commitment — captured once, not tied to fixtures.
+                                </div>
+                              )
+                              const scopeNote = commitmentForm.club ? ` ${commitmentForm.club}` : ''
+                              return n > 0 ? (
+                                <div className="rounded-lg px-3 py-2 mb-3 text-xs flex items-center gap-2" style={{ background: '#F0F9FF', border: '1px solid #BFDBFE', color: '#1E40AF' }}>
+                                  <span className="font-semibold">{n}</span> matching{scopeNote} event{n !== 1 ? 's' : ''} scheduled — tasks generate automatically.
+                                </div>
+                              ) : (
+                                <div className="rounded-lg px-3 py-2 mb-3 text-xs flex items-center justify-between gap-2" style={{ background: '#FEF3C7', border: '1px solid #FDE68A', color: '#92400E' }}>
+                                  <span>No matching{scopeNote} events scheduled yet — this will generate nothing until fixtures exist.</span>
+                                  <Link href="/dashboard/calendar" className="font-semibold whitespace-nowrap underline underline-offset-2">Add fixtures →</Link>
+                                </div>
+                              )
+                            })()}
                             <div className="flex gap-2">
                               <button onClick={() => handleAddCommitment(contract.id)} disabled={savingCommitment}
                                 className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40" style={{ background: INK, color: FOG }}>
@@ -633,7 +758,15 @@ export default function ContractsPage() {
                                     <p className="text-xs" style={{ color: SLATE }}>
                                       {recurrenceSummary(cm)} · {cm.proof_type}
                                       {cm.quantity > 1 ? ` · ${cm.quantity}×` : ''}
+                                      {cm.club ? ` · ${cm.club}` : ''}
                                     </p>
+                                    {(() => {
+                                      const n = coverageFor(cm)
+                                      if (n === null) return null
+                                      return n > 0
+                                        ? <p className="text-[11px] mt-0.5 font-medium" style={{ color: BLUE }}>{n} matching event{n !== 1 ? 's' : ''} scheduled</p>
+                                        : <p className="text-[11px] mt-0.5 font-medium" style={{ color: '#B8734A' }}>No matching events yet · <Link href="/dashboard/calendar" className="underline underline-offset-2">add fixtures</Link></p>
+                                    })()}
                                   </div>
                                 </div>
                                 <button onClick={() => archiveCommitment(cm.id, contract.id)} className="ml-4 p-1 rounded flex-shrink-0 text-[11px] font-medium" style={{ color: SLATE }}
