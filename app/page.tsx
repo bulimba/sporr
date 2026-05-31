@@ -438,8 +438,7 @@ export default function HomePage() {
                   </svg>
                 ),
                 title: 'Trusted Infrastructure',
-                body: 'Verification you can rely on.',
-  'Evidence you can prove.',
+                body: 'Verification you can rely on. Evidence you can prove.',
               },
               {
                 icon: (
@@ -449,8 +448,7 @@ export default function HomePage() {
                   </svg>
                 ),
                 title: 'Operational Clarity',
-                body: 'Real-time visibility'
-            'across every partnership.',
+                body: 'Real-time visibility across every partnership.',
               },
               {
                 icon: (
@@ -459,8 +457,7 @@ export default function HomePage() {
                   </svg>
                 ),
                 title: 'Measurable Impact',
-                body: 'Data that demonstrates value'
-            'and performance.',
+                body: 'Data that demonstrates value and performance.',
               },
               {
                 icon: (
@@ -471,8 +468,7 @@ export default function HomePage() {
                   </svg>
                 ),
                 title: 'Stronger Relationships',
-                body: 'Transparency that builds trust' 
-            'and secures renewals.',
+                body: 'Transparency that builds trust and secures renewals.',
               },
             ].map((item, i) => (
               <div key={i}>
