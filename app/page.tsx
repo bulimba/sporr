@@ -355,17 +355,17 @@ export default function HomePage() {
                   {
                     n: '02',
                     title: 'Capture the Evidence',
-                    body: 'Volunteers, staff, or athletes use the app to snap photos, upload videos, and log proof of activation directly from the field.',
+                    body: 'Volunteers and staff use the app to snap photos and log geo-tagged proof of activation right from the sidelines.',
                   },
                   {
                     n: '03',
                     title: 'Automate the Report',
-                    body: 'Sporr automatically compiles the proof into a clean, professional performance report. No more chasing files at the end of the season.',
+                    body: 'Sporr automatically compiles the proof into a professional performance report. No more chasing files at the end of the season.',
                   },
                   {
                     n: '04',
                     title: 'Secure the Renewal',
-                    body: 'Send your sponsors undeniable proof that they got exactly what they paid for, protecting your revenue year after year.',
+                    body: 'Send your sponsors proof that they got exactly what they paid for, protecting your partnership for next year.',
                   },
                 ].map((step, i) => (
                   <div 
