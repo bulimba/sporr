@@ -32,33 +32,52 @@ const SPONSOR_TIERS: Record<string, { label: string; order: number; bg: string; 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type Sponsor    = { id: string; company_name: string }
 type Contract   = { id: string; title: string; value_nok: number; season: string; status: string; start_date: string; end_date: string; sponsorship_tier: string; sponsors: { company_name: string } }
-type Obligation = { id: string; description: string | null; proof_type: string; delivery_context: string; status: string; contract_id: string }
+type Asset      = { id: string; name: string; asset_type: string }
+type Commitment = {
+  id: string; contract_id: string; asset_id: string | null
+  description: string | null; proof_type: string
+  recurrence_rule: string; applies_to: string; quantity: number; active: boolean
+  assets?: { name: string | null; asset_type: string | null } | null
+}
 type MediaHit   = { id: string; contract_id: string; media_type: string; outlet_name: string; reach: number; cpm_override: number | null; notes: string | null; hit_date: string | null }
 
-// ── Form options ──────────────────────────────────────────────────────────────
+// ── Commitment form options (replaces the old obligation/delivery_context model) ─
 const PROOF_TYPES = [
-  { value: 'photo',     label: 'Photo — field capture on match day' },
-  { value: 'link',      label: 'Link — social media post or digital asset' },
-  { value: 'timestamp', label: 'Timestamp — confirmed presence or announcement' },
-  { value: 'note',      label: 'Note — written confirmation of delivery' },
-]
-const ASSET_TYPES = ['LED board', 'Jersey / kit', 'Banner / signage', 'Social media post', 'PA announcement', 'Digital screen', 'Hospitality', 'Programme', 'Other']
-const DELIVERY_CONTEXTS = [
-  { value: 'match_day',   label: 'Match day — captured at fixtures' },
-  { value: 'training',    label: 'Training — captured at training sessions' },
-  { value: 'digital',     label: 'Digital — online posts and content' },
-  { value: 'season_long', label: 'Season-long — ongoing throughout season' },
-  { value: 'event',       label: 'Event — specific club event or function' },
+  { value: 'photo',     label: 'Photo — field capture' },
+  { value: 'link',      label: 'Link — social or digital asset' },
+  { value: 'timestamp', label: 'Timestamp — confirmed presence/announcement' },
+  { value: 'note',      label: 'Note — written confirmation' },
 ]
 
-// 5-tier sponsor classification — club defines meaning, no platform lock
-const SPONSORSHIP_TIERS = [
-  { value: 'community', label: 'Bronze',   sublabel: 'Entry level support' },
-  { value: 'official',  label: 'Silver',   sublabel: 'Official sponsor' },
-  { value: 'principal', label: 'Gold',     sublabel: 'Principal sponsor' },
-  { value: 'title',     label: 'Platinum', sublabel: 'Title sponsor' },
-  { value: 'diamond',   label: 'Diamond',  sublabel: 'Premium partner' },
+// Recurrence — the five locked values. `applies_to` only modifies per_match.
+const RECURRENCE_RULES = [
+  { value: 'per_match',    label: 'Every match',     hint: 'One capture per qualifying fixture' },
+  { value: 'per_training', label: 'Every training',  hint: 'One capture per training session' },
+  { value: 'per_event',    label: 'Every event',     hint: 'Events, community & media days' },
+  { value: 'season_long',  label: 'Season-long',     hint: 'Standing — captured once, ongoing' },
+  { value: 'once',         label: 'One-off',         hint: 'Standing — a single capture' },
 ]
+
+const APPLIES_TO = [
+  { value: 'home', label: 'Home only' },
+  { value: 'away', label: 'Away only' },
+  { value: 'both', label: 'Home & away' },
+]
+
+// Plain-language summary of a commitment's recurrence (for the list rows)
+function recurrenceSummary(c: Commitment): string {
+  switch (c.recurrence_rule) {
+    case 'per_match': {
+      const scope = c.applies_to === 'away' ? 'away match' : c.applies_to === 'both' ? 'match (home & away)' : 'home match'
+      return `Every ${scope}`
+    }
+    case 'per_training': return 'Every training'
+    case 'per_event':    return 'Every event'
+    case 'season_long':  return 'Season-long'
+    case 'once':         return 'One-off'
+    default:             return c.recurrence_rule
+  }
+}
 
 const MEDIA_TYPES = [
   { value: 'newspaper',     label: 'Newspaper / print',          defaultCpm: 50,  unit: 'circulation' },
@@ -103,7 +122,7 @@ function TierBadge({ tier }: { tier: string }) {
 const NAV_ITEMS = [
   { href: '/dashboard',             label: 'Overview',     icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><rect x="11" y="2" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><rect x="2" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/><rect x="11" y="11" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/></svg> },
   { href: '/dashboard/sponsors',    label: 'Sponsors',     icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2L12.39 7.26L18 8.18L14 12.08L14.95 17.66L10 15L5.05 17.66L6 12.08L2 8.18L7.61 7.26L10 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" fill={a?'currentColor':'none'} fillOpacity={a?.15:0}/></svg> },
-  { href: '/dashboard/obligations', label: 'Deliverables', icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><path d="M7 7h6M7 10h6M7 13h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
+  { href: '/dashboard/calendar',    label: 'Calendar',     icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2.5" y="3.5" width="15" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><path d="M6 1.5v3M14 1.5v3M2.5 7.5h15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
   { href: '/dashboard/audit',       label: 'Capture',      icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="2" y="6" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><circle cx="10" cy="12" r="3" stroke="currentColor" strokeWidth="1.5"/><path d="M7 6l1.2-2h3.6L13 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
   { href: '/dashboard/contracts',   label: 'Contracts',    icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><rect x="4" y="2" width="12" height="16" rx="2" stroke="currentColor" strokeWidth="1.5" fill={a?'currentColor':'none'} fillOpacity={a?.1:0}/><path d="M7 7h6M7 10h6M7 13h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg> },
   { href: '/dashboard/financial',   label: 'Financial',    icon: (a: boolean) => <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M4 14l4-5 3 3 5-7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg> },
@@ -116,6 +135,7 @@ const INK = '#081216'
 const FOG = '#E7ECEF'
 const SLATE = '#6E7F86'
 const BLUE = '#147BFF'
+const GREEN = '#36B37E'
 const BG = '#F5F2ED'
 const WHITE = '#FFFFFF'
 const BORDER = 'rgba(8,18,22,0.08)'
@@ -135,7 +155,8 @@ export default function ContractsPage() {
 
   const [contracts, setContracts]       = useState<Contract[]>([])
   const [sponsors, setSponsors]         = useState<Sponsor[]>([])
-  const [obligations, setObligations]   = useState<Record<string, Obligation[]>>({})
+  const [assets, setAssets]             = useState<Asset[]>([])
+  const [commitments, setCommitments]   = useState<Record<string, Commitment[]>>({})
   const [mediaHits, setMediaHits]       = useState<Record<string, MediaHit[]>>({})
   const [orgId, setOrgId]               = useState<string | null>(null)
   const [orgName, setOrgName]           = useState('')
@@ -146,17 +167,20 @@ export default function ContractsPage() {
   const [saving, setSaving]             = useState(false)
   const [error, setError]               = useState<string | null>(null)
   const [expandedContract, setExpandedContract] = useState<string | null>(null)
-  const [showObligationForm, setShowObligationForm] = useState<string | null>(null)
+  const [showCommitmentForm, setShowCommitmentForm] = useState<string | null>(null)
   const [showMediaForm, setShowMediaForm] = useState<string | null>(null)
-  const [savingObligation, setSavingObligation] = useState(false)
+  const [savingCommitment, setSavingCommitment] = useState(false)
   const [savingMedia, setSavingMedia]   = useState(false)
 
   const [form, setForm] = useState({ title: '', sponsor_id: '', value_nok: '', season: '2025-2026', start_date: '', end_date: '', sponsorship_tier: 'community' })
-  const [obligationForm, setObligationForm] = useState({ description: '', asset_type: 'Banner / signage', proof_type: 'photo', delivery_context: 'match_day' })
+  const [commitmentForm, setCommitmentForm] = useState({
+    asset_id: '', description: '', proof_type: 'photo',
+    recurrence_rule: 'per_match', applies_to: 'home', quantity: '1',
+  })
   const [mediaForm, setMediaForm] = useState({ media_type: 'newspaper', outlet_name: '', reach: '', cpm_override: '', notes: '', hit_date: '' })
 
   const upd   = (f: string, v: string) => setForm(p => ({ ...p, [f]: v }))
-  const updOb = (f: string, v: string) => setObligationForm(p => ({ ...p, [f]: v }))
+  const updC  = (f: string, v: string) => setCommitmentForm(p => ({ ...p, [f]: v }))
   const updMd = (f: string, v: string) => setMediaForm(p => ({ ...p, [f]: v }))
 
   const selectedMediaType = MEDIA_TYPES.find(m => m.value === mediaForm.media_type) || MEDIA_TYPES[0]
@@ -174,26 +198,28 @@ export default function ContractsPage() {
       setOrgName(orgData?.name || '')
       setClubPrimary(orgData?.club_colour_primary || INK)
 
-      const [contractsRes, sponsorsRes] = await Promise.all([
+      const [contractsRes, sponsorsRes, assetsRes] = await Promise.all([
         supabase.from('contracts').select('id,title,value_nok,season,status,start_date,end_date,sponsorship_tier,sponsors(company_name)').eq('org_id', userData.org_id).order('created_at', { ascending: false }),
         supabase.from('sponsors').select('id,company_name').eq('org_id', userData.org_id).order('company_name'),
+        supabase.from('assets').select('id,name,asset_type').eq('org_id', userData.org_id).order('name'),
       ])
 
       const contractList = (contractsRes.data as unknown as Contract[]) || []
       setContracts(contractList)
       setSponsors(sponsorsRes.data || [])
+      setAssets((assetsRes.data as Asset[]) || [])
 
       if (contractList.length > 0) {
         const ids = contractList.map(c => c.id)
-        const [oblRes, mediaRes] = await Promise.all([
-          supabase.from('obligations').select('id,description,proof_type,delivery_context,status,contract_id').in('contract_id', ids),
+        const [commitRes, mediaRes] = await Promise.all([
+          supabase.from('commitments').select('id,contract_id,asset_id,description,proof_type,recurrence_rule,applies_to,quantity,active,assets(name,asset_type)').in('contract_id', ids).eq('active', true),
           supabase.from('media_hits').select('*').in('contract_id', ids).order('hit_date', { ascending: false }),
         ])
-        const gObl: Record<string, Obligation[]> = {}
-        for (const ob of oblRes.data || []) { if (!gObl[ob.contract_id]) gObl[ob.contract_id] = []; gObl[ob.contract_id].push(ob) }
+        const gCom: Record<string, Commitment[]> = {}
+        for (const cm of (commitRes.data as unknown as Commitment[]) || []) { if (!gCom[cm.contract_id]) gCom[cm.contract_id] = []; gCom[cm.contract_id].push(cm) }
         const gMed: Record<string, MediaHit[]> = {}
         for (const hit of mediaRes.data || []) { if (!gMed[hit.contract_id]) gMed[hit.contract_id] = []; gMed[hit.contract_id].push(hit) }
-        setObligations(gObl)
+        setCommitments(gCom)
         setMediaHits(gMed)
       }
       setLoading(false)
@@ -219,16 +245,46 @@ export default function ContractsPage() {
     setExpandedContract((data as any).id)
   }
 
-  async function handleAddObligation(contractId: string) {
+  // ── Commitment authoring (replaces the old obligation sub-form) ─────────────
+  async function handleAddCommitment(contractId: string) {
     if (!orgId) return
-    setSavingObligation(true)
-    const contextName = DELIVERY_CONTEXTS.find(d => d.value === obligationForm.delivery_context)?.label.split(' —')[0].toLowerCase() || ''
-    const description = obligationForm.description || `${obligationForm.asset_type} — ${contextName}`
-    const { data, error: obError } = await supabase.from('obligations').insert({ contract_id: contractId, org_id: orgId, description, proof_type: obligationForm.proof_type, delivery_context: obligationForm.delivery_context, status: 'pending' }).select().single()
-    if (obError) { alert(obError.message); setSavingObligation(false); return }
-    setObligations(prev => ({ ...prev, [contractId]: [...(prev[contractId] || []), data] }))
-    setObligationForm({ description: '', asset_type: 'Banner / signage', proof_type: 'photo', delivery_context: 'match_day' })
-    setShowObligationForm(null); setSavingObligation(false)
+    setSavingCommitment(true)
+
+    const asset = assets.find(a => a.id === commitmentForm.asset_id)
+    // sensible default label: asset name, else recurrence summary fallback
+    const description = commitmentForm.description.trim()
+      || asset?.name
+      || null
+
+    // applies_to is only meaningful for per_match; force 'home' otherwise (DB default)
+    const appliesTo = commitmentForm.recurrence_rule === 'per_match' ? commitmentForm.applies_to : 'home'
+    const qty = Math.max(1, parseInt(commitmentForm.quantity) || 1)
+
+    const { data, error: cErr } = await supabase.from('commitments').insert({
+      org_id: orgId,
+      contract_id: contractId,
+      asset_id: commitmentForm.asset_id || null,
+      description,
+      proof_type: commitmentForm.proof_type,
+      recurrence_rule: commitmentForm.recurrence_rule,
+      applies_to: appliesTo,
+      quantity: qty,
+      active: true,
+    }).select('id,contract_id,asset_id,description,proof_type,recurrence_rule,applies_to,quantity,active,assets(name,asset_type)').single()
+
+    if (cErr) { alert(cErr.message); setSavingCommitment(false); return }
+    setCommitments(prev => ({ ...prev, [contractId]: [...(prev[contractId] || []), data as unknown as Commitment] }))
+    setCommitmentForm({ asset_id: '', description: '', proof_type: 'photo', recurrence_rule: 'per_match', applies_to: 'home', quantity: '1' })
+    setShowCommitmentForm(null); setSavingCommitment(false)
+  }
+
+  // Archive (soft) — never hard-delete a commitment that may have capture history.
+  async function archiveCommitment(commitmentId: string, contractId: string) {
+    const ok = window.confirm('Archive this commitment? It will stop generating new capture tasks. Existing captures and history are kept.')
+    if (!ok) return
+    const { error: aErr } = await supabase.from('commitments').update({ active: false }).eq('id', commitmentId)
+    if (aErr) { alert(aErr.message); return }
+    setCommitments(prev => ({ ...prev, [contractId]: (prev[contractId] || []).filter(c => c.id !== commitmentId) }))
   }
 
   async function handleAddMediaHit(contractId: string) {
@@ -246,12 +302,6 @@ export default function ContractsPage() {
     setMediaHits(prev => ({ ...prev, [contractId]: prev[contractId].filter(h => h.id !== hitId) }))
   }
 
-  async function deleteObligation(obligationId: string, contractId: string) {
-    await supabase.from('obligations').delete().eq('id', obligationId)
-    setObligations(prev => ({ ...prev, [contractId]: prev[contractId].filter(o => o.id !== obligationId) }))
-  }
-
-  const contextLabel = (val: string) => DELIVERY_CONTEXTS.find(d => d.value === val)?.label.split(' —')[0] || val
   const mediaValue = (hit: MediaHit) => Math.round(hit.reach * (hit.cpm_override ?? (MEDIA_TYPES.find(m => m.value === hit.media_type)?.defaultCpm || 30)) / 1000)
   const totalMediaValue = (contractId: string) => (mediaHits[contractId] || []).reduce((sum, hit) => sum + mediaValue(hit), 0)
 
@@ -357,16 +407,19 @@ export default function ContractsPage() {
                 <label style={lbl()}>Sponsor tier</label>
                 <p className="text-xs mb-3" style={{ color: SLATE }}>Your classification of this sponsor&apos;s level of support. Choose whatever fits your partnership model.</p>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {SPONSORSHIP_TIERS.map(tier => {
+                  {[
+                    { value: 'community', label: 'Bronze',   sublabel: 'Entry level support' },
+                    { value: 'official',  label: 'Silver',   sublabel: 'Official sponsor' },
+                    { value: 'principal', label: 'Gold',     sublabel: 'Principal sponsor' },
+                    { value: 'title',     label: 'Platinum', sublabel: 'Title sponsor' },
+                    { value: 'diamond',   label: 'Diamond',  sublabel: 'Premium partner' },
+                  ].map(tier => {
                     const selected = form.sponsorship_tier === tier.value
                     const meta = SPONSOR_TIERS[tier.value]
                     return (
                       <button key={tier.value} type="button" onClick={() => upd('sponsorship_tier', tier.value)}
                         className="text-left rounded-xl p-3 border-2 transition-all"
-                        style={{
-                          borderColor: selected ? meta.border : 'rgba(8,18,22,0.08)',
-                          background: selected ? meta.bg : WHITE,
-                        }}>
+                        style={{ borderColor: selected ? meta.border : 'rgba(8,18,22,0.08)', background: selected ? meta.bg : WHITE }}>
                         <p className="text-xs font-bold mb-0.5" style={{ color: selected ? meta.text : INK }}>{tier.label}</p>
                         <p className="text-[10px]" style={{ color: SLATE }}>{tier.sublabel}</p>
                       </button>
@@ -427,7 +480,7 @@ export default function ContractsPage() {
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="4" y="2" width="12" height="16" rx="2" stroke="#6E7F86" strokeWidth="1.5"/><path d="M7 7h6M7 10h6M7 13h4" stroke="#6E7F86" strokeWidth="1.5" strokeLinecap="round"/></svg>
               </div>
               <p className="text-base font-semibold mb-1" style={{ color: INK }}>No contracts yet</p>
-              <p className="text-sm mb-5" style={{ color: SLATE }}>Create your first contract to start tracking obligations and media coverage.</p>
+              <p className="text-sm mb-5" style={{ color: SLATE }}>Create your first contract to start tracking commitments and media coverage.</p>
               <button onClick={() => setShowForm(true)} className="px-5 py-2.5 rounded-xl text-sm font-semibold" style={{ background: INK, color: FOG }}>Create first contract</button>
             </div>
           )}
@@ -435,12 +488,9 @@ export default function ContractsPage() {
           {/* Contract list */}
           <div className="space-y-3">
             {contracts.map(contract => {
-              const tierMeta = SPONSOR_TIERS[contract.sponsorship_tier] || SPONSOR_TIERS.community
               const hits = mediaHits[contract.id] || []
               const totalMV = totalMediaValue(contract.id)
-              const oblList = obligations[contract.id] || []
-              const delivered = oblList.filter(o => o.status === 'delivered').length
-              const pct = oblList.length > 0 ? Math.round((delivered / oblList.length) * 100) : 0
+              const comList = commitments[contract.id] || []
               const expanded = expandedContract === contract.id
 
               return (
@@ -462,21 +512,13 @@ export default function ContractsPage() {
                         <p className="text-xs" style={{ color: SLATE }}>
                           {contract.sponsors?.company_name}
                           {contract.season && ` · ${contract.season}`}
-                          {` · ${oblList.length} obligation${oblList.length !== 1 ? 's' : ''}`}
+                          {` · ${comList.length} commitment${comList.length !== 1 ? 's' : ''}`}
                           {hits.length > 0 && ` · ${hits.length} media hit${hits.length !== 1 ? 's' : ''}`}
                         </p>
                       </div>
                       <div className="flex items-center gap-4 flex-shrink-0">
                         {contract.value_nok > 0 && (
                           <p className="text-sm font-semibold" style={{ color: INK }}>€{contract.value_nok.toLocaleString('nb-NO')}</p>
-                        )}
-                        {oblList.length > 0 && (
-                          <div className="hidden sm:flex items-center gap-2">
-                            <div className="w-20 h-1 rounded-full overflow-hidden" style={{ background: '#E7ECEF' }}>
-                              <div className="h-full rounded-full" style={{ width: `${Math.max(pct, 2)}%`, background: pct === 100 ? '#36B37E' : '#147BFF' }} />
-                            </div>
-                            <span className="text-xs font-medium" style={{ color: SLATE }}>{pct}%</span>
-                          </div>
                         )}
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ color: SLATE, transform: expanded ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.15s' }}>
                           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -489,57 +531,115 @@ export default function ContractsPage() {
                   {expanded && (
                     <div className="px-5 pb-6 space-y-6" style={{ borderTop: `1px solid ${BORDER}` }}>
 
-                      {/* Obligations */}
+                      {/* Commitments */}
                       <div className="pt-5">
                         <div className="flex items-center justify-between mb-4">
                           <div>
-                            <h3 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: SLATE }}>Obligations</h3>
-                            {oblList.length > 0 && <p className="text-xs mt-0.5" style={{ color: SLATE }}>{delivered} of {oblList.length} delivered</p>}
+                            <h3 className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: SLATE }}>Commitments</h3>
+                            <p className="text-xs mt-0.5" style={{ color: SLATE }}>What was promised, and how it recurs. Capture tasks generate from these.</p>
                           </div>
-                          <button onClick={() => setShowObligationForm(showObligationForm === contract.id ? null : contract.id)}
+                          <button onClick={() => setShowCommitmentForm(showCommitmentForm === contract.id ? null : contract.id)}
                             className="text-xs font-medium flex items-center gap-1.5" style={{ color: BLUE }}
                             onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.opacity = '0.75')}
                             onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.opacity = '1')}>
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                            Add obligation
+                            Add commitment
                           </button>
                         </div>
 
-                        {showObligationForm === contract.id && (
+                        {showCommitmentForm === contract.id && (
                           <div className="rounded-xl p-4 mb-4" style={{ background: '#F5F2ED', border: `1px solid ${BORDER}` }}>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                              <div><label style={lbl()}>Asset type</label><select style={sel()} value={obligationForm.asset_type} onChange={e => updOb('asset_type', e.target.value)}>{ASSET_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
-                              <div><label style={lbl()}>When is it delivered?</label><select style={sel()} value={obligationForm.delivery_context} onChange={e => updOb('delivery_context', e.target.value)}>{DELIVERY_CONTEXTS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}</select></div>
-                              <div><label style={lbl()}>Proof required</label><select style={sel()} value={obligationForm.proof_type} onChange={e => updOb('proof_type', e.target.value)}>{PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}</select></div>
-                              <div><label style={lbl()}>Description (optional)</label><input style={inp()} placeholder="e.g. North stand banner, visible throughout match" value={obligationForm.description} onChange={e => updOb('description', e.target.value)} /></div>
+                              {/* Recurrence */}
+                              <div>
+                                <label style={lbl()}>How often?</label>
+                                <select style={sel()} value={commitmentForm.recurrence_rule} onChange={e => updC('recurrence_rule', e.target.value)}>
+                                  {RECURRENCE_RULES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                </select>
+                                <p className="text-[11px] mt-1" style={{ color: SLATE }}>{RECURRENCE_RULES.find(r => r.value === commitmentForm.recurrence_rule)?.hint}</p>
+                              </div>
+
+                              {/* Applies to — only meaningful for per_match */}
+                              {commitmentForm.recurrence_rule === 'per_match' ? (
+                                <div>
+                                  <label style={lbl()}>Which matches?</label>
+                                  <select style={sel()} value={commitmentForm.applies_to} onChange={e => updC('applies_to', e.target.value)}>
+                                    {APPLIES_TO.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                                  </select>
+                                  <p className="text-[11px] mt-1" style={{ color: SLATE }}>Rights usually sit with the home team — home is the default.</p>
+                                </div>
+                              ) : (
+                                <div>
+                                  <label style={lbl()}>Proof required</label>
+                                  <select style={sel()} value={commitmentForm.proof_type} onChange={e => updC('proof_type', e.target.value)}>
+                                    {PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                  </select>
+                                </div>
+                              )}
+
+                              {/* Proof type lives here when per_match used the slot above */}
+                              {commitmentForm.recurrence_rule === 'per_match' && (
+                                <div>
+                                  <label style={lbl()}>Proof required</label>
+                                  <select style={sel()} value={commitmentForm.proof_type} onChange={e => updC('proof_type', e.target.value)}>
+                                    {PROOF_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                  </select>
+                                </div>
+                              )}
+
+                              {/* Asset (optional) */}
+                              <div>
+                                <label style={lbl()}>Asset (optional)</label>
+                                <select style={sel()} value={commitmentForm.asset_id} onChange={e => updC('asset_id', e.target.value)}>
+                                  <option value="">No specific asset</option>
+                                  {assets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                                </select>
+                              </div>
+
+                              {/* Quantity */}
+                              <div>
+                                <label style={lbl()}>Quantity per occurrence</label>
+                                <input type="number" min={1} style={inp()} value={commitmentForm.quantity} onChange={e => updC('quantity', e.target.value)} />
+                                <p className="text-[11px] mt-1" style={{ color: SLATE }}>Expected captures shown on the field card. One capture submits the task.</p>
+                              </div>
+
+                              {/* Description */}
+                              <div className="sm:col-span-2">
+                                <label style={lbl()}>Description (optional)</label>
+                                <input style={inp()} placeholder="e.g. North stand LED board, visible throughout" value={commitmentForm.description} onChange={e => updC('description', e.target.value)} />
+                                <p className="text-[11px] mt-1" style={{ color: SLATE }}>Leave blank to use the asset name on the field card.</p>
+                              </div>
                             </div>
                             <div className="flex gap-2">
-                              <button onClick={() => handleAddObligation(contract.id)} disabled={savingObligation}
+                              <button onClick={() => handleAddCommitment(contract.id)} disabled={savingCommitment}
                                 className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-40" style={{ background: INK, color: FOG }}>
-                                {savingObligation ? 'Saving...' : 'Add obligation'}
+                                {savingCommitment ? 'Saving...' : 'Add commitment'}
                               </button>
-                              <button onClick={() => setShowObligationForm(null)} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: 'rgba(8,18,22,0.06)', color: INK }}>Cancel</button>
+                              <button onClick={() => setShowCommitmentForm(null)} className="px-4 py-2 rounded-lg text-sm font-medium" style={{ background: 'rgba(8,18,22,0.06)', color: INK }}>Cancel</button>
                             </div>
                           </div>
                         )}
 
-                        {oblList.length === 0 ? (
-                          <p className="text-sm py-2" style={{ color: SLATE }}>No obligations yet. Add the assets this sponsor expects to see delivered.</p>
+                        {comList.length === 0 ? (
+                          <p className="text-sm py-2" style={{ color: SLATE }}>No commitments yet. Add what this sponsor was promised — the calendar fills in the per-event tasks automatically.</p>
                         ) : (
                           <div className="space-y-2">
-                            {oblList.map(ob => (
-                              <div key={ob.id} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: '#F5F2ED' }}>
+                            {comList.map(cm => (
+                              <div key={cm.id} className="flex items-center justify-between px-4 py-3 rounded-xl" style={{ background: '#F5F2ED' }}>
                                 <div className="flex items-center gap-3 min-w-0">
-                                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: ob.status === 'delivered' ? '#36B37E' : '#D1D5DB' }} />
+                                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: BLUE }} />
                                   <div className="min-w-0">
-                                    <p className="text-sm font-medium truncate" style={{ color: INK }}>{ob.description}</p>
-                                    <p className="text-xs capitalize" style={{ color: SLATE }}>{ob.proof_type} proof · {contextLabel(ob.delivery_context)}</p>
+                                    <p className="text-sm font-medium truncate" style={{ color: INK }}>{cm.description || cm.assets?.name || 'Deliverable'}</p>
+                                    <p className="text-xs" style={{ color: SLATE }}>
+                                      {recurrenceSummary(cm)} · {cm.proof_type}
+                                      {cm.quantity > 1 ? ` · ${cm.quantity}×` : ''}
+                                    </p>
                                   </div>
                                 </div>
-                                <button onClick={() => deleteObligation(ob.id, contract.id)} className="ml-4 p-1 rounded flex-shrink-0" style={{ color: SLATE }}
-                                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = '#DC2626')}
+                                <button onClick={() => archiveCommitment(cm.id, contract.id)} className="ml-4 p-1 rounded flex-shrink-0 text-[11px] font-medium" style={{ color: SLATE }}
+                                  onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = '#B8734A')}
                                   onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = SLATE)}>
-                                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                                  Archive
                                 </button>
                               </div>
                             ))}
@@ -569,7 +669,7 @@ export default function ContractsPage() {
 
                         {showMediaForm === contract.id && (
                           <div className="rounded-xl p-4 mb-4" style={{ background: '#F5F2ED', border: `1px solid ${BORDER}` }}>
-                            <p className="text-xs mb-4" style={{ color: SLATE }}>Log earned media coverage. Estimated values are calculated automatically and included in your Proof of Performance Report ROI.</p>
+                            <p className="text-xs mb-4" style={{ color: SLATE }}>Log earned media coverage. Estimated values are calculated automatically and included in your report ROI.</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                               <div>
                                 <label style={lbl()}>Media type</label>
