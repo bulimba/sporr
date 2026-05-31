@@ -158,6 +158,11 @@ export default function CalendarPage() {
   const [cursor, setCursor]         = useState(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1) })
   const [selectedEvent, setSelected] = useState<EventRow | null>(null)
   const [openDays, setOpenDays]     = useState<Record<string, boolean>>({})
+  const [orgSports, setOrgSports]   = useState<string[]>([])
+  const [eventModal, setEventModal] = useState<null | 'single' | 'season'>(null)
+  const [creating, setCreating]     = useState(false)
+  const [single, setSingle]         = useState({ title: '', venue: '', date: '', time: '', event_type: 'home_match', category: '', club: '' })
+  const [season, setSeason]         = useState({ event_type: 'home_match', club: '', venue: '', titlePrefix: '', dates: '' })
 
   useEffect(() => {
     async function load() {
@@ -169,7 +174,7 @@ export default function CalendarPage() {
 
       const [orgRes, eventsRes, commitsRes, tasksRes, sessionsRes] = await Promise.all([
         supabase.from('organisations')
-          .select('id,name,tier,logo_url,show_logo_on_dashboard,club_colour_primary,club_colour_secondary')
+          .select('id,name,tier,logo_url,show_logo_on_dashboard,club_colour_primary,club_colour_secondary,sports')
           .eq('id', orgId).single(),
         supabase.from('events')
           .select('id,title,venue,starts_at,ends_at,event_type,category,club')
@@ -185,7 +190,7 @@ export default function CalendarPage() {
           .eq('org_id', orgId).eq('status', 'active'),
       ])
 
-      if (orgRes.data) setOrg(orgRes.data as OrgData)
+      if (orgRes.data) { setOrg(orgRes.data as OrgData); setOrgSports(((orgRes.data as any).sports as string[] | null) || []) }
       setEvents((eventsRes.data as EventRow[]) || [])
       setCommits((commitsRes.data as unknown as Commitment[]) || [])
       setTasks((tasksRes.data as CaptureTask[]) || [])
@@ -194,6 +199,58 @@ export default function CalendarPage() {
     }
     load()
   }, [])
+
+  // ── Event authoring (Step 4.6) — writes org-wide events ─────────────────────
+  async function createSingleEvent() {
+    if (!org || !single.title.trim() || !single.date) { alert('Title and date are required.'); return }
+    setCreating(true)
+    const startsAt = single.time ? `${single.date}T${single.time}` : single.date
+    const { data, error } = await supabase.from('events').insert({
+      org_id: org.id,
+      title: single.title.trim(),
+      venue: single.venue.trim() || null,
+      starts_at: startsAt,
+      event_type: single.event_type,
+      category: single.category.trim() || null,
+      club: single.club || null,
+    }).select('id,title,venue,starts_at,ends_at,event_type,category,club').single()
+    if (error) { alert(error.message); setCreating(false); return }
+    setEvents(prev => [...prev, data as EventRow].sort((a, b) => (a.starts_at || '').localeCompare(b.starts_at || '')))
+    setSingle({ title: '', venue: '', date: '', time: '', event_type: 'home_match', category: '', club: '' })
+    setEventModal(null); setCreating(false)
+  }
+
+  async function createSeason() {
+    if (!org) return
+    // Parse one date per line. Accept `YYYY-MM-DD`, optionally `YYYY-MM-DD HH:MM`,
+    // optionally a trailing `, Opponent / label` to vary the title.
+    const lines = season.dates.split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) { alert('Add at least one date (one per line).'); return }
+    const rows: any[] = []
+    const bad: string[] = []
+    for (const line of lines) {
+      const m = line.match(/^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}:\d{2}))?(?:\s*,\s*(.+))?$/)
+      if (!m) { bad.push(line); continue }
+      const [, date, time, label] = m
+      const base = season.titlePrefix.trim() || ({ home_match: 'Home match', away_match: 'Away match', training: 'Training', community: 'Community event', media: 'Media day', event: 'Event', other: 'Event' } as Record<string, string>)[season.event_type]
+      rows.push({
+        org_id: org.id,
+        title: label ? `${base} — ${label}` : base,
+        venue: season.venue.trim() || null,
+        starts_at: time ? `${date}T${time}` : date,
+        event_type: season.event_type,
+        category: null,
+        club: season.club || null,
+      })
+    }
+    if (bad.length) { alert(`Couldn't read ${bad.length} line(s). Use YYYY-MM-DD, optionally a time and ", label".\nFirst problem: ${bad[0]}`); return }
+    setCreating(true)
+    const { data, error } = await supabase.from('events').insert(rows).select('id,title,venue,starts_at,ends_at,event_type,category,club')
+    if (error) { alert(error.message); setCreating(false); return }
+    setEvents(prev => [...prev, ...(data as EventRow[])].sort((a, b) => (a.starts_at || '').localeCompare(b.starts_at || '')))
+    setSeason({ event_type: 'home_match', club: '', venue: '', titlePrefix: '', dates: '' })
+    setEventModal(null); setCreating(false)
+  }
 
   const accent = org?.club_colour_primary || BLUE
   const crest  = (org?.show_logo_on_dashboard && org?.logo_url) ? org.logo_url : null
@@ -386,13 +443,28 @@ export default function CalendarPage() {
               <h1 className="font-bold tracking-tight mb-1" style={{ fontSize: 26, color: INK, letterSpacing: '-0.02em' }}>Calendar</h1>
               <p style={{ fontSize: 14, color: SLATE }}>Every fixture, training, and event — with what needs capturing on each.</p>
             </div>
-            <Link href="/dashboard/audit"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold"
-              style={{ background: BLUE, color: '#FFFFFF' }}
-              onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.background = '#0E6AE0')}
-              onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.background = BLUE)}>
-              Launch capture session
-            </Link>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={() => setEventModal('single')}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                Add event
+              </button>
+              <button onClick={() => setEventModal('season')}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: INK, color: FOG }}
+                onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.background = '#0F2A2E')}
+                onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.background = INK)}>
+                Add a season
+              </button>
+              <Link href="/dashboard/audit"
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: BLUE, color: '#FFFFFF' }}
+                onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.background = '#0E6AE0')}
+                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.background = BLUE)}>
+                Launch capture session
+              </Link>
+            </div>
           </div>
 
           {/* Ongoing & season-long rail */}
@@ -470,7 +542,8 @@ export default function CalendarPage() {
             {agendaDays.length === 0 && (
               <div className="rounded-2xl px-6 py-12 text-center" style={{ background: WHITE, border: `1px solid ${BORDER}` }}>
                 <p className="text-sm font-medium mb-1" style={{ color: INK }}>No upcoming events</p>
-                <p className="text-sm" style={{ color: SLATE }}>Add a fixture or event to start scheduling captures.</p>
+                <p className="text-sm mb-4" style={{ color: SLATE }}>Add fixtures so commitments can generate capture tasks.</p>
+                <button onClick={() => setEventModal('season')} className="px-4 py-2 rounded-xl text-sm font-semibold" style={{ background: INK, color: FOG }}>Add a season</button>
               </div>
             )}
             {agendaDays.map(({ key, events: evs }) => {
@@ -501,6 +574,115 @@ export default function CalendarPage() {
 
         </div>
       </main>
+
+      {/* ── Add event / Add a season modals (Step 4.6) ──────────────────────── */}
+      {eventModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" style={{ background: 'rgba(8,18,22,0.5)' }} onClick={() => !creating && setEventModal(null)}>
+          <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-[480px] sm:rounded-2xl" style={{ background: BG, maxHeight: '92vh', overflowY: 'auto', borderTopLeftRadius: 20, borderTopRightRadius: 20 }}>
+            <div className="px-6 py-5 sticky top-0 z-10 flex items-center justify-between" style={{ background: SIDE }}>
+              <h2 className="text-lg font-bold" style={{ color: FOG }}>{eventModal === 'single' ? 'Add event' : 'Add a season'}</h2>
+              <button onClick={() => !creating && setEventModal(null)} aria-label="Close" className="p-1.5 rounded-lg" style={{ color: SLATE }}>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M4 4l10 10M14 4L4 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-4">
+              {eventModal === 'single' ? (
+                <>
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Title</label>
+                    <input value={single.title} onChange={e => setSingle(p => ({ ...p, title: e.target.value }))} placeholder="vs Brann — Eliteserien"
+                      className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Date</label>
+                      <input type="date" value={single.date} onChange={e => setSingle(p => ({ ...p, date: e.target.value }))} className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Time (optional)</label>
+                      <input type="time" value={single.time} onChange={e => setSingle(p => ({ ...p, time: e.target.value }))} className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Type</label>
+                      <select value={single.event_type} onChange={e => setSingle(p => ({ ...p, event_type: e.target.value }))} className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }}>
+                        {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </div>
+                    {orgSports.length > 1 && (
+                      <div>
+                        <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Sport / group</label>
+                        <select value={single.club} onChange={e => setSingle(p => ({ ...p, club: e.target.value }))} className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }}>
+                          <option value="">Whole club</option>
+                          {orgSports.map(sp => <option key={sp} value={sp}>{sp}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Venue (optional)</label>
+                      <input value={single.venue} onChange={e => setSingle(p => ({ ...p, venue: e.target.value }))} placeholder="Color Line Stadion" className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Label (optional)</label>
+                      <input value={single.category} onChange={e => setSingle(p => ({ ...p, category: e.target.value }))} placeholder="Corporate, Race…" className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }} />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm" style={{ color: SLATE }}>Add a whole run of fixtures at once. They all share the type, sport, and venue below — tasks generate automatically against matching commitments.</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Type</label>
+                      <select value={season.event_type} onChange={e => setSeason(p => ({ ...p, event_type: e.target.value }))} className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }}>
+                        {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </div>
+                    {orgSports.length > 1 && (
+                      <div>
+                        <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Sport / group</label>
+                        <select value={season.club} onChange={e => setSeason(p => ({ ...p, club: e.target.value }))} className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }}>
+                          <option value="">Whole club</option>
+                          {orgSports.map(sp => <option key={sp} value={sp}>{sp}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Venue (optional)</label>
+                      <input value={season.venue} onChange={e => setSeason(p => ({ ...p, venue: e.target.value }))} placeholder="Color Line Stadion" className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }} />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Title prefix (optional)</label>
+                      <input value={season.titlePrefix} onChange={e => setSeason(p => ({ ...p, titlePrefix: e.target.value }))} placeholder="Home match" className="w-full rounded-lg px-3.5 py-2.5 text-sm" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none' }} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold uppercase tracking-wide mb-1.5" style={{ color: SLATE }}>Dates — one per line</label>
+                    <textarea value={season.dates} onChange={e => setSeason(p => ({ ...p, dates: e.target.value }))} rows={7}
+                      placeholder={'2026-08-09\n2026-08-23 15:00\n2026-09-06, vs Brann\n2026-09-20'}
+                      className="w-full rounded-lg px-3.5 py-2.5 text-sm font-mono" style={{ background: WHITE, border: `1px solid ${BORDER}`, color: INK, outline: 'none', resize: 'vertical' }} />
+                    <p className="text-[11px] mt-1.5" style={{ color: SLATE }}>Format: <code>YYYY-MM-DD</code>, optionally a time, optionally <code>, label</code> (e.g. opponent). One date per line.</p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="px-6 py-4 flex gap-2 sticky bottom-0" style={{ background: BG, borderTop: `1px solid ${BORDER}`, paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+              <button onClick={eventModal === 'single' ? createSingleEvent : createSeason} disabled={creating}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40" style={{ background: INK, color: FOG }}>
+                {creating ? 'Saving…' : eventModal === 'single' ? 'Add event' : 'Add fixtures'}
+              </button>
+              <button onClick={() => !creating && setEventModal(null)} className="px-5 py-2.5 rounded-xl text-sm font-medium" style={{ background: 'rgba(8,18,22,0.06)', color: INK }}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Event detail drawer ─────────────────────────────────────────────── */}
       {selectedEvent && (() => {
