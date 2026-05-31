@@ -402,13 +402,12 @@ export default function HomePage() {
             </p>
             <div className="flex items-center gap-x-8 gap-y-3 flex-wrap" style={{ opacity: 0.85 }}>
               {[
-                'Sports Clubs & Teams',
-                'Sporting Federations',
-                'Major Festivals & Events',
+                'Sports Clubs',
+                'Federations',
+                'Major Events',
                 'Tour & Stage Races',
-                'Athletics & Swim Meets',
-                'Athletes & Creators',
-                'Charities & CSR Funds'
+                'Athletes',
+                'Community Organisations'
               ].map(name => (
                 <span key={name} style={{ fontSize: '12px', fontWeight: 500, letterSpacing: '0.04em', color: '#6E7F86' }}>
                   {name}
@@ -439,7 +438,8 @@ export default function HomePage() {
                   </svg>
                 ),
                 title: 'Trusted Infrastructure',
-                body: 'Verification you can rely on. Evidence you can prove.',
+                body: 'Verification you can rely on. 
+              Evidence you can prove.',
               },
               {
                 icon: (
@@ -449,7 +449,8 @@ export default function HomePage() {
                   </svg>
                 ),
                 title: 'Operational Clarity',
-                body: 'Real-time visibility across every partnership.',
+                body: 'Real-time visibility 
+            across every partnership.',
               },
               {
                 icon: (
@@ -458,7 +459,8 @@ export default function HomePage() {
                   </svg>
                 ),
                 title: 'Measurable Impact',
-                body: 'Data that demonstrates value and performance.',
+                body: 'Data that demonstrates value 
+            and performance.',
               },
               {
                 icon: (
@@ -469,7 +471,8 @@ export default function HomePage() {
                   </svg>
                 ),
                 title: 'Stronger Relationships',
-                body: 'Transparency that builds trust and secures renewal.',
+                body: 'Transparency that builds trust 
+            and secures renewal.',
               },
             ].map((item, i) => (
               <div key={i}>
