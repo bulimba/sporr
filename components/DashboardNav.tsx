@@ -11,12 +11,12 @@ import { createClient } from '@/lib/supabase/client'
  Rendered once by app/dashboard/layout.tsx. Pages must NOT render their own
  sidebar/bottom-bar/nav arrays any more.
 
- - Desktop: fixed 220px sidebar (lg+). Mobile: bottom tab bar + top bar.
+ - Desktop: fixed 220px sidebar (lg+). Mobile: top bar + bottom tab bar.
  - Active item tinted with the club's primary colour (fetched once on mount);
    falls back to INK.
- - Wordmark links to /dashboard everywhere. Mobile top bar also carries an
-   explicit "Dashboard" button (primary affordance on mobile). Sign out lives
-   in the desktop sidebar footer and the mobile More sheet.
+ - Wordmark links to /dashboard everywhere. Mobile top bar: wordmark (left),
+   "Dashboard" link + notification bell (right). Sign out lives in the desktop
+   sidebar footer and the mobile More sheet.
  - Flat list: Overview · Calendar · Sponsors · Contracts · Capture · Reports ·
    Financial · Profile.  Mobile bottom bar (5): Overview · Calendar · Capture
    (centre) · Sponsors · More.
@@ -48,10 +48,14 @@ const P_PATH  = 'M591.69 349.883L652.183 349.793C668.404 349.779 692.625 348.653
 const R1_PATH = 'M1035.43 349.884L1101.63 349.779C1117.18 349.759 1131.76 348.914 1147.46 351.469C1191.83 358.684 1206.77 412.536 1180.62 445.935C1168.85 460.963 1152.77 464.378 1134.59 466.173C1153.69 487.785 1181.92 515.058 1202.56 536.176L1169.71 536.221L1089.56 454.24C1087.09 451.939 1084.2 449.709 1083.21 446.547C1083.28 446.008 1083.28 444.814 1083.5 444.371C1087.25 436.869 1140.71 450.713 1159.9 432.09C1166.14 426.039 1168.6 418.231 1168.74 409.707C1168.9 400.535 1166.81 391.482 1160.2 384.767C1155.36 379.849 1148.98 376.888 1142.31 375.376C1131.3 372.883 1118.95 373.958 1107.7 373.984L1059.72 374.152C1061.08 425.774 1059.83 483.997 1059.86 536.24L1035.47 536.222L1035.43 349.884Z'
 const R2_PATH = 'M1246.62 349.875L1312.17 349.807C1327.81 349.78 1343.83 348.82 1359.46 351.591C1403.07 359.319 1417.7 413.269 1391.45 445.997C1379.72 460.624 1363.79 464.578 1345.74 466.108L1413.86 536.156L1381.03 536.212L1303.04 456.941C1299.59 453.51 1295.46 450.323 1293.88 445.95C1293.94 444.993 1293.79 442.698 1295.09 442.617C1309.01 442.651 1323.68 441.158 1337.61 442.158C1371.86 444.615 1391.78 417.024 1372.73 386.625C1363.59 372.027 1336.52 373.922 1319.43 373.972L1271.43 374.171C1270.79 427.888 1271.57 482.37 1271.27 536.215L1246.58 536.273L1246.62 349.875Z'
 
+// viewBox height 210 (was 200) adds ~10 units of clearance below the glyph baseline
+// (paths reach y≈540.6; box now 344→554) so the descenders aren't clipped. The
+// width/height ratio is kept in sync via the same 210 divisor, so the glyph is
+// not rescaled — only given breathing room underneath.
 function SporrWordmark({ width = 72 }: { width?: number }) {
-  const h = (width / 1046) * 200
+  const h = (width / 1046) * 210
   return (
-    <svg viewBox="371 344 1046 200" width={width} height={h} aria-label="Sporr — go to dashboard" role="img">
+    <svg viewBox="371 344 1046 210" width={width} height={h} aria-label="Sporr — go to dashboard" role="img">
       {[S_PATH, P_PATH, O_ARC, R1_PATH, R2_PATH].map((d, i) => <path key={i} fill={FOG} d={d} />)}
       <path fill={COPPER} d={O_BREAK} />
     </svg>
@@ -161,12 +165,19 @@ export default function DashboardNav() {
         </div>
       </aside>
 
-      {/* ── Mobile top bar (wordmark → home · explicit Dashboard button) ── */}
+      {/* ── Mobile top bar: wordmark (left) · Dashboard link + bell (right) ─ */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3"
         style={{ background: SIDE, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-        <Link href="/dashboard"><SporrWordmark width={56} /></Link>
-        <Link href="/dashboard" className="text-xs font-medium px-3 py-1.5 rounded-lg"
-          style={{ background: 'rgba(255,255,255,0.08)', color: FOG }}>← Dashboard</Link>
+        <Link href="/dashboard" aria-label="Go to dashboard"><SporrWordmark width={56} /></Link>
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="text-xs font-medium px-3 py-1.5 rounded-lg"
+            style={{ background: 'rgba(255,255,255,0.08)', color: FOG }}>Dashboard</Link>
+          <button className="p-2 rounded-lg" style={{ color: SLATE }} aria-label="Notifications"
+            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = FOG)}
+            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = SLATE)}>
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M10 2.5A5.5 5.5 0 004.5 8v3.5L3 13h14l-1.5-1.5V8A5.5 5.5 0 0010 2.5z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M8.5 13v.5a1.5 1.5 0 003 0V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
       </div>
 
       {/* ── Mobile bottom tab bar ───────────────────────────────────────── */}
