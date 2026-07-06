@@ -93,15 +93,29 @@ function ObligationHead({ ob }: { ob: Obligation }) {
 }
 
 export default async function CapturePage({ params }: { params: { token: string } }) {
-  const admin = tdAdmin()
+const admin = tdAdmin()
 
   const { data, error } = await admin
     .from('td_obligations')
-    .select('id, title, spec, owner_name, state, td_events(name)')
+    .select('id, title, spec, owner_name, state, event_id')
     .eq('capture_link_token', params.token)
     .maybeSingle()
 
-  if (error || !data) {
+  // A real query failure is NOT a bad token — surface it instead of masking it.
+  if (error) {
+    return (
+      <Shell>
+        <Card>
+          <StatusLine text="Something went wrong" tone="warn" />
+          <p style={{ margin: 0, fontSize: 15, color: '#33454b', lineHeight: 1.5 }}>
+            Could not load this capture. {error.message}
+          </p>
+        </Card>
+      </Shell>
+    )
+  }
+
+  if (!data) {
     return (
       <Shell>
         <Card>
@@ -115,10 +129,16 @@ export default async function CapturePage({ params }: { params: { token: string 
     )
   }
 
-  // td_events embed can arrive as an object or a single-element array depending on
-  // how the relationship is resolved — normalise defensively.
-  const ev = (data as any).td_events
-  const event_name = Array.isArray(ev) ? ev[0]?.name ?? null : ev?.name ?? null
+  // Event name in a separate, non-fatal query — no embed dependency.
+  let event_name: string | null = null
+  if (data.event_id) {
+    const { data: ev } = await admin
+      .from('td_events')
+      .select('name')
+      .eq('id', data.event_id)
+      .maybeSingle()
+    event_name = ev?.name ?? null
+  }
 
   const ob: Obligation = {
     id: data.id,
